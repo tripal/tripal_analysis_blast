@@ -1,8 +1,22 @@
 <?php
 
-/*******************************************************************************
- * Parse NCBI Blast results for indexing so that user can use blast results to
- * find corresponding features
+/**
+ * Parse NCBI BLAST XML results into HTML text that can be used by Drupal
+ * for default Drupal indexing of pages.  This function parses a single feature
+ * at a time.
+ *
+ * @param $xml_string
+ *   The XML text containing blast results for a given feature
+ * @param $db
+ *   The database object of the database blasted against. This object should 
+ *   contain the database id ($db->db_id) that will be used to lookup 
+ *   regular expressions for parsing of blast hits.
+ * @param $feature_id 
+ *   The feature ID of the feature the XML blast results belong to.
+ *
+ * @return
+ *   Returns HTML formatted text results with non informative words removed, and
+ *   more significant words enclosed in HTML tags ranked by the Drupal indexer
  */
 function parse_NCBI_Blast_XML_index_version($xml_string,$db,$feature_id) {
 	// Get the parser using db_id
@@ -33,7 +47,7 @@ function parse_NCBI_Blast_XML_index_version($xml_string,$db,$feature_id) {
 
 	$html_out .= "<h3>$db_name</h3>";
 
-	// Load the file.  This XML file should be an extract
+	// Load the XML string. This XML should be an extract
 	// of the original XML file with only a single iteration.
 	// An iteration is essentially all the hits for a single
 	// query sequence.
@@ -43,7 +57,6 @@ function parse_NCBI_Blast_XML_index_version($xml_string,$db,$feature_id) {
 	if ($xml_output->getName() == 'Iteration') {
 		foreach ($xml_output->children() as $xml_tag) {
 			if ($xml_tag->getName() == 'Iteration_query-def') {
-				// Here we show the feature name again to check if we pull the correct data
 				$html_out .= "Query: $xml_tag<br>";
 			} else if ($xml_tag->getName() == 'Iteration_hits') {
 				$iteration = $xml_tag;
@@ -91,11 +104,55 @@ function parse_NCBI_Blast_XML_index_version($xml_string,$db,$feature_id) {
 }
 
 /*******************************************************************************
- * Parse Blast XML Output file into analysisfeatureprop table
+ * This function is a wrapper for the tripal_analysis_blast_parseXML function. 
+ * If a directory of blast results is provided then this function will 
+ * iterate through all call the tripal_analysis_blast_parseXML file individually
+ * for each.  Otherwise, if a single XML file is provided it will call the 
+ * function for just that
+ *
+ * @param $analysis_id
+ *   The analysis ID that the blast results belong to
+ * @param $blastdb
+ *   The database blasted against. 
+ * @param $blastfile
+ *   The directory path containing a collection of blast XML files or a the
+ *   path to a single XML file.  If a directory is provided the function will
+ *   iterate through all of the files with the extension provided by the 
+ *   $blast_ext argument and extract results.
+ * @param $no_parsed
+ *   The number of hits to keep. 
+ * @param $blast_ext
+ *   If the $blastfile argument is a directory path rather than a file then
+ *   this function willlook for files with the extension provided.
+ * @param $query_re
+ *   The regular expression that can uniquely identify the query name.
+ *   This parameters is required if the feature name is not the
+ *   first word in the blast query name. 
+ * @param $query_type
+ *   The feature type (e.g. 'gene', 'mRNA', 'contig') of the query. It must
+ *   be a valid Sequence Ontology term.
+ * @param $query_uniquename. 
+ *   The regular expression that can uniquely identify the query unique name.
+ *   This parameters is required if the feature name is not the
+ *   first word in the blast query name. 
+ * @param $is_concat
+ *   If the blast result file is simply a list of concatenated blast results 
+ *   then this value should be set to 1.  
+ * @param $search_keywords
+ *   The list of fields to extract from the blast results and store as 
+ *   a separate entry in the analysisfeatureprop table.  Th list should be
+ *   a single string with elements separated with a bar '|'.  The valid values
+ *   include:  'blast_match_name','blast_match_description','blast_match_organism' 
+ *   'blast_match_accession','blast_database','blast_evalue','blast_score'
+ * @param $job_id
+ *   The job id passed in from the jobs management system
+ * 
+ * @return
+ *   returns 1 for success, 0 for failure
  */
 function tripal_analysis_blast_parseXMLFile ($analysis_id, $blastdb, $blastfile, 
    $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-   $is_concat,$job_id,$is_concat) {
+   $is_concat,$search_keywords,$job_id) {
 
 	// Prepare log
 	$filename = preg_replace("/.*\/(.*)/", "$1", $blastfile);
@@ -111,7 +168,7 @@ function tripal_analysis_blast_parseXMLFile ($analysis_id, $blastdb, $blastfile,
 	if (is_file($blastfile)) {
       tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
          $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-         $job_id,1,$log,$is_concat);
+         $job_id,1,$log,$is_concat,$search_keywords);
 	} 
    // Otherwise, $blastfile is a directory. Iterate through all xml files in it
    else {
@@ -133,7 +190,7 @@ function tripal_analysis_blast_parseXMLFile ($analysis_id, $blastdb, $blastfile,
 
             tripal_analysis_blast_parseXML($analysis_id, $blastdb, "$blastfile/$file", 
               $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-              $job_id,0,$log);
+              $job_id,0,$log,$is_concat,$search_keywords);
 
 			   // Set job status
 			   if ($no_file % $interval == 0) {
@@ -151,12 +208,61 @@ function tripal_analysis_blast_parseXMLFile ($analysis_id, $blastdb, $blastfile,
 	fclose($log);
 	return;
 }
-/********************************************************************************
+/*******************************************************************************
+ * Parse Blast XML Output file into analysisfeatureprop table
+ * Parse NCBI BLAST XML results into chunks of XML for each feature and store 
+ * them in the analysisfeatureprop table. 
+ *
+ * @param $analysis_id
+ *   The analysis ID that the blast results belong to
+ * @param $blastdb
+ *   The database blasted against. 
+ * @param $blastfile
+ *   The directory path containing a collection of blast XML files or a the
+ *   path to a single XML file.  If a directory is provided the function will
+ *   iterate through all of the files with the extension provided by the 
+ *   $blast_ext argument and extract results.
+ * @param $no_parsed
+ *   The number of hits to keep. 
+ * @param $blast_ext
+ *   If the $blastfile argument is a directory path rather than a file then
+ *   this function willlook for files with the extension provided.
+ * @param $query_re
+ *   The regular expression that can uniquely identify the query name.
+ *   This parameters is required if the feature name is not the
+ *   first word in the blast query name. 
+ * @param $query_type
+ *   The feature type (e.g. 'gene', 'mRNA', 'contig') of the query. It must
+ *   be a valid Sequence Ontology term.
+ * @param $query_uniquename. 
+ *   The regular expression that can uniquely identify the query unique name.
+ *   This parameters is required if the feature name is not the
+ *   first word in the blast query name. 
+ * @param $job_id
+ *   The job id passed in from the jobs management system
+ * @param $set_progress
+ *   Boolean value that indicates if the job progress should be calculated. For
+ *   processing of files in a directory this should be zero.  For a single file
+ *   it should be 1.
+ * @param $log
+ *   The log file handle
+ * @param $is_concat
+ *   If the blast result file is simply a list of concatenated blast results 
+ *   then this value should be set to 1.  
+ * @param $search_keywords
+ *   The list of fields to extract from the blast results and store as 
+ *   a separate entry in the analysisfeatureprop table.  Th list should be
+ *   a single string with elements separated with a bar '|'.  The valid values
+ *   include:  'blast_match_name','blast_match_description','blast_match_organism' 
+ *   'blast_match_accession','blast_database','blast_evalue','blast_score'
  * 
+ * @return
+ *   no return value
  */
 function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
    $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-  $job_id,$set_progress,$log,$is_concat){
+   $job_id, $set_progress, $log, $is_concat, $search_keywords)
+{
 
 	// Parsing started
 	print "Parsing File:".$blastfile." ...\n";
@@ -169,13 +275,15 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 	
 	// Get cvterm_id for 'analysis_blast_output_iteration_hits' which is required
 	// for inserting into the analysisfeatureprop table
-	$previous_db = tripal_db_set_active('chado'); // use chado database
-	$sql = "SELECT CVT.cvterm_id ".
-          "FROM {cvterm} CVT ".
-          "   INNER JOIN {cv} ON cv.cv_id = CVT.cv_id ".
-          "WHERE CVT.name = 'analysis_blast_output_iteration_hits' ".
-          "   AND CV.name = 'tripal'";
-	$type_id = db_result(db_query($sql));
+	$columns = array('cvterm_id');
+	$values = array(
+	   'name' => 'analysis_blast_output_iteration_hits',
+	   'cv_id' => array(
+	      'name' => 'tripal'
+	   ),
+	);
+	$cvterm = tripal_core_chado_select('cvterm',$columns,$values);
+	$type_id = $cvterm[0]->cvterm_id;
 
 	// Load the XML file.
    if (!is_readable($blastfile)) {
@@ -232,9 +340,12 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 			}
 		}
 	}
-	print "$no_iterations iterations to be processed.\n";
+	print "$no_iterations results to be processed.\n";
 		
 	$interval = intval($no_iterations * 0.01);
+	if($interval == 0){
+	   $interval = 1;
+	}
 	$idx_iterations = 0;
 	foreach ($blastoutput->children() as $blastoutput_tags) {
 
@@ -243,14 +354,14 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 				if ($iterations->getName() == 'Iteration') {
 
 					// Set job status
-					$idx_iterations ++;
+					$idx_iterations++;
 					if ($set_progress and $idx_iterations % $interval == 0) {
 						$percentage = (int) (($idx_iterations / $no_iterations) * 100);
 						tripal_job_set_progress($job_id, $percentage);
 						print $percentage."%\r";
 					}
+					
 					// now run through the blast hits/hsps of this iteration
-					// and generate the rows of the table
 					$feature_id = 0;
 					foreach($iterations->children() as $iteration_tags) {
 
@@ -317,8 +428,8 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 								$sql = "SELECT analysisfeatureprop_id FROM {analysisfeatureprop} AFP ".
                                "INNER JOIN analysisfeature AF ON AF.analysisfeature_id = AFP.analysisfeature_id ".       
                                "WHERE feature_id=%d ".
-                            "AND analysis_id=%d ".
-                            "AND type_id=%d ";
+                                  "AND analysis_id=%d ".
+                                  "AND type_id=%d ";
 
 								$result = db_query($sql, $feature_id, $analysis_id, $type_id);
 								$analysisfeatureprop = db_fetch_object($result);
@@ -342,8 +453,9 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 								}
 								$xml_content .= "\n</Iteration>";
 
-								// If this Iteration_hits already exists, update it
+								// If this Iteration_hit already exists then update it
 								if ($analysisfeatureprop) {
+								   print "Update analysis feature record for feature $feature_id\n";
 
 									$sql = "UPDATE {analysisfeatureprop} ".
                                "SET value = '%s' ".
@@ -352,24 +464,106 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 									db_query($sql, $xml_content, $analysisfeatureprop->analysisfeatureprop_id);
 									fwrite($log, " (Update)\n"); // write to log
 
-									// Otherwise, insert the Iteration_hits into analysisfeature and analysisfeatureprop tables
+							   // Otherwise, insert the Iteration_hits into analysisfeature 
+							   // and analysisfeatureprop tables
 								} else {
-									//------------------------------------------------------
+					            print "Insert analysis feature record for feature $feature_id\n";
+																   
 									// Insert into analysisfeature table
-									//------------------------------------------------------
 									$sql = "INSERT INTO {analysisfeature} (feature_id, analysis_id) ".
-                               "VALUES (%d, %d)";
+                                  "VALUES (%d, %d)";
 									db_query ($sql, $feature_id, $analysis_id);
 									// Get the newly inserted analysisfeature_id
 									$sql = "SELECT analysisfeature_id FROM {analysisfeature} WHERE feature_id = %d AND analysis_id = %d";
 									$analysisfeature_id = db_result(db_query($sql, $feature_id, $analysis_id));
-									//------------------------------------------------------
+
 									// Insert into analysisfeatureprop table
-									//------------------------------------------------------
 									$sql = "INSERT INTO {analysisfeatureprop} (analysisfeature_id, type_id, value, rank)".
-                               "VALUES (%d, %d, '%s', %d)";
+                                  "VALUES (%d, %d, '%s', %d)";
 									db_query($sql, $analysisfeature_id, $type_id, $xml_content, '0');
 									fwrite($log, " (Insert)\n"); // write to log
+								}
+								// if the admin has requested adding of keywords from blast
+								// results to the analyisfeatureprop table then do so now.
+								if($search_keywords){
+								   print "Adding search keywords...\n";
+								   // get the database object
+								   $columns = ('*');
+								   $values = array('name' => $blastdb);
+								   $db = tripal_core_chado_select('db',$columns,$values);
+								   // get the analysis object
+								   $values = array('analysis_id' => $analysis_id);
+								   $analysis = tripal_core_chado_select('analysis',$columns,$values);
+								   // get the blast object
+								   $blast_obj = tripal_analysis_blast_get_result_object(
+								      $xml_content,$db[0],0,$feature_id, $analysis[0]);
+								   // now set the properties
+								   $keywords = explode("|",$search_keywords);
+								   foreach ($keywords as $keyword){
+                              // iterate through the hits and add the properties for each one   
+    								   for($i = 0; $i < $blast_obj->number_hits; $i++){
+    								      // if we've parsed the maximium requested then break out of the loop
+    								      if($i == $no_parsed){
+    								         break;
+    								      }
+								         if(strcmp($keyword,'blast_match_name')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_match_name',$blast_obj->hits_array[$i]['hit_name']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         }
+								         if(strcmp($keyword,'blast_match_description')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_match_description',$blast_obj->hits_array[$i]['description']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         }
+								         if(strcmp($keyword,'blast_match_organism')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_match_organism',$blast_obj->hits_array[$i]['organism']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         }
+								         if(strcmp($keyword,'blast_match_accession')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_match_accession',$blast_obj->hits_array[$i]['accession']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         }
+								         if(strcmp($keyword,'blast_database')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_match_name',$blast_obj->hits_array[$i]['hit_name']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         }
+								         if(strcmp($keyword,'blast_evalue')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_evalue',$blast_obj->hits_array[$i]['best_evalue']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         } /*
+								         if(strcmp($keyword,'blast_score')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_match_name',$blast_obj->hits_array[$i]['hit_name']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         }*/
+								         if(strcmp($keyword,'blast_pid')==0){
+								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
+								               NULL,'blast_pid',$blast_obj->hits_array[$i]['percent_identity']);
+								            if(!$success){
+								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
+								            }
+								         }
+								      }
+								   }
 								}
 							}
 						}	
@@ -380,8 +574,67 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 	}
 	tripal_db_set_active ($previous_db); // Use drupal database
 }
-/********************************************************************************
+/*******************************************************************************
+ * Parses the BLAST XML for a single iteration (feature matches) and returns
+ * an object containing the results. 
+ *
+ * @param $xml_string
+ *   The XML results for a single iteration. The XML should begin with the
+ *   <Iteration> tag.
+ * @param $db
+ *   An instantiated object containing the database record of the database
+ *   the features were blasted against.
+ * @param $max
+ *   The maximum number of matches to retreive from the blast XML results. Set to
+ *   zero to retrieve all hits.
+ * @param $feature_id
+ *   The feature ID to which this blast XML belongs.
+ * @param $analysis
+ *   An instantiated object containing the analysis record of the blast analysis
  * 
+ * @return
+ *   An object with the following fields:
+ *
+ *      Incoming arguments:
+ *        $blast_obj->analysis     (the analysis object)
+ *        $blast_obj->db           (the database object)
+ *        $blast_obj->max          (the maximum number of hits)
+ *        $blast_obj->feature_id   (the feature ID of this match)
+ *
+ *      Meta Information about the results
+ *        $blast_obj->xml_tag      (the feature name)
+ *        $blast_obj->number_hits  (the number of hits in the array)
+ *        $blast_obj->title        (the database name--or analysis if no dbname)
+ *
+ *      The hits array. The variable $i is indicate an index variable that needs
+ *      to be used for accessing the hits.
+ *        $blast_obj->hits_array
+ *        $blast_obj->hits_array[$i]['arrowr_url']
+ *        $blast_obj->hits_array[$i]['accession']
+ *        $blast_obj->hits_array[$i]['hit_name']
+ *        $blast_obj->hits_array[$i]['hit_url']
+ *        $blast_obj->hits_array[$i]['best_evalue']
+ *        $blast_obj->hits_array[$i]['percent_identity']
+ *        $blast_obj->hits_array[$i]['description']
+ *
+ *      The HSPs for a given hit. The variable $j indicates an index variable that
+ *      needs to be used for accessing the HSPs.
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['query_frame']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['hsp_num']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['bit_score']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['score']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['evalue']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['query_frame']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['qseq']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['midline']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['hseq']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['hit_from']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['hit_to']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['identity']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['align_len']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['positive']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['query_from']
+ *        $blast_obj->hits_array[$i]['hsp'][$j]['query_to']
  */
 function tripal_analysis_blast_get_result_object($xml_string,$db,$max,$feature_id, $analysis) {
 	$blast_object = new stdClass();
@@ -631,7 +884,7 @@ function tripal_analysis_blast_parse_best_hit ($analysis_id) {
 
 	// Select all features for this blast analysis, and save them to the 'featureSet' array
 	$sql = "SELECT feature_id
-	             FROM {analysisfeature} AF  
+	        FROM {analysisfeature} AF  
 	             WHERE analysis_id = %d";
 	$previous_db = tripal_db_set_active('chado');
 	$result = db_query($sql, $analysis_id);
