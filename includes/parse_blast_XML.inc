@@ -159,10 +159,14 @@ function tripal_analysis_blast_parseXMLFile ($analysis_id, $blastdb, $blastfile,
 	$logfile = file_directory_path() . "/tripal/tripal_analysis_blast/load_$filename.log";
         $logfile = tempnam(sys_get_temp_dir(),"tripal_analysis_blast_import");
 	$log = fopen($logfile, 'a'); // append parsing results to log file
-        if(!$log){
-           print "ERROR: cannot open log file: $logfile\n";
-           exit;
-        }
+   if(!$log){
+     print "ERROR: cannot open log file: $logfile\n";
+     exit;
+   }
+   
+   if($search_keywords){
+   
+   }
 
 	// If user input a file (e.g. blast.xml)
 	if (is_file($blastfile)) {
@@ -423,6 +427,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 						} 
                   // Insert Iteration_hits into analysisfeatureprop and analysisfeature tables
                   else if($iteration_tags->getName() == 'Iteration_hits'){
+                     $analysisfeature_id = '';
 							if ($feature_id) {
 								// Make sure this iteration doesn't exist in analysisfeatureprop. If it does, update but not insert
 								$sql = "SELECT analysisfeatureprop_id FROM {analysisfeatureprop} AFP ".
@@ -456,23 +461,26 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 								// If this Iteration_hit already exists then update it
 								if ($analysisfeatureprop) {
 								   print "Update analysis feature record for feature $feature_id\n";
-
 									$sql = "UPDATE {analysisfeatureprop} ".
-                               "SET value = '%s' ".
-                               "WHERE analysisfeatureprop_id = %d ";
-										
+                                  "SET value = '%s' ".
+                                  "WHERE analysisfeatureprop_id = %d ";	
 									db_query($sql, $xml_content, $analysisfeatureprop->analysisfeatureprop_id);
-									fwrite($log, " (Update)\n"); // write to log
-
+									fwrite($log, " (Update)\n"); // write to log   
+									
+									// Get the analysisfeature_id
+									$sql = "SELECT analysisfeature_id FROM {analysisfeature} ".
+									       "WHERE feature_id = %d AND analysis_id = %d";
+									$analysisfeature_id = db_result(db_query($sql, $feature_id, $analysis_id));
+								}	                      
 							   // Otherwise, insert the Iteration_hits into analysisfeature 
 							   // and analysisfeatureprop tables
-								} else {
+								else {
 					            print "Insert analysis feature record for feature $feature_id\n";
 																   
 									// Insert into analysisfeature table
 									$sql = "INSERT INTO {analysisfeature} (feature_id, analysis_id) ".
                                   "VALUES (%d, %d)";
-									db_query ($sql, $feature_id, $analysis_id);
+									db_query($sql, $feature_id, $analysis_id);
 									// Get the newly inserted analysisfeature_id
 									$sql = "SELECT analysisfeature_id FROM {analysisfeature} WHERE feature_id = %d AND analysis_id = %d";
 									$analysisfeature_id = db_result(db_query($sql, $feature_id, $analysis_id));
@@ -487,83 +495,37 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 								// results to the analyisfeatureprop table then do so now.
 								if($search_keywords){
 								   print "Adding search keywords...\n";
-								   // get the database object
-								   $columns = ('*');
-								   $values = array('name' => $blastdb);
-								   $db = tripal_core_chado_select('db',$columns,$values);
 								   // get the analysis object
+								   $columns = array('*');
 								   $values = array('analysis_id' => $analysis_id);
 								   $analysis = tripal_core_chado_select('analysis',$columns,$values);
 								   // get the blast object
 								   $blast_obj = tripal_analysis_blast_get_result_object(
 								      $xml_content,$db[0],0,$feature_id, $analysis[0]);
-								   // now set the properties
-								   $keywords = explode("|",$search_keywords);
-								   foreach ($keywords as $keyword){
-                              // iterate through the hits and add the properties for each one   
-    								   for($i = 0; $i < $blast_obj->number_hits; $i++){
-    								      // if we've parsed the maximium requested then break out of the loop
-    								      if($i == $no_parsed){
-    								         break;
-    								      }
-								         if(strcmp($keyword,'blast_match_name')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_match_name',$blast_obj->hits_array[$i]['hit_name']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         }
-								         if(strcmp($keyword,'blast_match_description')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_match_description',$blast_obj->hits_array[$i]['description']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         }
-								         if(strcmp($keyword,'blast_match_organism')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_match_organism',$blast_obj->hits_array[$i]['organism']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         }
-								         if(strcmp($keyword,'blast_match_accession')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_match_accession',$blast_obj->hits_array[$i]['accession']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         }
-								         if(strcmp($keyword,'blast_database')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_match_name',$blast_obj->hits_array[$i]['hit_name']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         }
-								         if(strcmp($keyword,'blast_evalue')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_evalue',$blast_obj->hits_array[$i]['best_evalue']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         } /*
-								         if(strcmp($keyword,'blast_score')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_match_name',$blast_obj->hits_array[$i]['hit_name']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         }*/
-								         if(strcmp($keyword,'blast_pid')==0){
-								            $success = tripal_feature_analysis_insert_property($analysis_id,$feature_id,
-								               NULL,'blast_pid',$blast_obj->hits_array[$i]['percent_identity']);
-								            if(!$success){
-								               print "ERROR: unable to load property blast_match_name for feature: $feature_id\n";
-								            }
-								         }
-								      }
-								   }
+								   // iterate through the hits and add the records to the 
+								   // blast_hit_data table
+								   $failed = 0;
+    								for($i = 0; $i < $blast_obj->number_hits; $i++){
+ 								      $record = new stdClass();
+ 								      $record->analysisfeature_id = $analysisfeature_id;
+ 								      $record->db_id = $blastdb;
+ 								      $record->hit_num = $i;
+ 								      $record->hit_name = $blast_obj->hits_array[$i]['hit_name'];
+ 								      $record->hit_url = $blast_obj->hits_array[$i]['hit_url'];
+ 								      $record->hit_description = $blast_obj->hits_array[$i]['description'];
+ 								      $record->hit_organism = $blast_obj->hits_array[$i]['organism'];
+ 								      $record->hit_accession =$blast_obj->hits_array[$i]['accession'];
+ 								      $record->hit_best_eval = $blast_obj->hits_array[$i]['best_evalue'];
+ 								      $record->hit_best_score = $blast_obj->hits_array[$i]['best_score'];
+ 								      $record->hit_pid =$blast_obj->hits_array[$i]['percent_identity'];
+ 								      if(!drupal_write_record('blast_hit_data',$record)){
+ 								         $failed =1;
+ 								      }
+							      }
+							      if($failed){
+							       	print_r($record);
+                              fwrite($log, "Failed to add keywords for searching: '$feature'\n");   
+							      }
 								}
 							}
 						}	
@@ -900,9 +862,8 @@ function tripal_analysis_blast_parse_best_hit ($analysis_id) {
                 FROM {analysis}  A
                 INNER JOIN {analysisprop} AP ON  A.analysis_id = AP.analysis_id 
                 WHERE A.analysis_id = %d
-                AND type_id= (SELECT cvterm_id 
-                                           FROM {cvterm} 
-                                           WHERE name = 'analysis_blast_settings')";
+                AND type_id= (SELECT cvterm_id FROM {cvterm} 
+                              WHERE name = 'analysis_blast_settings')";
 	$analysis = db_fetch_object(db_query($sql, $analysis_id));
 	
 	// Parse the blast settings
@@ -947,11 +908,13 @@ function tripal_analysis_blast_parse_best_hit ($analysis_id) {
 		}
 
 		$sql = "SELECT value
-		             FROM {analysisfeatureprop} AFP 
-		             INNER JOIN {analysisfeature} AF ON AFP.analysisfeature_id = AF.analysisfeature_id 
-		             WHERE analysis_id = %d 
-		             AND feature_id = %d
-		             AND type_id = (SELECT cvterm_id FROM cvterm WHERE name='analysis_blast_output_iteration_hits' AND cv_id = (SELECT cv_id FROM cv WHERE name='tripal'))";
+		        FROM {analysisfeatureprop} AFP 
+		           INNER JOIN {analysisfeature} AF ON AFP.analysisfeature_id = AF.analysisfeature_id 
+		        WHERE analysis_id = %d 
+		           AND feature_id = %d
+		           AND type_id = (SELECT cvterm_id FROM {cvterm}  
+		                          WHERE name='analysis_blast_output_iteration_hits' 
+		                             AND cv_id = (SELECT cv_id FROM cv WHERE name='tripal'))";
 		$previous_db = tripal_db_set_active('chado');
 		$xml_output = simplexml_load_string(db_result(db_query($sql, $analysis_id, $featureSet[$i])));
 		

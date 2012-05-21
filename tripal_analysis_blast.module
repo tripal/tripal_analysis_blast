@@ -620,13 +620,10 @@ function chado_analysis_blast_form ($node){
 //	   'blast_pid' => 'The match percent identity (property name: blast_pid)',	   
 	);
 	$form['blast']['search_keywords'] = array(
-      '#type' => 'checkboxes',
+      '#type' => 'checkbox',
       '#description' => t('By default the blast results will be available for Drupal-style 
          search indexing. However, custom searching can be made available to site visitors using 
-         the Tripal Views module.  Check the boxes above for the types of blast data you would
-         like the site visitor to see in search results.  You can then use the Tripal Views 
-         module to create a custom search site for blast results.  Fields above indicated
-         with an asterisks, \'*\', can only be identified in the blast results if the 
+         the Tripal Views module.  Some fields can only be identified in the blast results if the 
          database record in Tripal is properly configured. Navigate to Administer -> 
          Tripal Management -> Analysis and look for the \'Tripal Blast\' section. Select 
          the database that these blast results belong to. Be sure
@@ -635,8 +632,8 @@ function chado_analysis_blast_form ($node){
          search filter in Drupal Views, use the property names indicated in parentheses above. These
          results will be housed in the analysisfeatureprop table of Chado.'),
       '#title' => t('Keywords For Custom Search'),
-      '#options' => $search_keywords_options,
       '#default_value' => $search_keywords,
+      '#description' => t('Parse blast results for integration with Tripal Views'),
 	);
 	
 	return $form;
@@ -683,7 +680,7 @@ function chado_analysis_blast_load($node){
    $analysis->tripal_analysis_blast->query_uniquename= $query_uniquename->value;	
    $analysis->tripal_analysis_blast->blastfile_ext   = $blastfile_ext->value;	
    $analysis->tripal_analysis_blast->is_concat       = $is_concat->value;	
-   $analysis->tripal_analysis_blast->search_keywords = explode("|",$search_keywords->value);
+   $analysis->tripal_analysis_blast->search_keywords = $search_keywords->value;
 
    // get the database information so that we don't have to require callers
    // to do the lookup
@@ -756,7 +753,7 @@ function chado_analysis_blast_insert($node){
    tripal_analysis_insert_property($node->analysis_id,'analysis_blast_query_uniquename',$node->query_uniquename);	
    tripal_analysis_insert_property($node->analysis_id,'analysis_blast_blastfile_ext',$node->blastfile_ext);	
    tripal_analysis_insert_property($node->analysis_id,'analysis_blast_is_concat',$node->is_concat);	
-   tripal_analysis_insert_property($node->analysis_id,'analysis_blast_search_keywords',implode("|",$node->search_keywords));	
+   tripal_analysis_insert_property($node->analysis_id,'analysis_blast_search_keywords',$node->search_keywords);	
   
    // submit the parsing jobs
    chado_analysis_blast_submit_jobs($node);
@@ -780,7 +777,7 @@ function chado_analysis_blast_update($node){
    tripal_analysis_update_property($node->analysis_id,'analysis_blast_query_uniquename',$node->query_uniquename,1);	
    tripal_analysis_update_property($node->analysis_id,'analysis_blast_blastfile_ext',$node->blastfile_ext,1);	
    tripal_analysis_update_property($node->analysis_id,'analysis_blast_is_concat',$node->is_concat,1);	
-   tripal_analysis_update_property($node->analysis_id,'analysis_blast_search_keywords',implode("|",$node->search_keywords),1);	
+   tripal_analysis_update_property($node->analysis_id,'analysis_blast_search_keywords',$node->search_keywords,1);	
 
    // if this analysis uses the old style blast settings cvterm then remove that term
    $old = tripal_analysis_get_property($node->analysis_id,'analysis_blast_settings');
@@ -809,7 +806,7 @@ function chado_analysis_blast_submit_jobs($node){
 		    $node->query_type, 
           $node->query_uniquename,
           $node->is_concat,
-          implode("|",$node->search_keywords),
+          $node->search_keywords,
       );
 
 		if (is_readable($node->blastfile)) {
@@ -946,8 +943,57 @@ function tripal_analysis_blast_job_describe_args($callback,$args){
       } else {
         $new_args['Feature identifier'] = 'feature name';
       }
-      $new_args['Seach Keywords'] = preg_replace('/\|/',"<br>",$args[9]);
+      if($args[9]){
+         $new_args['Tripal Views Integration'] = 'Yes';
+      } else {
+         $new_args['Tripal Views Integration'] = 'No';      
+      }
 
    }
    return $new_args;
+}
+/**
+ *  The blast analysis module creates it's own custom table for storing
+ *  blast results in a format more condusive for fine-grained searching.
+ *  Therefore, we must define the hook_schema function, as recoginzed by
+ *  the Tripal core API, for specifying the details for this table.
+ *  This is the implementation of hook_chado_table_schema() (where 'table'
+ *  is the name of the table in Chado and 'hook' is the name of the module).
+ *  
+ *  @return
+ *     An associative array in the Drapal Schema API format.
+ */
+function tripal_analysis_blast_chado_blast_hit_data_schema(){
+   $description = array(
+      'table' => 'blast_hit_data',
+      'fields' => array(
+         'analysisfeature_id'  => array('type' => 'int', 'not null' => TRUE),
+         'db_id'               => array('type' => 'int', 'not null' => TRUE),
+         'hit_num'             => array('type' => 'int', 'not null' => TRUE),
+         'hit_name'            => array('type' => 'varchar', 'length' => 1025, 'not null' => FALSE),
+         'hit_url'             => array('type' => 'text',  'not null' => FALSE),
+         'hit_description'     => array('type' => 'text',  'not null' => FALSE),
+         'hit_organism'        => array('type' => 'varchar', 'length' => 1025, 'not null' => FALSE),
+         'hit_accession'       => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+         'hit_best_eval'       => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
+         'hit_best_score'      => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
+         'hit_pid'             => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
+      ),
+      'indexes' => array(
+         'analysisfeature_id' => array('analysisfeature_id')
+      ),
+   );
+   $description['foreign keys']['db'] = array(
+     'table' => 'db',
+     'columns' => array(
+       'db_id' => 'db_id',
+     ),
+   );
+   $description['foreign keys']['analysisfeature'] = array(
+     'table' => 'analysisfeature',
+     'columns' => array(
+       'analysisfeature_id' => 'analysisfeature_id',
+     ),
+   );
+   return $description;
 }
