@@ -87,6 +87,8 @@ if (Drupal.jsEnabled) {
 		   $("#edit-hit-id").val("");
 		   $("#edit-hit-def").val("");
 		   $("#edit-hit-accession").val("");
+			$("#edit-hit-organism_re").val("");
+			$("#edit-hit-organism").val("");
 		
 	   // Otherwise, uncheck the Genbank style box and set the regular expressions
 	   } else {
@@ -109,6 +111,17 @@ if (Drupal.jsEnabled) {
 			} else {
 				$("#edit-hit-accession").val("^(.*?)\s.*$");
 			}
+			if (data.reg4) {
+				$("#edit-hit-organism-re").val(data.reg4);			
+		   // Show default hit-organism-re parser if it's not set
+			} else {
+				$("#edit-hit-organism-re").val("");
+			}
+         if (data.hit_organism) {
+				$("#edit-hit-organism").val(data.hit_organism);			
+			} else {
+				$("#edit-hit-organism").val("");						
+			}
 		}
 		tripal_set_genbank_style();  
    }
@@ -123,6 +136,8 @@ if (Drupal.jsEnabled) {
 		  $("#edit-hit-id").attr('disabled', 'disabled');
 		  $("#edit-hit-def").attr('disabled', 'disabled');
 		  $("#edit-hit-accession").attr('disabled', 'disabled');
+		  $("#edit-hit-organism-re").attr('disabled', 'disabled');
+		  $("#edit-hit-organism").attr('disabled', 'disabled');		  
 	  } else {
 		  $("#edit-hit-id-wrapper > label").css("color", "black");
 		  $("#edit-hit-def-wrapper > label").css("color", "black");
@@ -130,6 +145,8 @@ if (Drupal.jsEnabled) {
 		  $("#edit-hit-id").removeAttr('disabled');
 		  $("#edit-hit-def").removeAttr('disabled');
 		  $("#edit-hit-accession").removeAttr('disabled');
+		  $("#edit-hit-organism-re").removeAttr('disabled', 'disabled');
+		  $("#edit-hit-organism").removeAttr('disabled', 'disabled');
 	  }
    }
    // -------------------------------------------------------------

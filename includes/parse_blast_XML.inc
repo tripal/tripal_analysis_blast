@@ -27,6 +27,7 @@ function parse_NCBI_Blast_XML_index_version($xml_string,$db,$feature_id) {
 	$regex_hit_id = $parser->regex_hit_id;
 	$regex_hit_def = $parser->regex_hit_def;
 	$regex_hit_accession = $parser->regex_hit_accession;
+	$hit_organism = $parser->hit_organism;
 
 	// set default if regular expressions have not been specified
 	if(!$regex_hit_id){
@@ -43,6 +44,9 @@ function parse_NCBI_Blast_XML_index_version($xml_string,$db,$feature_id) {
 		$regex_hit_accession = '/^(.*?)\s.*$/';
 	} else {
 		$regex_hit_accession = '/'.$regex_hit_accession.'/';
+	}
+	if($regex_hit_organism){
+		$regex_hit_organism = '/'.$regex_hit_organism.'/';
 	}
 
 	$html_out .= "<h3>$db_name</h3>";
@@ -86,6 +90,9 @@ function parse_NCBI_Blast_XML_index_version($xml_string,$db,$feature_id) {
 					$accession = preg_replace($regex_hit_accession,"$1",$hit);
 					$hit_name = preg_replace($regex_hit_id,"$1",$hit);
 					$description = preg_replace($regex_hit_def,"$1",$hit);
+					if($regex_hit_organism){
+				      $hit_organism = preg_replace($regex_hit_organism,"$1",$hit);
+				   }
 				}
 			} else if($element_name == 'Hit_accession'){
 				// if parsing "name, acc, desc" from three tags (3/3)
@@ -162,10 +169,6 @@ function tripal_analysis_blast_parseXMLFile ($analysis_id, $blastdb, $blastfile,
    if(!$log){
      print "ERROR: cannot open log file: $logfile\n";
      exit;
-   }
-   
-   if($search_keywords){
-   
    }
 
 	// If user input a file (e.g. blast.xml)
@@ -494,14 +497,24 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 								// if the admin has requested adding of keywords from blast
 								// results to the analyisfeatureprop table then do so now.
 								if($search_keywords){
+								   // remove any existing entries. we'll replace them.
+                           $match = array('analysisfeature_id' => $analysisfeature_id);
+                           tripal_core_chado_delete('blast_hit_data',$match);
 								   print "Adding search keywords...\n";
+
+								   // get the db object
+								   $columns = array('*');								  								   
+								   $values = array('db_id' => $blastdb);
+								   $db = tripal_core_chado_select('db',$columns,$values);
+								   
 								   // get the analysis object
-								   $columns = array('*');
 								   $values = array('analysis_id' => $analysis_id);
 								   $analysis = tripal_core_chado_select('analysis',$columns,$values);
+								   
 								   // get the blast object
 								   $blast_obj = tripal_analysis_blast_get_result_object(
 								      $xml_content,$db[0],0,$feature_id, $analysis[0]);
+								      
 								   // iterate through the hits and add the records to the 
 								   // blast_hit_data table
 								   $failed = 0;
@@ -513,7 +526,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
  								      $record->hit_name = $blast_obj->hits_array[$i]['hit_name'];
  								      $record->hit_url = $blast_obj->hits_array[$i]['hit_url'];
  								      $record->hit_description = $blast_obj->hits_array[$i]['description'];
- 								      $record->hit_organism = $blast_obj->hits_array[$i]['organism'];
+ 								      $record->hit_organism = $blast_obj->hits_array[$i]['hit_organism'];
  								      $record->hit_accession =$blast_obj->hits_array[$i]['accession'];
  								      $record->hit_best_eval = $blast_obj->hits_array[$i]['best_evalue'];
  								      $record->hit_best_score = $blast_obj->hits_array[$i]['best_score'];
@@ -523,8 +536,9 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
  								      }
 							      }
 							      if($failed){
-							       	print_r($record);
                               fwrite($log, "Failed to add keywords for searching: '$feature'\n");   
+							      } else {
+                              fwrite($log, "Added keywords for searching: '$feature'\n");   							      
 							      }
 								}
 							}
@@ -608,7 +622,9 @@ function tripal_analysis_blast_get_result_object($xml_string,$db,$max,$feature_i
 	$is_genbank = $parser->genbank_style;
 	$regex_hit_id = $parser->regex_hit_id;
 	$regex_hit_def = $parser->regex_hit_def;
-	$regex_hit_accession = $parser->regex_hit_accession;
+	$regex_hit_organism = $parser->regex_hit_organism;
+	$regex_hit_accession = $parser->regex_hit_accession;	
+	$hit_organism = $parser->hit_organism;
 
 	// set default if regular expressions have not been specified
 	if(!$regex_hit_id){
@@ -625,6 +641,9 @@ function tripal_analysis_blast_get_result_object($xml_string,$db,$max,$feature_i
 		$regex_hit_accession = '/^(.*?)\s.*$/';
 	} else {
 		$regex_hit_accession = '/'.$regex_hit_accession.'/';
+	}
+	if($regex_hit_organism){
+		$regex_hit_organism = '/'.$regex_hit_organism.'/';
 	}
 
 	// Get analysis information
@@ -696,6 +715,9 @@ function tripal_analysis_blast_get_result_object($xml_string,$db,$max,$feature_i
 					$accession = preg_replace($regex_hit_accession,"$1",$hit);
 					$hit_name = preg_replace($regex_hit_id,"$1",$hit);
 					$description = preg_replace($regex_hit_def,"$1",$hit);
+					if($regex_hit_organism){
+					   $hit_organism = preg_replace($regex_hit_organism,"$1",$hit);
+					}
 				}
 			} else if($element_name == 'Hit_accession'){
 				// if parsing "name, acc, desc" from three tags (3/3)
@@ -796,6 +818,7 @@ function tripal_analysis_blast_get_result_object($xml_string,$db,$max,$feature_i
       $arrowr_url = url(drupal_get_path('theme', 'tripal')."/images/arrow_r.png");
 		$hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
 		$hits_array[$hit_count]['accession'] = $accession;
+		$hits_array[$hit_count]['hit_organism'] = $hit_organism;		
 		$hits_array[$hit_count]['hit_name'] = $hit_name;
 		
 		if($accession && $db->urlprefix){
@@ -880,6 +903,8 @@ function tripal_analysis_blast_parse_best_hit ($analysis_id) {
 	$regex_hit_id = $parser->regex_hit_id;
 	$regex_hit_def = $parser->regex_hit_def;
 	$regex_hit_accession = $parser->regex_hit_accession;
+	$regex_hit_organism = $parser->regex_hit_organism;
+	$hit_organism = $parser->hit_organism;
 
 	// set default description parser  if regular expressions have not been specified
 	if(!$regex_hit_id){
@@ -896,6 +921,9 @@ function tripal_analysis_blast_parse_best_hit ($analysis_id) {
 		$regex_hit_accession = '/^(.*?)\s.*$/';
 	} else {
 		$regex_hit_accession = '/'.$regex_hit_accession.'/';
+	}
+	if($regex_hit_organism){
+		$regex_hit_organism = '/'.$regex_hit_accession.'/';
 	}
 	
    $interval = intval($counter * 0.01);
@@ -967,7 +995,10 @@ function tripal_analysis_blast_parse_best_hit ($analysis_id) {
 					} else {
 						$accession = preg_replace($regex_hit_accession,"$1",$hit);
 						$hit_name = preg_replace($regex_hit_id,"$1",$hit);
-						$description = preg_replace($regex_hit_def,"$1",$hit);
+						$description = preg_replace($regex_hit_def,"$1",$hit);	
+						if($regex_hit_organism){				
+						   $hit_organism = preg_replace($regex_hit_organism,"$1",$hit);	
+						};					
 					}
 				} else if($element_name == 'Hit_accession'){
 					// if parsing "name, acc, desc" from three tags (3/3)

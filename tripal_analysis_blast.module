@@ -19,6 +19,16 @@ function tripal_analysis_blast_init(){
  * Entry points and paths of the module
  */
 function tripal_analysis_blast_menu() {
+
+   $items['admin/tripal/tripal_analysis/tripal_blast_analysis'] = array(
+      'title' => 'BLAST Results',
+      'description' => 'Settings for the displays of analysis results.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('tripal_analysis_blast_settings_form'),
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_NORMAL_ITEM,
+	);
+	
 	// Show top 10/25/all blast results for ajax calls
 	$items['tripal_top_blast'] = array(
       'path' => 'top_blast',
@@ -141,7 +151,7 @@ function tripal_analysis_blast_theme_registry_alter(&$info) {
 
 
 
-/************************************************************************
+/**
  *  We need to let drupal know about our theme functions and their arguments.
  *  We create theme functions to allow users of the module to customize the
  *  look and feel of the output generated in this module
@@ -346,22 +356,15 @@ function tripal_get_blast_results_index_version ($feature_id){
 
 }
 
-
-/*******************************************************************************
- * Tripal Blast administrative setting form. This function is called by
- * tripal_analysis module which asks for an admin form to show on the page
+/**
+ * 
  */
-function tripal_analysis_blast_get_settings() {
+function tripal_analysis_blast_settings_form() {
 	// Get an array of node types with internal names as keys
 	$options = node_get_types('names');
+	
 	// Add 'chado_feature' to allowed content types for showing blast results
 	$allowedoptions ['chado_feature'] = "Show blast results on feature pages";
-
-	$form['description'] = array(
-       '#type' => 'item',
-       '#value' => t("Most chado features were analyzed by blast against major sequence databases. This option allows user to display the blast analysis results. Please read user manual for storage and display of blast files. Check the box to enable the analysis results. Uncheck to disable it."),
-		 '#weight' => 0,
-	);
 
 	$form['tripal_analysis_blast_setting'] = array(
       '#type' => 'checkboxes',
@@ -369,18 +372,12 @@ function tripal_analysis_blast_get_settings() {
       '#default_value' => variable_get('tripal_analysis_blast_setting',
 	array('chado_feature')),
 	);
-	$form['blast_parser'] = array(
-      '#title' => t('Blast Parser Settings'),
-      '#type' => 'fieldset',
-      '#description' => t('Configure parsers for showing blast results. Each database is '.
-                          'allowed to have one xml parser.'),
-      '#weight' => 10
-	);
 
 	$previous_db = tripal_db_set_active('chado');  // use chado database
 	// get a list of db from chado for user to choose
 	$sql = 'SELECT db_id, name FROM {db} ORDER BY lower(name)';
 	$results = db_query ($sql);
+	tripal_db_set_active($previous_db); // use drupal database
 	$blastdbs = array();
 	while ($db = db_fetch_object($results)){
 		$blastdbs[$db->db_id] = $db->name;
@@ -389,50 +386,98 @@ function tripal_analysis_blast_get_settings() {
       '#type' => 'value',
       '#value' => $blastdbs
 	);
-	$form['blast_parser']['blastdb'] = array(
+	$form['blastdb'] = array(
       '#title' => t('Database'),
       '#type' => 'select',
-      '#description' => t('The database used for the blast analysis.'),
+      '#description' => t('You may customize how blast results are parsed and displayed to the end-user, by selecting a database from the list above, and the customizing the fields below.  The fields below specify how to extract hit names, descriptions, database accessions, and organisms from the blast results.'),
       '#options' => $form['db_options']['#value'],
       '#attributes' => array(
          'onChange' => "return tripal_update_regex(this)",
 	    )
 	);
-	$form['blast_parser']['displayname'] = array(
+	$form['displayname'] = array(
       '#title' => t('Title for the blast analysis'),
       '#type' => 'textfield',
 	);
-	$form['blast_parser']['gb_style_parser'] = array(
+	$form['gb_style_parser'] = array(
       '#title' => t('Use Genebank style parser. This will clear all regular expression settings for the selected database.'),
 	   '#type' => 'checkbox',
 	   '#attributes' => array(
          'onClick' => "return tripal_set_genbank_style(this)",
 	    )
 	);
-	$form['blast_parser']['hit_id'] = array(
+	$form['hit_id'] = array(
       '#title' => t('Regular expression for Hit Name'),
       '#type' => 'textfield',
 	);
-	$form['blast_parser']['hit_def'] = array(
+	$form['hit_def'] = array(
       '#title' => t('Regular expression for Hit Description'),
       '#type' => 'textfield',
 	);
-	$form['blast_parser']['hit_accession'] = array(
+	$form['hit_accession'] = array(
       '#title' => t('Regular expression for Hit Accession'),
       '#type' => 'textfield',
 	);
-	$form['blast_parser']['button'] = array(
+	$form['hit_organism_re'] = array(
+      '#title' => t('Regular expression for Organism.'),
+      '#type' => 'textfield',
+	);
+	$form['hit_organism'] = array(
+      '#title' => t('Organism Name.'),
+      '#description' => t('If the organism for the match cannot be determined using
+          a regular expression but the database only contains a single organism, then
+          you may specify the organism here. Be sure to include the genus, species,
+          subspeices, cultivar, etc., to properly identify the organism. If the organism
+          cannot be determined using a regular expression or is not unique in the database
+          then leave this field blank.'),      
+      '#type' => 'textfield',
+	);
+	$form['button'] = array(
       '#type' => 'submit',
       '#value' => t('Save settings')
 	);
-	tripal_db_set_active($previous_db); // use drupal database
 
-	$settings->form = $form;
-	$settings->title = "Tripal Blast";
-	return $settings;
+	
+	return $form;
 }
-
-
+/**
+ * 
+ */
+function tripal_analysis_blast_settings_form_submit($form, &$form_state) {
+	$db_id = $form_state['values']['blastdb'];
+	$name = $form_state['values']['displayname'];
+	$gbstyle = $form_state['values']['gb_style_parser'];
+	$reg1 = $form_state['values']['hit_id'];
+	$reg2 = $form_state['values']['hit_def'];
+	$reg3 = $form_state['values']['hit_accession'];
+	$reg4 = $form_state['values']['hit_organism_re'];
+	$org = $form_state['values']['hit_organism'];
+	
+	// Check if the blast settings exists
+	$sql = "SELECT db_id FROM {tripal_analysis_blast} WHERE db_id=%d";
+	$check = db_result(db_query($sql, $db_id));
+	
+	$record = new stdClass();
+	$record->db_id = $db_id;
+	$record->displayname = $name;
+	$record->regex_hit_id = $reg1;
+	$record->regex_hit_def = $reg2;
+	$record->regex_hit_accession = $reg3;
+	$record->genbank_style = $gbstyle;
+	$record->regex_hit_organism = $reg4;
+	$record->hit_organism = $org;
+	
+	if ($check) {
+		$succss = drupal_write_record('tripal_analysis_blast',$record,'db_id');
+	} else {
+		$succss = drupal_write_record('tripal_analysis_blast',$record);
+	}
+	if($success){
+	   drupal_set_message("Database settings updated");
+	} else {
+	   drupal_set_message("Failure updated database settings");
+	}
+}
 
 /*******************************************************************************
  * This function is only called by ajax to get regular expressions for blast
@@ -440,13 +485,15 @@ function tripal_analysis_blast_get_settings() {
  */
 function tripal_get_blast_regex ($db_id) {
 	$sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-	$blast_regexs = db_fetch_object(db_query($sql, $db_id));
+	$settings = db_fetch_object(db_query($sql, $db_id));
 	drupal_json(array(
-	     'name' => $blast_regexs->displayname,
-	     'genbank_style' => $blast_regexs->genbank_style,
-	     'reg1' => $blast_regexs->regex_hit_id,
-	     'reg2' => $blast_regexs->regex_hit_def,
-	     'reg3' => $blast_regexs->regex_hit_accession)
+	     'name' => $settings->displayname,
+	     'genbank_style' => $settings->genbank_style,
+	     'reg1' => $settings->regex_hit_id,
+	     'reg2' => $settings->regex_hit_def,
+	     'reg3' => $settings->regex_hit_accession,
+	     'reg4' => $settings->regex_hit_organism,
+	     'hit_organism' => $settings->hit_organism)
 	);
 }
 
@@ -711,19 +758,19 @@ function chado_analysis_blast_load($node){
    $blast_report = tripal_core_chado_select('analysisfeatureprop',array('analysisfeatureprop_id'),$select);
    */
    $sql = "SELECT AFP.analysisfeature_id
-	             FROM {analysisfeature} AF 
-	             INNER JOIN {analysisfeatureprop} AFP ON AF.analysisfeature_id = AFP.analysisfeature_id
-	             WHERE analysis_id = %d
-	             AND AFP.type_id = (
-	                SELECT cvterm_id 
-	                FROM {cvterm} 
-	                WHERE name = '%s' 
-	                AND cv_id = (
-	                   SELECT cv_id 
-	                   FROM {cv} 
-	                   WHERE name = 'tripal'
-	                )
-	             ) LIMIT 1 OFFSET 0";
+	        FROM {analysisfeature} AF 
+	          INNER JOIN {analysisfeatureprop} AFP ON AF.analysisfeature_id = AFP.analysisfeature_id
+	        WHERE analysis_id = %d AND 
+	           AFP.type_id = (
+	              SELECT cvterm_id 
+	              FROM {cvterm} 
+	              WHERE name = '%s' 
+	                 AND cv_id = (
+	                    SELECT cv_id 
+	                    FROM {cv} 
+	                    WHERE name = 'tripal'
+	                 ) 
+	              ) LIMIT 1 OFFSET 0";
    $blast_report = db_result(chado_query($sql, $analysis_id, 'analysis_blast_besthit_query'));
 	if ($blast_report) {
 		$report_url = url("tripal_blast_report/".$analysis->analysis_id."/1/0/0/20");
