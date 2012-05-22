@@ -97,19 +97,19 @@ if (Drupal.jsEnabled) {
 				$("#edit-hit-id").val(data.reg1);			
 			// Show default hit-id parser if it's not set
 			} else {
-				$("#edit-hit-id").val("^(.*?)\s.*$");
+				$("#edit-hit-id").val("^(.*?)\\s.*$");
 			}
 			if (data.reg2) {
 				$("#edit-hit-def").val(data.reg2);
 			// Show default hit-def parser if it's not set
 			} else {
-				$("#edit-hit-def").val("^.*?\s(.*)$");
+				$("#edit-hit-def").val("^.*?\\s(.*)$");
 			}
 			if (data.reg3) {
 				$("#edit-hit-accession").val(data.reg3);			
 			// Show default hit-accession parser if it's not set
 			} else {
-				$("#edit-hit-accession").val("^(.*?)\s.*$");
+				$("#edit-hit-accession").val("^(.*?)\\s.*$");
 			}
 			if (data.reg4) {
 				$("#edit-hit-organism-re").val(data.reg4);			
