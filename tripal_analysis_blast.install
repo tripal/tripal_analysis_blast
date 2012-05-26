@@ -33,7 +33,8 @@ function tripal_analysis_blast_install() {
    // Create default parser for swissprot, DB:genbank, and go-seqdb
    $sql_db = "SELECT db_id, name FROM {db} WHERE name like '%s'";
    $sql_parser = "INSERT INTO {tripal_analysis_blast} ".
-                 "  (db_id, displayname, regex_hit_id, regex_hit_def, regex_hit_accession, genbank_style) ".
+                 "  (db_id, displayname, regex_hit_id, regex_hit_def, ".
+                 "   regex_hit_accession, genbank_style, regex_hit_organism) ".
                  "VALUES (%d, '%s', '%s', '%s', '%s', %d)";
    
    // Add swissprot parser
@@ -41,7 +42,9 @@ function tripal_analysis_blast_install() {
    $results = db_query($sql_db, "%swissprot%");
    tripal_db_set_active($previous_db);
    while ($db = db_fetch_object($results)) {
-      db_query($sql_parser, $db->db_id, 'ExPASy Swissprot', '^sp\|.*?\|(.*?)\s.*?$', '^sp\|.*?\|.*?\s(.*)$', 'sp\|(.*?)\|.*?\s.*?$', 0);
+      db_query($sql_parser, $db->db_id, 'ExPASy Swissprot', 
+         '^sp\|.*?\|(.*?)\s.*?$', '^sp\|.*?\|.*?\s(.*)$', 'sp\|(.*?)\|.*?\s.*?$', 
+         '^.*?OS=(.*?)\s\w\w=.*$', 0);
    }
    
    // Add trembl parser
@@ -49,7 +52,8 @@ function tripal_analysis_blast_install() {
    $results = db_query($sql_db, "%trembl%");
    tripal_db_set_active($previous_db);
    while ($db = db_fetch_object($results)) {
-      db_query($sql_parser, $db->db_id, 'ExPASy TrEMBL', '^.*?\|(.*?)\s.*?$', '^.*?\|.*?\s(.*)$', '^(.*?)\|.*?\s.*?$', 0);
+      db_query($sql_parser, $db->db_id, 'ExPASy TrEMBL', '^.*?\|(.*?)\s.*?$', 
+         '^.*?\|.*?\s(.*)$', '^(.*?)\|.*?\s.*?$', '^.*?OS=(.*?)\s\w\w=.*$',0);
    }
    
    // Add NCBI genbank parser
@@ -57,7 +61,7 @@ function tripal_analysis_blast_install() {
    $results = db_query($sql_db, "%genbank%");
    tripal_db_set_active($previous_db);
    while ($db = db_fetch_object($results)) {
-      db_query($sql_parser, $db->db_id, 'Genbank', '', '', '', 1);
+      db_query($sql_parser, $db->db_id, 'Genbank', '', '', '', '', 1);
    }
 }
 
