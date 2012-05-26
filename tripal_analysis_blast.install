@@ -24,7 +24,7 @@ function tripal_analysis_blast_install() {
    
    // drop the 'blast_hit_data' table created from the drupal_install_schema()
    // call above, we want this table in Chado, not in Drupal
-   $sql = "DROP table 'blast_hit_data'";
+   $sql = "DROP table blast_hit_data";
    db_query($sql);
    
    // add Chado tables
@@ -35,7 +35,7 @@ function tripal_analysis_blast_install() {
    $sql_parser = "INSERT INTO {tripal_analysis_blast} ".
                  "  (db_id, displayname, regex_hit_id, regex_hit_def, ".
                  "   regex_hit_accession, genbank_style, regex_hit_organism) ".
-                 "VALUES (%d, '%s', '%s', '%s', '%s', %d)";
+                 "VALUES (%d, '%s', '%s', '%s', '%s', %d, '%s')";
    
    // Add swissprot parser
    $previous_db = tripal_db_set_active ('chado');
@@ -44,7 +44,7 @@ function tripal_analysis_blast_install() {
    while ($db = db_fetch_object($results)) {
       db_query($sql_parser, $db->db_id, 'ExPASy Swissprot', 
          '^sp\|.*?\|(.*?)\s.*?$', '^sp\|.*?\|.*?\s(.*)$', 'sp\|(.*?)\|.*?\s.*?$', 
-         '^.*?OS=(.*?)\s\w\w=.*$', 0);
+         0,'^.*?OS=(.*?)\s\w\w=.*$');
    }
    
    // Add trembl parser
@@ -53,7 +53,7 @@ function tripal_analysis_blast_install() {
    tripal_db_set_active($previous_db);
    while ($db = db_fetch_object($results)) {
       db_query($sql_parser, $db->db_id, 'ExPASy TrEMBL', '^.*?\|(.*?)\s.*?$', 
-         '^.*?\|.*?\s(.*)$', '^(.*?)\|.*?\s.*?$', '^.*?OS=(.*?)\s\w\w=.*$',0);
+         '^.*?\|.*?\s(.*)$', '^(.*?)\|.*?\s.*?$', 0,'^.*?OS=(.*?)\s\w\w=.*$');
    }
    
    // Add NCBI genbank parser
@@ -61,7 +61,7 @@ function tripal_analysis_blast_install() {
    $results = db_query($sql_db, "%genbank%");
    tripal_db_set_active($previous_db);
    while ($db = db_fetch_object($results)) {
-      db_query($sql_parser, $db->db_id, 'Genbank', '', '', '', '', 1);
+      db_query($sql_parser, $db->db_id, 'Genbank', '', '', '', 1, '');
    }
 }
 
@@ -96,6 +96,51 @@ function tripal_analysis_blast_add_chado_tables(){
    $ret = array();
    $schema = tripal_analysis_blast_chado_blast_hit_data_schema();
    tripal_create_chado_table ($ret,'blast_hit_data',$schema);
+}
+/**
+ *  The blast analysis module creates it's own custom table for storing
+ *  blast results in a format more condusive for fine-grained searching.
+ *  Therefore, we must define the hook_schema function, as recoginzed by
+ *  the Tripal core API, for specifying the details for this table.
+ *  This is the implementation of hook_chado_table_schema() (where 'table'
+ *  is the name of the table in Chado and 'hook' is the name of the module).
+ *  
+ *  @return
+ *     An associative array in the Drapal Schema API format.
+ */
+function tripal_analysis_blast_chado_blast_hit_data_schema(){
+   $description = array(
+      'table' => 'blast_hit_data',
+      'fields' => array(
+         'analysisfeature_id'  => array('type' => 'int', 'not null' => TRUE),
+         'db_id'               => array('type' => 'int', 'not null' => TRUE),
+         'hit_num'             => array('type' => 'int', 'not null' => TRUE),
+         'hit_name'            => array('type' => 'varchar', 'length' => 1025, 'not null' => FALSE),
+         'hit_url'             => array('type' => 'text',  'not null' => FALSE),
+         'hit_description'     => array('type' => 'text',  'not null' => FALSE),
+         'hit_organism'        => array('type' => 'varchar', 'length' => 1025, 'not null' => FALSE),
+         'hit_accession'       => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
+         'hit_best_eval'       => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
+         'hit_best_score'      => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
+         'hit_pid'             => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
+      ),
+      'indexes' => array(
+         'analysisfeature_id' => array('analysisfeature_id')
+      ),
+   );
+   $description['foreign keys']['db'] = array(
+     'table' => 'db',
+     'columns' => array(
+       'db_id' => 'db_id',
+     ),
+   );
+   $description['foreign keys']['analysisfeature'] = array(
+     'table' => 'analysisfeature',
+     'columns' => array(
+       'analysisfeature_id' => 'analysisfeature_id',
+     ),
+   );
+   return $description;
 }
 /*******************************************************************************
 * Implementation of hook_schema(). This table stores the parsers for blast xml
@@ -199,47 +244,47 @@ function tripal_analysis_blast_update_6001(){
 function tripal_analysis_blast_add_cvterms () {
 	
    // Add the cvterms for the anlysisprop table
-   tripal_add_cvterms('analysis_blast_settings', 'Settings of a blast analysis, '.
-      'including db_id, output file, and run parameters separated by a bar |');
-   tripal_add_cvterms('analysis_blast_blastdb','The database used for blasting');
-   tripal_add_cvterms('analysis_blast_blastfile','The input file or directory that contains the XML blast output');
-   tripal_add_cvterms('analysis_blast_blastparameters','The parameters used when performing blast.');
-   tripal_add_cvterms('analysis_blast_no_parsed','Indicates if the input file should be parsed to map results to features');
-   tripal_add_cvterms('analysis_blast_query_re','The regular expression for finding the feature name in the query definition line of the blast results');
-   tripal_add_cvterms('analysis_blast_query_type','The feature type (e.g. mRNA, polypeptide) of the query input file. This type is used to identify the query feature when multiple features have the same name');
-   tripal_add_cvterms('analysis_blast_query_uniquename','Indicates if the matched name in the query definition line of the blast results is feature uniquename');
-   tripal_add_cvterms('analysis_blast_blastfile_ext','Indicates the extension of the blast files. This is required if the blastfile setting is a directory.');
-   tripal_add_cvterms('analysis_blast_is_concat','Indicates if the blast results XML file is a series of concatenated XML results.  Such is the case, for example, if Blast2GO was used to perform the analysis.');
-   tripal_add_cvterms('analysis_blast_search_keywords','Indicates the fields that should be stored in the analysisfeatureprop table for the blast results.');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_settings', 'def' => 'Settings of a blast analysis, '.
+      'including db_id, output file, and run parameters separated by a bar |'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_blastdb','def' => 'The database used for blasting'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_blastfile','def' => 'The input file or directory that contains the XML blast output'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_blastparameters','def' => 'The parameters used when performing blast.'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_no_parsed','def' => 'Indicates if the input file should be parsed to map results to features'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_query_re','def' => 'The regular expression for finding the feature name in the query definition line of the blast results'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_query_type','def' => 'The feature type (e.g. mRNA, polypeptide) of the query input file. This type is used to identify the query feature when multiple features have the same name'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_query_uniquename','def' => 'Indicates if the matched name in the query definition line of the blast results is feature uniquename'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_blastfile_ext','def' => 'Indicates the extension of the blast files. This is required if the blastfile setting is a directory.'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_is_concat','def' => 'Indicates if the blast results XML file is a series of concatenated XML results.  Such is the case, for example, if Blast2GO was used to perform the analysis.'),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_search_keywords','def' => 'Indicates the fields that should be stored in the analysisfeatureprop table for the blast results.'),'tripal',0,1,'tripal');
    
    // add cvterms for the blast search keywords
-	tripal_add_cvterms('blast_match_name','The blast match name');
-	tripal_add_cvterms('blast_match_description','The match description');
-	tripal_add_cvterms('blast_match_organism','The organism the blast match belongs to');
- 	tripal_add_cvterms('blast_match_accession','The accession of the blast match');
-	tripal_add_cvterms('blast_database','The name of the database blasted against');
-	tripal_add_cvterms('blast_evalue','The blast match e-valuue score (best e-value if multiple HSPs');
-	tripal_add_cvterms('blast_score','The blast hit match bit score');
-	tripal_add_cvterms('blast_pid','The blast hit match percent identity');
+	tripal_cv_add_cvterm(array('name' => 'blast_match_name','def' => 'The blast match name'),'tripal',0,1,'tripal');
+	tripal_cv_add_cvterm(array('name' => 'blast_match_description','def' => 'The match description'),'tripal',0,1,'tripal');
+	tripal_cv_add_cvterm(array('name' => 'blast_match_organism','def' => 'The organism the blast match belongs to'),'tripal',0,1,'tripal');
+ 	tripal_cv_add_cvterm(array('name' => 'blast_match_accession','def' => 'The accession of the blast match'),'tripal',0,1,'tripal');
+	tripal_cv_add_cvterm(array('name' => 'blast_database','def' => 'The name of the database blasted against'),'tripal',0,1,'tripal');
+	tripal_cv_add_cvterm(array('name' => 'blast_evalue','def' => 'The blast match e-valuue score (best e-value if multiple HSPs'),'tripal',0,1,'tripal');
+	tripal_cv_add_cvterm(array('name' => 'blast_score','def' => 'The blast hit match bit score'),'tripal',0,1,'tripal');
+	tripal_cv_add_cvterm(array('name' => 'blast_pid','def' => 'The blast hit match percent identity'),'tripal',0,1,'tripal');
    
    // Add cvterm 'analysis_blast_output_iteration_hits' for inserting into featureprop table
-   tripal_add_cvterms('analysis_blast_output_iteration_hits', 'Hits of a blast '.
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_output_iteration_hits', 'def' => 'Hits of a blast '.
       'output iteration. Each iteration corresponds to a chado feature, and is '.
       'the content between <iteration> and </iteration> tags in the blast xml '.
-      'output file. This cvterm represents all hits in the iteration');
+      'output file. This cvterm represents all hits in the iteration'),'tripal',0,1,'tripal');
    
    // Add cvterms for the best hits report
-   tripal_add_cvterms('analysis_blast_besthit_query', 'query name of the best hit 
-      associated with a feature and a blast analysis ');
-   tripal_add_cvterms('analysis_blast_besthit_match', 'match name of the best hit 
-      associated with a feature and a blast analysis ');
-   tripal_add_cvterms('analysis_blast_besthit_description', 'description of the best hit 
-      associated with a feature and a blast analysis ');
-   tripal_add_cvterms('analysis_blast_besthit_evalue', 'evalue of the best hit 
-      associated with a feature and a blast analysis ');
-   tripal_add_cvterms('analysis_blast_besthit_identity', 'identity (%) of the best hit 
-      associated with a feature and a blast analysis '); 
-   tripal_add_cvterms('analysis_blast_besthit_length', 'length of the best hit 
-      associated with a feature and a blast analysis ');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_query', 'def' => 'query name of the best hit 
+      associated with a feature and a blast analysis '),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_match', 'def' => 'match name of the best hit 
+      associated with a feature and a blast analysis '),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_description', 'def' => 'description of the best hit 
+      associated with a feature and a blast analysis '),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_evalue', 'def' => 'evalue of the best hit 
+      associated with a feature and a blast analysis '),'tripal',0,1,'tripal');
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_identity','def' =>  'identity (%) of the best hit 
+      associated with a feature and a blast analysis '),'tripal',0,1,'tripal'); 
+   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_length','def' =>  'length of the best hit 
+      associated with a feature and a blast analysis '),'tripal',0,1,'tripal');
    
 }
