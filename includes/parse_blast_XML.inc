@@ -521,6 +521,8 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
     								for($i = 0; $i < $blast_obj->number_hits; $i++){
  								      $record = new stdClass();
  								      $record->analysisfeature_id = $analysisfeature_id;
+ 								      $record->analysis_id = $analysis_id;
+ 								      $record->feature_id = $feature_id;
  								      $record->db_id = $blastdb;
  								      $record->hit_num = $i;
  								      $record->hit_name = $blast_obj->hits_array[$i]['hit_name'];

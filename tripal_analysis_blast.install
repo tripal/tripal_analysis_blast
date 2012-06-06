@@ -113,6 +113,8 @@ function tripal_analysis_blast_chado_blast_hit_data_schema(){
       'table' => 'blast_hit_data',
       'fields' => array(
          'analysisfeature_id'  => array('type' => 'int', 'not null' => TRUE),
+         'analysis_id'         => array('type' => 'int', 'not null' => TRUE),
+         'feature_id'          => array('type' => 'int', 'not null' => TRUE),
          'db_id'               => array('type' => 'int', 'not null' => TRUE),
          'hit_num'             => array('type' => 'int', 'not null' => TRUE),
          'hit_name'            => array('type' => 'varchar', 'length' => 1025, 'not null' => FALSE),
