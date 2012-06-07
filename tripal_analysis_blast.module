@@ -1,7 +1,7 @@
 <?php
 
 require_once "includes/parse_blast_XML.inc";
-require_once "tripal_analysis_blast.install";  # we need to include this for the custom table definition
+//require_once "tripal_analysis_blast.install";  # we need to include this for the custom table definition
 
 
 /*******************************************************************************
@@ -999,18 +999,4 @@ function tripal_analysis_blast_job_describe_args($callback,$args){
 
    }
    return $new_args;
-}
-/**
- *  The blast analysis module creates it's own custom table for storing
- *  blast results in a format more condusive for fine-grained searching.
- *  Therefore, we must define the hook_schema function, as recoginzed by
- *  the Tripal core API, for specifying the details for this table.
- *  This is the implementation of hook_chado_table_schema() (where 'table'
- *  is the name of the table in Chado and 'hook' is the name of the module).
- *  
- *  @return
- *     An associative array in the Drapal Schema API format.
- */
-function tripal_analysis_blast_chado_blast_hit_data_schema(){
-   return tripal_analysis_blast_hit_data_schema();
 }

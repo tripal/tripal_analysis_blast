@@ -22,14 +22,9 @@ function tripal_analysis_blast_install() {
    // Create a tripal_analysis_blast table to store parsers
    drupal_install_schema('tripal_analysis_blast');
    
-   // drop the 'blast_hit_data' table created from the drupal_install_schema()
-   // call above, we want this table in Chado, not in Drupal
-   $sql = "DROP table blast_hit_data";
-   db_query($sql);
-   
-   // add Chado tables
-   tripal_analysis_blast_add_chado_tables();
-   
+   // add custom tables
+   tripal_analysis_blast_add_custom_table();
+    
    // Create default parser for swissprot, DB:genbank, and go-seqdb
    $sql_db = "SELECT db_id, name FROM {db} WHERE name like '%s'";
    $sql_parser = "INSERT INTO {tripal_analysis_blast} ".
@@ -87,29 +82,17 @@ function tripal_analysis_blast_uninstall() {
    drupal_uninstall_schema('tripal_analysis_blast');
 }
 /*******************************************************************************
-* Function for adding new tables to Chado specific for this module
+*  The blast analysis module creates it's own custom table for storing
+*  blast results in a format more condusive for fine-grained searching.
+*  Therefore, we must define the hook_schema function, as recoginzed by
+*  the Tripal core API, for specifying the details for this table.
 */
-function tripal_analysis_blast_add_chado_tables(){
+function tripal_analysis_blast_add_custom_table(){
 
    // the schema for our custom Chado tables are in the .module file
    // so that they integrate properly with everything else Chado.
    $ret = array();
-   $schema = tripal_analysis_blast_hit_data_schema();
-   tripal_create_chado_table ($ret,'blast_hit_data',$schema);
-}
-/**
- *  The blast analysis module creates it's own custom table for storing
- *  blast results in a format more condusive for fine-grained searching.
- *  Therefore, we must define the hook_schema function, as recoginzed by
- *  the Tripal core API, for specifying the details for this table.
- *  This is the implementation of hook_chado_table_schema() (where 'table'
- *  is the name of the table in Chado and 'hook' is the name of the module).
- *  
- *  @return
- *     An associative array in the Drapal Schema API format.
- */
-function tripal_analysis_blast_hit_data_schema(){
-   $description = array(
+   $schema = array(
       'table' => 'blast_hit_data',
       'fields' => array(
          'analysisfeature_id'  => array('type' => 'int', 'not null' => TRUE),
@@ -130,31 +113,31 @@ function tripal_analysis_blast_hit_data_schema(){
          'analysisfeature_id' => array('analysisfeature_id')
       ),
    );
-   $description['foreign keys']['db'] = array(
+   $schema['foreign keys']['db'] = array(
      'table' => 'db',
      'columns' => array(
        'db_id' => 'db_id',
      ),
    );
-   $description['foreign keys']['analysisfeature'] = array(
+   $schema['foreign keys']['analysisfeature'] = array(
      'table' => 'analysisfeature',
      'columns' => array(
        'analysisfeature_id' => 'analysisfeature_id',
      ),
    );
-   $description['foreign keys']['analysis'] = array(
+   $schema['foreign keys']['analysis'] = array(
      'table' => 'analysis',
      'columns' => array(
        'analysis_id' => 'analysis_id',
      ),
    );  
-   $description['foreign keys']['feature'] = array(
+   $schema['foreign keys']['feature'] = array(
      'table' => 'feature',
      'columns' => array(
        'feature_id' => 'feature_id',
      ),
    );    
-   return $description;
+   tripal_create_chado_table ($ret,'blast_hit_data',$schema);
 }
 /*******************************************************************************
 * Implementation of hook_schema(). This table stores the parsers for blast xml
@@ -178,14 +161,6 @@ function tripal_analysis_blast_schema() {
       ),
       'primary key' => array('db_id'),
   );
-  // The blast_hit_data table is defined in the module code. This is because
-  // we also need to define the schema for the Tripal core API.  We have to also
-  // include it here so that Drupal understands the table structure.  When the 
-  // module gets installed it will cause a table 'blast_hit_data' to be installed
-  // in the Drupal database because it is listed here in the $schema array.  
-  // We don't want this, as this table needs to be in Chado, so in the
-  // hook_install() function we will drop the table from the Drupal database.
-  $schema['blast_hit_data']  = tripal_analysis_blast_hit_data_schema();
    
   return $schema;
 }
@@ -233,8 +208,8 @@ function tripal_analysis_blast_update_6001(){
    // add new blast hit data table
    $schema = tripal_analysis_blast_schema();
    
-   // add new chado tables
-   tripal_analysis_blast_add_chado_tables();
+   // add new custom blast hit table
+   tripal_analysis_blast_add_custom_table();
    
    // alter the tripal_blast_analysis table we need to add two new columns
    // and extend the sizes of the others.
