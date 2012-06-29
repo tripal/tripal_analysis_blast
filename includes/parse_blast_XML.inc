@@ -513,12 +513,26 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 								   
 								   // get the blast object
 								   $blast_obj = tripal_analysis_blast_get_result_object(
-								      $xml_content,$db[0],0,$feature_id, $analysis[0]);
+								      $xml_content,$db[0],0,$feature_id, $analysis[0]);								      
 								      
 								   // iterate through the hits and add the records to the 
 								   // blast_hit_data table
 								   $failed = 0;
     								for($i = 0; $i < $blast_obj->number_hits; $i++){
+    			                  // add the organism to the blast_organisms table, but
+								      // fisrt check to make sure it doesn't already exist
+								      $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
+								      $find_sql = "SELECT * FROM {blast_organisms} WHERE blast_org_name = '%s'";
+								      $result = db_fetch_object(db_query($find_sql,$blast_org_name));
+
+								      $blast_org_id = $result->blast_org_id;
+								      if(!$blast_org_id){
+								        $sql = "INSERT INTO {blast_organisms} (blast_org_name) VALUES ('%s')";
+								        db_query($sql,$blast_org_name);
+								        $result = db_fetch_object(db_query($find_sql,$blast_org_name));
+								        $blast_org_id = $result->blast_org_id;
+								      }
+    								
  								      $record = new stdClass();
  								      $record->analysisfeature_id = $analysisfeature_id;
  								      $record->analysis_id = $analysis_id;
@@ -528,7 +542,8 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
  								      $record->hit_name = $blast_obj->hits_array[$i]['hit_name'];
  								      $record->hit_url = $blast_obj->hits_array[$i]['hit_url'];
  								      $record->hit_description = $blast_obj->hits_array[$i]['description'];
- 								      $record->hit_organism = $blast_obj->hits_array[$i]['hit_organism'];
+ 								      $record->hit_organism = $blast_org_name;
+ 								      $record->blast_org_id = $blast_org_id;
  								      $record->hit_accession =$blast_obj->hits_array[$i]['accession'];
  								      $record->hit_best_eval = $blast_obj->hits_array[$i]['best_evalue'];
  								      $record->hit_best_score = $blast_obj->hits_array[$i]['best_score'];

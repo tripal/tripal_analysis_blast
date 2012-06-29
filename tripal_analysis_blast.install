@@ -23,7 +23,7 @@ function tripal_analysis_blast_install() {
    drupal_install_schema('tripal_analysis_blast');
    
    // add custom tables
-   tripal_analysis_blast_add_custom_table();
+   tripal_analysis_blast_add_custom_tables();
     
    // Create default parser for swissprot, DB:genbank, and go-seqdb
    $sql_db = "SELECT db_id, name FROM {db} WHERE name like '%s'";
@@ -87,8 +87,28 @@ function tripal_analysis_blast_uninstall() {
 *  Therefore, we must define the hook_schema function, as recoginzed by
 *  the Tripal core API, for specifying the details for this table.
 */
-function tripal_analysis_blast_add_custom_table(){
-
+function tripal_analysis_blast_add_custom_tables(){
+   // the blast_organisms table is used to help when integrating with 
+   // Drupal Views.  Trying to get a list of organisms for a drop down 
+   // in Views would require querying the blast_hit_data table which has
+   // a lot of redunancy and takes too long.  This table was created
+   // to speed up the query the popluates a drop down list
+   $schema = array(
+      'table' => 'blast_organisms',
+      'fields' => array(
+         'blast_org_id'     => array('type' => 'serial', 'not null' => TRUE),
+         'blast_org_name'   => array('type' => 'varchar', 'length' => 1025, 'not null' => FALSE),
+      ),
+      'primary key' => array('blast_org_id'), 
+      'indexes' => array(
+         'blast_org_name_idx' => array('blast_org_name'),              
+      ), 
+      'unique keys' => array(
+         'blast_org_name_uq' => array('blast_org_name'),
+      )
+   );
+   tripal_create_chado_table ($ret,'blast_organisms',$schema);
+  
    // the schema for our custom Chado tables are in the .module file
    // so that they integrate properly with everything else Chado.
    $ret = array();
@@ -104,40 +124,58 @@ function tripal_analysis_blast_add_custom_table(){
          'hit_url'             => array('type' => 'text',  'not null' => FALSE),
          'hit_description'     => array('type' => 'text',  'not null' => FALSE),
          'hit_organism'        => array('type' => 'varchar', 'length' => 1025, 'not null' => FALSE),
+         'blast_org_id'        => array('type' => 'int', 'not null' => FALSE),
          'hit_accession'       => array('type' => 'varchar', 'length' => '255', 'not null' => FALSE),
          'hit_best_eval'       => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
          'hit_best_score'      => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
          'hit_pid'             => array('type' => 'float', 'size' => 'big', 'not null' => FALSE),
       ),
       'indexes' => array(
-         'analysisfeature_id' => array('analysisfeature_id')
+         'analysisfeature_id' => array('analysisfeature_id'),
+         'feature_id' => array('feature_id'),
+         'analysis_id' => array('analysis_id'),
+         'blast_org_id' => array('blast_org_id'),
+         'db_id' => array('db_id'),
+         'hit_organism' => array('hit_organism'),
+         'hit_name' => array('hit_organism'),
+         'hit_accession' => array('hit_accession'),   
+         'hit_best_eval' => array('hit_best_eval'),               
       ),
-   );
-   $schema['foreign keys']['db'] = array(
-     'table' => 'db',
-     'columns' => array(
-       'db_id' => 'db_id',
-     ),
-   );
-   $schema['foreign keys']['analysisfeature'] = array(
-     'table' => 'analysisfeature',
-     'columns' => array(
-       'analysisfeature_id' => 'analysisfeature_id',
-     ),
-   );
-   $schema['foreign keys']['analysis'] = array(
-     'table' => 'analysis',
-     'columns' => array(
-       'analysis_id' => 'analysis_id',
-     ),
-   );  
-   $schema['foreign keys']['feature'] = array(
-     'table' => 'feature',
-     'columns' => array(
-       'feature_id' => 'feature_id',
-     ),
-   );    
-   tripal_create_chado_table ($ret,'blast_hit_data',$schema);
+     'foreign keys' => array(
+        'db'=> array(
+           'table' => 'db',
+           'columns' => array(
+              'db_id' => 'db_id',
+           ),
+        ),
+        'analysisfeature' => array(
+           'table' => 'analysisfeature',
+           'columns' => array(
+              'analysisfeature_id' => 'analysisfeature_id',
+           ),
+        ),
+        'analysis' => array(
+           'table' => 'analysis',
+           'columns' => array(
+              'analysis_id' => 'analysis_id',
+           ),
+        ),  
+       'feature' => array(
+          'table' => 'feature',
+          'columns' => array(
+             'feature_id' => 'feature_id',
+          ),
+        ),
+        'blast_orgnaisms'=> array(
+           'table' => 'blast_orgnaisms',
+           'columns' => array(
+              'blast_org_id' => 'blast_org_id',
+           ),
+        ),
+     )
+  );    
+  tripal_create_chado_table ($ret,'blast_hit_data',$schema);
+  
 }
 /*******************************************************************************
 * Implementation of hook_schema(). This table stores the parsers for blast xml
@@ -208,9 +246,6 @@ function tripal_analysis_blast_update_6001(){
    // add new blast hit data table
    $schema = tripal_analysis_blast_schema();
    
-   // add new custom blast hit table
-   tripal_analysis_blast_add_custom_table();
-   
    // alter the tripal_blast_analysis table we need to add two new columns
    // and extend the sizes of the others.
    db_add_field($ret, 'tripal_analysis_blast', 'regex_hit_organism',array('type' => 'varchar','length' => 255));   
@@ -220,6 +255,10 @@ function tripal_analysis_blast_update_6001(){
    db_change_field($ret,'tripal_analysis_blast','regex_hit_accession','regex_hit_accession',array('type' => 'varchar','length' => 255,));
    db_change_field($ret,'tripal_analysis_blast','genbank_style','genbank_style',array('type' => 'int','unsigned' => TRUE,'default' => 0));
    db_change_field($ret,'tripal_analysis_blast','displayname','displayname',array('type' => 'varchar','length' => 255,'not null' => TRUE,));
+
+   // add new custom blast hit table
+   tripal_analysis_blast_add_custom_tables();
+
    $ret = array(
       '#finished' => 1,
    );
