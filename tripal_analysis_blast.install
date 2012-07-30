@@ -283,9 +283,7 @@ function tripal_analysis_blast_add_cvterms () {
    tripal_cv_add_cvterm(array('name' => 'analysis_blast_query_uniquename','def' => 'Indicates if the matched name in the query definition line of the blast results is feature uniquename'),'tripal',0,1,'tripal');
    tripal_cv_add_cvterm(array('name' => 'analysis_blast_blastfile_ext','def' => 'Indicates the extension of the blast files. This is required if the blastfile setting is a directory.'),'tripal',0,1,'tripal');
    tripal_cv_add_cvterm(array('name' => 'analysis_blast_is_concat','def' => 'Indicates if the blast results XML file is a series of concatenated XML results.  Such is the case, for example, if Blast2GO was used to perform the analysis.'),'tripal',0,1,'tripal');
-<<<<<<< HEAD
 
-=======
    tripal_cv_add_cvterm(array('name' => 'analysis_blast_search_keywords','def' => 'Indicates the fields that should be stored in the analysisfeatureprop table for the blast results.'),'tripal',0,1,'tripal');
    
    // add cvterms for the blast search keywords
@@ -298,32 +296,11 @@ function tripal_analysis_blast_add_cvterms () {
 	tripal_cv_add_cvterm(array('name' => 'blast_score','def' => 'The blast hit match bit score'),'tripal',0,1,'tripal');
 	tripal_cv_add_cvterm(array('name' => 'blast_pid','def' => 'The blast hit match percent identity'),'tripal',0,1,'tripal');
    
->>>>>>> b8e9455e696e4a39d71c07fe8fff4222f3d5791e
    // Add cvterm 'analysis_blast_output_iteration_hits' for inserting into featureprop table
    tripal_cv_add_cvterm(array('name' => 'analysis_blast_output_iteration_hits', 'def' => 'Hits of a blast '.
       'output iteration. Each iteration corresponds to a chado feature, and is '.
       'the content between <iteration> and </iteration> tags in the blast xml '.
       'output file. This cvterm represents all hits in the iteration'),'tripal',0,1,'tripal');
-<<<<<<< HEAD
-   
-   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_query', 'def' => 'query name of the best hit 
-      associated with a feature and a blast analysis'),'tripal',0,1,'tripal');
-
-   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_match', 'def' => 'match name of the best hit 
-      associated with a feature and a blast analysis'),'tripal',0,1,'tripal');
-    
-   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_description', 'def' => 'description of the best hit 
-      associated with a feature and a blast analysis'),'tripal',0,1,'tripal');
-   
-   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_evalue', 'def' => 'evalue of the best hit 
-      associated with a feature and a blast analysis'),'tripal',0,1,'tripal');
-    
-   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_identity', 'def' => 'identity (%) of the best hit 
-      associated with a feature and a blast analysis'),'tripal',0,1,'tripal');
-   
-   tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_length', 'def' => 'length of the best hit 
-      associated with a feature and a blast analysis'),'tripal',0,1,'tripal');
-=======
    
    // Add cvterms for the best hits report
    tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_query', 'def' => 'query name of the best hit 
@@ -338,6 +315,5 @@ function tripal_analysis_blast_add_cvterms () {
       associated with a feature and a blast analysis '),'tripal',0,1,'tripal'); 
    tripal_cv_add_cvterm(array('name' => 'analysis_blast_besthit_length','def' =>  'length of the best hit 
       associated with a feature and a blast analysis '),'tripal',0,1,'tripal');
->>>>>>> b8e9455e696e4a39d71c07fe8fff4222f3d5791e
    
 }
