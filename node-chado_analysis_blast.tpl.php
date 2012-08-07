@@ -12,10 +12,10 @@
 //
 // Variables Available:
 //   - $node: a standard object which contains all the fields associated with
-//       nodes including nid, type, title, taxonomy. It also includes stock
-//       specific fields such as stock_name, uniquename, stock_type, synonyms,
-//       properties, db_references, object_relationships, subject_relationships,
-//       organism, etc.
+//       nodes including nid,  type, title, taxonomy. It also includes stock
+//       specific fields such as stock_name,  uniquename, stock_type, synonyms,
+//       properties,  db_references, object_relationships, subject_relationships,
+//       organism,  etc.
 //   NOTE: For a full listing of fields available in the node object the
 //       print_r $node line below or install the Drupal Devel module which 
 //       provides an extra tab at the top of the node page labelled Devel
@@ -23,9 +23,9 @@
 
 <?php
  //uncomment this line to see a full listing of the fields avail. to $node
- //print '<pre>'.print_r($variables,TRUE).'</pre>';
+ //print '<pre>'.print_r($variables, TRUE).'</pre>';
  //drupal_add_css('./tripal-node-templates.css');
-drupal_add_css(drupal_get_path('theme', 'tripal') . '/tripal-node-templates.css');
+drupal_add_css(drupal_get_path('theme',   'tripal') . '/tripal-node-templates.css');
 //this makes tripal required as theme-------^  !!!
                                           
 $node = $variables['node'];
@@ -33,7 +33,7 @@ $organism = $variables['node']->organism;
 ?>
 
 <?php if ($teaser) { 
-	include(drupal_get_path('module' , 'tripal_analysis_blast') . '/theme/tripal_analysis_blast/tripal_analysis_blast_teaser.tpl.php');
+	include(drupal_get_path('module' ,   'tripal_analysis_blast') . '/theme/tripal_analysis_blast/tripal_analysis_blast_teaser.tpl.php');
 } else { ?>
 
 <script type="text/javascript">
@@ -51,7 +51,7 @@ if (Drupal.jsEnabled) {
         $('#tripal_analysis_blast_toc_list').append('<li><a href="#'+id+'" class="tripal_analysis_blast_toc_item">'+title+'</a></li>');
       });
 
-      // when a title in the table of contents is clicked, then
+      // when a title in the table of contents is clicked,  then
       // show the corresponding item in the details box
       $(".tripal_analysis_blast_toc_item").click(function(){
          $(".tripal-info-box").hide();
@@ -66,10 +66,10 @@ if (Drupal.jsEnabled) {
       // we want the base details to show up when the page is first shown 
       // unless the user specified a specific block
       var block = window.location.href.match(/[\?|\&]block=(.+?)\&/)
-      if(block == null){
+      if (block == null){
          block = window.location.href.match(/[\?|\&]block=(.+)/)
       }
-      if(block != null){
+      if (block != null){
          $("#tripal_analysis_blast-"+block[1]+"-box").show();
       } else {
          $("#tripal_analysis_blast-base-box").show();
