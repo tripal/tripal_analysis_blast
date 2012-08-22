@@ -429,18 +429,18 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 
                      $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select);
                      if (count($feature_arr) > 1) {
-                   fwrite($log, "Ambiguous: '$feature' matches more than one feature and is being skipped.\n");
-                continue;
+                       fwrite($log, "Ambiguous: '$feature' matches more than one feature and is being skipped.\n");
+                       continue;
                      }
                      if (count($feature_arr) == 0) {
-                fwrite($log, "Failed: '$feature' cannot find a matching feature in the database.\n");
+                        fwrite($log, "Failed: '$feature' cannot find a matching feature in the database.\n");
                         continue;
                      }
                      $feature_id = $feature_arr[0]->feature_id;
 
-                fwrite($log, "Matched: '$feature' => feature id:" . $feature_id);
-              $featurename_xml = $iteration_tags->asXML();
-            } 
+                     fwrite($log, "Matched: '$feature' => feature id:" . $feature_id);
+                     $featurename_xml = $iteration_tags->asXML();
+                  } 
                   // Insert Iteration_hits into analysisfeatureprop and analysisfeature tables
                   elseif ($iteration_tags->getName() == 'Iteration_hits') {
                      $analysisfeature_id = '';
