@@ -201,6 +201,9 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
     print "$total_files file(s) to be parsed.\n";
     
     $interval = intval($total_files * 0.01);
+    if ($interval > 1) {
+      $interval = 1;
+    }
     $no_file = 0;
       
     // Parsing all files in the directory
