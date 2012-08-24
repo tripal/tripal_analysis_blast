@@ -361,7 +361,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
       }
     }
   }
-  print "$no_iterations results to be processed.\n";
+  //print "$no_iterations results to be processed.\n";
     
   $interval = intval($no_iterations * 0.01);
   if ($interval == 0) {
