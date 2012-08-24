@@ -33,7 +33,7 @@ $organism = $variables['node']->organism;
 ?>
 
 <?php if ($teaser) { 
-	include(drupal_get_path('module' ,   'tripal_analysis_blast') . '/theme/tripal_analysis_blast/tripal_analysis_blast_teaser.tpl.php');
+  print theme('tripal_analysis_blast',$node); 
 } else { ?>
 
 <script type="text/javascript">
@@ -85,8 +85,7 @@ if (Drupal.jsEnabled) {
 <div id="tripal_analysis_blast_details" class="tripal_details">
 
    <!-- Basic Details Theme -->
-   <?php include('theme/tripal_analysis_blast/tripal_analysis_blast_base.tpl.php');?>
-
+   <?php print theme('tripal_analysis_blast_base', $node); ?>
    <?php print $content ?>
 </div>
 
