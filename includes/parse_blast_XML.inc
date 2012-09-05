@@ -369,7 +369,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
   }
   $idx_iterations = 0;
   foreach ($blastoutput->children() as $blastoutput_tags) {
-
+print memory_get_usage();
     if ($blastoutput_tags->getName() == 'BlastOutput_iterations') {
       foreach ($blastoutput_tags->children() as $iterations) {
         if ($iterations->getName() == 'Iteration') {

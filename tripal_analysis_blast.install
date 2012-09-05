@@ -111,7 +111,7 @@ function tripal_analysis_blast_add_custom_tables() {
          'blast_org_name_uq' => array('blast_org_name'),  
       )
    );
-   tripal_create_chado_table($ret, 'blast_organisms', $schema);
+   tripal_core_create_custom_table($ret, 'blast_organisms', $schema);
   
    // the schema for our custom Chado tables are in the .module file
    // so that they integrate properly with everything else Chado.
@@ -178,8 +178,7 @@ function tripal_analysis_blast_add_custom_tables() {
         ),  
      )
   );    
-  tripal_create_chado_table($ret, 'blast_hit_data', $schema);
-  
+  tripal_core_create_custom_table($ret, 'blast_hit_data', $schema);
 }
 /*******************************************************************************
 * Implementation of hook_schema(). This table stores the parsers for blast xml
