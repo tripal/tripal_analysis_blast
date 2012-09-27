@@ -21,8 +21,8 @@ $blast = $node->analysis->tripal_analysis_blast;
         <th nowrap>Software</th>
         <td><?php 
           print $analysis->program; 
-          if($analysis->programversion){
-             print " (" . $analysis->programversion . ")"; 
+          if($analysis->programversion and $analysis->programversion != 'n/a'){
+            print " (" . $analysis->programversion . ")"; 
           }
           if($analysis->algorithm){
              print ". " . $analysis->algorithm; 
