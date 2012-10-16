@@ -10,7 +10,7 @@ require_once "includes/parse_blast_XML.inc";
  ******************************************************************************/
 function tripal_analysis_blast_init() {
   // Add javascript and style sheet
-  drupal_add_css(drupal_get_path('module',   'tripal_analysis_blast') .'/theme/css/tripal_analysis_blast.css', 'theme');
+  drupal_add_css(drupal_get_path('module',  'tripal_analysis_blast') .'/theme/css/tripal_analysis_blast.css', 'theme');
   drupal_add_js(drupal_get_path('module',   'tripal_analysis_blast') .'/theme/js/tripal_analysis_blast.js');
 }
 
@@ -358,8 +358,7 @@ function tripal_analysis_blast_settings_form() {
   $form['tripal_analysis_blast_setting'] = array(
       '#type' => 'checkboxes',  
       '#options' => $allowedoptions,
-      '#default_value' => variable_get('tripal_analysis_blast_setting',  
-  array('chado_feature')),  
+      '#default_value' => variable_get('tripal_analysis_blast_setting',  array('chado_feature')),  
   );
 
   $previous_db = tripal_db_set_active('chado');  // use chado database
@@ -390,8 +389,8 @@ function tripal_analysis_blast_settings_form() {
   );
   $form['gb_style_parser'] = array(
       '#title' => t('Use Genebank style parser. This will clear all regular expression settings for the selected database.'),  
-     '#type' => 'checkbox',  
-     '#attributes' => array(
+      '#type' => 'checkbox',  
+      '#attributes' => array(
          'onClick' => "return tripal_set_genbank_style(this)",  
       )
   );

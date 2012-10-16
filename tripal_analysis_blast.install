@@ -170,8 +170,8 @@ function tripal_analysis_blast_add_custom_tables() {
              'feature_id' => 'feature_id',  
           ),  
         ),  
-        'blast_orgnaisms' => array(
-           'table' => 'blast_orgnaisms',  
+        'blast_organisms' => array(
+           'table' => 'blast_organisms',  
            'columns' => array(
               'blast_org_id' => 'blast_org_id',  
            ),  
