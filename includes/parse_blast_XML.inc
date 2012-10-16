@@ -529,7 +529,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           }  
           // if the analyisfeatureprop record doesn't exist then add it                       
           else {
-          	// add the analysisfaeture record 
+          	// add the analysisfeature record 
           	$values = array(
           	  'feature_id' => $feature_id,
           	  'analysis_id' => $analysis_id,
@@ -564,13 +564,15 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
               tripal_core_chado_delete('blast_hit_data', $match);              
 
               // get the db object
-              $columns = array('*');                                     
+              $columns = array('analysis_id', 'feature_id');                                     
               $values = array('db_id' => $blastdb);
-              $db = tripal_core_chado_select('db', $columns, $values);
+              $options = array('statement_name' => 'sel_db_id');
+              $db = tripal_core_chado_select('db', $columns, $values, $options);
                    
               // get the analysis object
               $values = array('analysis_id' => $analysis_id);
-              $analysis = tripal_core_chado_select('analysis', $columns, $values);
+              $options = array('statement_name' => 'sel_analysis_id');
+              $analysis = tripal_core_chado_select('analysis', $columns, $values, $options);
                    
               // get the blast object
               $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], 0, $feature_id, $analysis[0]);                      
@@ -580,35 +582,43 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
               $failed = 0;
               for ($i = 0; $i < $blast_obj->number_hits; $i++) {
                 // add the organism to the blast_organisms table, but
-                // fisrt check to make sure it doesn't already exist
+                // fisrt check to make sure it doesn't already exist                
                 $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
-                $find_sql = "SELECT * FROM {blast_organisms} WHERE blast_org_name = '%s'";
-                $result = db_fetch_object(db_query($find_sql, $blast_org_name));
-                $blast_org_id = $result->blast_org_id;
-                if (!$blast_org_id) {
-                  $sql = "INSERT INTO {blast_organisms} (blast_org_name) VALUES ('%s')";
-                  db_query($sql, $blast_org_name);
-                  $result = db_fetch_object(db_query($find_sql, $blast_org_name));
-                  $blast_org_id = $result->blast_org_id;
+                $blast_org_id = 0;
+                $values = array('blast_org_name' => $blast_org_name);
+                $options = array('statement_name' => 'sel_blastorgname_na');
+                $result = tripal_core_chado_select('blast_organisms', array('*'), $values, $options);
+                if (count($result) == 0){
+                  $blast_org_id = $result[0]->blast_org_id;
+                } 
+                else {
+                  $options = array('statement_name' => 'ins_blastorgname_na');
+                  $result = tripal_core_chado_insert('blast_organisms', $values, $options);
+                  if (array_key_exists('blast_org_id', $results)) {                  	
+                    $blast_org_id = $result->blast_org_id;                    
+                  } 
                 }
                   
-                $record = new stdClass();
-                $record->analysisfeature_id = $analysisfeature_id;
-                $record->analysis_id = $analysis_id;
-                $record->feature_id = $feature_id;
-                $record->db_id = $blastdb;
-                $record->hit_num = $i;
-                $record->hit_name = $blast_obj->hits_array[$i]['hit_name'];
-                $record->hit_url = $blast_obj->hits_array[$i]['hit_url'];
-                $record->hit_description = $blast_obj->hits_array[$i]['description'];
-                $record->hit_organism = $blast_org_name;
-                $record->blast_org_id = $blast_org_id;
-                $record->hit_accession =$blast_obj->hits_array[$i]['accession'];
-                $record->hit_best_eval = $blast_obj->hits_array[$i]['best_evalue'];
-                $record->hit_best_score = $blast_obj->hits_array[$i]['best_score'];
-                $record->hit_pid =$blast_obj->hits_array[$i]['percent_identity'];
-                if (!drupal_write_record('blast_hit_data', $record)) {
-                  $failed =1;
+                $values = array(
+                  'analysisfeature_id' => $analysisfeature_id,
+                  'analysis_id' => $analysis_id,
+                  'feature_id' => $feature_id,
+                  'db_id' => $blastdb,
+                  'hit_num' => $i,
+                  'hit_name' => $blast_obj->hits_array[$i]['hit_name'],
+                  'hit_url' => $blast_obj->hits_array[$i]['hit_url'],
+                  'hit_description' => $blast_obj->hits_array[$i]['description'],
+                  'hit_organism' => $blast_org_name,
+                  'blast_org_id' => $blast_org_id,
+                  'hit_accession' => $blast_obj->hits_array[$i]['accession'],
+                  'hit_best_eval' => $blast_obj->hits_array[$i]['best_evalue'],
+                  'hit_best_score' => $blast_obj->hits_array[$i]['best_score'],
+                  'hit_pid' => $blast_obj->hits_array[$i]['percent_identity']
+                );
+                $options = array('statement_name' => 'ins_blasthitdata_all');
+                $result = tripal_core_chado_insert('blast_hit_data', $values, $options);
+                if (!$result) {
+                  $failed = 1;
                 }
               }
               if ($failed) {
