@@ -177,7 +177,7 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
   if (is_file($blastfile)) {
       tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
          $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-         $job_id, 1, $is_concat, $search_keywords);
+         $job_id, $is_concat, $search_keywords);
   } 
    // Otherwise, $blastfile is a directory. Iterate through all xml files in it
    else {
@@ -188,30 +188,17 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
     $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
     $pattern = sql_regcase($blastfile . "/*.$blastfile_ext");
     $total_files = count(glob($pattern));
-    print "$total_files file(s) to be parsed.\n";
-    
-    $interval = intval($total_files * 0.01);
-    if ($interval < 1) {
-      $interval = 1;
-    }
     $no_file = 0;
       
     // Parsing all files in the directory
     while ($file = readdir($dir_handle)) {
       if (preg_match("/^.*\.$blastfile_ext/i", $file)) {
-
+        print "File $no_file of $total_files: $file                       \n";
         tripal_analysis_blast_parseXML($analysis_id, $blastdb, "$blastfile/$file", 
           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-          $job_id, 0, $is_concat, $search_keywords);
-
-        // Set job status
-        if ($no_file % $interval == 0) {
-          $percentage = (int) (($no_file / $total_files) * 100);
-          tripal_job_set_progress($job_id, $percentage);
-          print $percentage . "%\r";
-        }        
+          $job_id, $is_concat, $search_keywords);
+        $no_file ++;
       }
-      $no_file ++;
     }
   }
 
@@ -251,10 +238,6 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
  *   first word in the blast query name. 
  * @param $job_id
  *   The job id passed in from the jobs management system
- * @param $set_progress
- *   Boolean value that indicates if the job progress should be calculated. For
- *   processing of files in a directory this should be zero.  For a single file
- *   it should be 1.
  * @param $is_concat
  *   If the blast result file is simply a list of concatenated blast results 
  *   then this value should be set to 1.  
@@ -270,27 +253,23 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
  */
 function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
    $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-   $job_id, $set_progress, $is_concat, $search_keywords) {
+   $job_id, $is_concat, $search_keywords) {
 
-  // Parsing started
-  print "Parsing File:" . $blastfile . " ...\n";
-  if ($no_parsed == 'all') {
-    print "Parsing all hits...\n";
-  } 
-  else {
-    print "Parsing top $no_parsed hits...\n";
-  }
-  
   // Get cvterm_id for 'analysis_blast_output_iteration_hits' which is required
   // for inserting into the analysisfeatureprop table
-  $columns = array('cvterm_id');
   $values = array(
      'name' => 'analysis_blast_output_iteration_hits',
      'cv_id' => array(
         'name' => 'tripal'
      ),
   );
-  $cvterm = tripal_core_chado_select('cvterm', $columns, $values);
+  $options = array('statement_name' => 'sel_cvterm_nacv');
+  $cvterm = tripal_core_chado_select('cvterm', array('cvterm_id'), $values, $options);
+  if (count($cvterm) ==  0) {
+    watchdog('T_blastXML_load', "Cannot find term 'analysis_blast_output_iteration_hits' used for ".
+      "storing blast records.  Cannot continue.", array(), WATCHDOG_ERROR);
+    exit;
+  }
   $type_id = $cvterm[0]->cvterm_id;
 
   // Load the XML file.
@@ -324,7 +303,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
         // now parse this new temp file
         tripal_analysis_blast_parseXML($analysis_id, $blastdb, $temp, 
           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-          $job_id, $set_progress, 0);
+          $job_id, 0, $search_keywords);
         // reopen the file for the next set of results
         $out_fh = fopen($temp, "w");
       }
@@ -338,33 +317,26 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 
   // get the number of blast iterations elements
   $no_iterations = 0;
-  // iterate through the nodes until we get to the BlastOutput_iterations section
   while ($blastoutput->read()) {
-  	if ($blastoutput->nodeType == XMLReader::ELEMENT) {
-  		if (strcmp($blastoutput->name, 'BlastOutput_iterations') == 0) {
-  			// iterate through each Iteration (without descending into the subtree)
-  			// to count the number of iterations in the file
-  			while($blastoutput->next()){
-  			  if ($blastoutput->nodeType == XMLReader::ELEMENT) {
-  			    $no_iterations ++;
-  			  }
-  			}
-  		}
+    if ($blastoutput->nodeType == XMLReader::ELEMENT) {
+      if (strcmp($blastoutput->name, 'Iteration') == 0) {
+        // iterate through each Iteration (without descending into the subtree)
+        // to count the number of iterations in the file
+        while($blastoutput->next()){
+          if ($blastoutput->nodeType == XMLReader::ELEMENT) {
+            $no_iterations ++;
+          }
+        }
+      }
     }
   }
   $blastoutput->close();
   
-
-  // calculate the iteration value to use for updating the job status
-  $interval = intval($no_iterations * 0.01);
-  if ($interval < 1) {
-     $interval = 1;
-  }
-  $idx_iterations = 0;
+  tripal_analysis_blast_loader_set_progress(0, $no_iterations, $job_id);
   
-  // reopen the file and get the resutls
+  // reopen the file and iterate through the nodes until we get to the BlastOutput_iterations section
   $blastoutput->open($blastfile);
-   // iterate through the nodes until we get to the BlastOutput_iterations section
+  $num_read = 0;
   while ($blastoutput->read()) {
     if ($blastoutput->nodeType == XMLReader::ELEMENT) {
       if (strcmp($blastoutput->name, 'BlastOutput_iterations') == 0) {
@@ -372,11 +344,13 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
         // to count the number of iterations in the file
         while($blastoutput->read()){
           if ($blastoutput->nodeType == XMLReader::ELEMENT) {
-          	// this should be the <Iteration> tag
+            // this should be the <Iteration> tag
             tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $blastdb, $blastfile, 
               $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-              $job_id, $set_progress, $is_concat, $search_keywords);
-          }
+              $job_id, $is_concat, $search_keywords, $type_id, $search_keywords);
+            $num_read++;
+            tripal_analysis_blast_loader_set_progress($num_read);
+          } 
         }
       }
     }
@@ -387,29 +361,34 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
  */
 function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $blastdb, $blastfile, 
   $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-  $job_id, $set_progress, $is_concat, $search_keywords) { 
+  $job_id, $is_concat, $search_keywords, $type_id) { 
   
   $feature_id = 0;   
-  $analysisfeature_id = 0;	
+  $analysisfeature_id = 0;  
   $iteration_tags_xml = '';
   $num_hits = 0;
-   	
- 	// iterate though the child nodes of the <Iteration> tag
- 	while ($blastoutput->read()) {
- 		// if we've hit the closing tag (</Iteration>) then return
- 		if ($blastoutput->nodeType == XMLReader::END_ELEMENT) {
- 		  if (strcmp($blastoutput->name, 'Iteration') == 0) {
- 		  	return;
- 		  }
- 		}
- 		if ($blastoutput->nodeType == XMLReader::ELEMENT) {
+
+  // iterate though the child nodes of the <Iteration> tag
+  while ($blastoutput->read()) {
+    // if we've hit the closing tag (</Iteration>) then return
+    if ($blastoutput->nodeType == XMLReader::END_ELEMENT) {
+      if (strcmp($blastoutput->name, 'Iteration') == 0) {
+        return;
+      }
+    }
+
+    if ($blastoutput->nodeType == XMLReader::ELEMENT) {
       $tag_name =  $blastoutput->name;
+      $blastoutput->read();
       $value = $blastoutput->value;
+
       switch ($tag_name) {
-      	
-      	// if the node is <Iteration_query-def>
-      	case 'Iteration_query-def':
-      		$iteration_tags_xml .= $value;                             
+        
+        // if the node is <Iteration_query-def>
+        case 'Iteration_query-def':
+
+          $iteration_tags_xml .= "<$tag_name>$value</$tag_name>";
+
           // If the user provided a query RE to extract the feature name then use that now 
           if ($query_re and preg_match("/$query_re/", $value, $matches)) {
             $feature = $matches[1];
@@ -422,8 +401,9 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           else {
             $feature = $iteration_tags;
           }
+
           if (!$feature and $query_re) {
-            watchdog('T_blastXML_loader', "Cannot find feature in '$value' using the regular expression: $query_re", array(), WATCHDOG_ERROR);
+            watchdog('T_blastXML_load', "Cannot find feature in '$value' using the regular expression: $query_re", array(), WATCHDOG_ERROR);
             exit;
           }
 
@@ -440,77 +420,77 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           }
           if ($query_type) {
             $select['type_id'] = array(
+              'name' => $query_type,
               'cv_id' => array(
                 'name' => 'sequence'
               ),
-              'name' => $query_type,
             );
             $options['statement_name'] .= 'ty';
           }
+
           $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select, $options);
-          
           if (count($feature_arr) > 1) {
-            watchdog('T_blastXML_loader', "Ambiguous: '$feature' matches more than one " .
+            watchdog('T_blastXML_load', "Ambiguous: '$feature' matches more than one " .
                      "feature and is being skipped", array(), WATCHDOG_ERROR);
             continue;
           }
           if (count($feature_arr) == 0) {
-            watchdog('T_blastXML_loader', "Failed: '$feature' cannot find a matching " ."
+            watchdog('T_blastXML_load', "Failed: '$feature' cannot find a matching " ."
                      feature in the database.", array(), WATCHDOG_ERROR);
             continue;
           }
           $feature_id = $feature_arr[0]->feature_id;
+
           break;
-	
+  
         // if the node is <Iteration_hits>
         case 'Iteration_hits':
                     
           if (!$feature_id) {
-            watchdog('T_blastXML_loader', "Cannot add blast results as feature_id is missing.", array(), 
+            watchdog('T_blastXML_load', "Cannot add blast results as feature_id is missing.", array(), 
               WATCHDOG_ERROR);
             continue;
           }                   
           // we are going to store the XML in the analysisfeatureprop table so we need to rebuild it.          
-          $xml_content =  "<Iteration>\n" . $iteration_tags_xml . "\n";
-          
+          $xml_content =  "<Iteration>\n" . $iteration_tags_xml . "<$tag_name>\n";
+
           // iterate through each of the <Hit> tags, extract the XML and add to our $xml_content
           while ($blastoutput->next()) {
-          	$num_hits++;
-          	// if we've reached the node </Iteration> then break out
-          	// of the while loop.
-          	if ($blastoutput->nodeType == XMLReader::END_ELEMENT) {          		
-          	  if (strcmp($blastoutput->name,'Iteration_hits') == 0) {
-          	  	break;
-          	  }
-          	}
-          	if ($blastoutput->nodeType == XMLReader::ELEMENT) {
+            $num_hits++;
+            // if we've reached the node </Iteration> then break out
+            // of the while loop.
+            if ($blastoutput->nodeType == XMLReader::END_ELEMENT) {              
+              if (strcmp($blastoutput->name, 'Iteration_hits') == 0) {
+                break;
+              }
+            }
+            if ($blastoutput->nodeType == XMLReader::ELEMENT) {
               // parse all hits
               if ($no_parsed == 'all') {
                 $xml_content .= $blastoutput->readInnerXML();
               } 
               else {
-              	if ($num_hits < $no_parsed) {
+                if ($num_hits < $no_parsed) {
                   $xml_content .= $blastoutput->readInnerXML();                  
-              	}              		 
+                }                   
               }
-          	}
-          	
+            }
           }
-          $xml_content .= "\n</Iteration>";
-          
+          $xml_content .= "\n</$tag_name></Iteration>";
+         
           // Make sure this iteration doesn't exist in analysisfeatureprop. If it does, update but not insert
           $psql = "
             PREPARE blast_loader_selaprop(int, int, int) AS
-            SELECT analysisfeature_id, analysisfeatureprop_id 
+            SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id 
             FROM {analysisfeatureprop} AFP 
               INNER JOIN analysisfeature AF ON AF.analysisfeature_id = AFP.analysisfeature_id        
             WHERE feature_id=$1 AND analysis_id=$2 AND type_id=$3 
           ";
           tripal_core_chado_prepare('sel_synonym_graphML', $psql, array('int', 'int', 'int'));
-          $sql = "EXECUTE blast_loader_aprop (%d, %d, %d)";
+          $sql = "EXECUTE blast_loader_selaprop (%d, %d, %d)";
           $analysisfeatureprop = db_fetch_object(chado_query($sql, $feature_id, $analysis_id, $type_id));
           
-          // If the analysisfeatureprop record exists then upate it
+          // If the analysisfeatureprop record exists then update it
           if ($analysisfeatureprop) {
             $psql = "
               PREPARE blast_loader_updaprop(text, int) AS 
@@ -522,25 +502,30 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
             $sql = "EXECUTE blast_loader_updaprop ('%s', %d)";
             $success = chado_query($sql, $xml_content, $analysisfeatureprop->analysisfeatureprop_id);
             if (!$success) {
-            	watchdog('T_blastXML_loader', "Cannot update analysis feature property record for $feature.", array(), 
+              watchdog('T_blastXML_load', "Cannot update analysis feature property record for $feature.", array(), 
                 WATCHDOG_ERROR);
               continue;
             }
           }  
           // if the analyisfeatureprop record doesn't exist then add it                       
           else {
-          	// add the analysisfeature record 
-          	$values = array(
-          	  'feature_id' => $feature_id,
-          	  'analysis_id' => $analysis_id,
-          	);
-          	$options = array('statement_name' => 'ins_analysisfeature_fean');
-            $analysisfeature = tripal_core_chado_insert('analysisfeature', $values, $options);
-            if (!$analysisfeature) {
-              watchdog('T_blastXML_loader', "Cannot add analysis feature record for $feature.", array(), 
-                WATCHDOG_ERROR);
-              continue;	  
+            // if the analysis feature already exists then get that record
+            $values = array(
+              'feature_id' => $feature_id,
+              'analysis_id' => $analysis_id,
+            );
+            $options = array('statement_name' => 'sel_analysisfeature_fean');
+            $result = tripal_core_chado_select('analysisfeature', array('analysisfeature_id'), $values, $options);
+            if (count($result) == 0) {
+               $options = array('statement_name' => 'ins_analysisfeature_fean');
+               $analysisfeature = tripal_core_chado_insert('analysisfeature', $values, $options);
+               if (!$analysisfeature) {
+                 watchdog('T_blastXML_load', "Cannot add analysis feature record for $feature.", array(), 
+                   WATCHDOG_ERROR);
+                 continue;    
+               }
             }
+            $analysisfeature = $result[0];
 
             // add the analysisfeatureprop record
             $values = array(
@@ -552,39 +537,40 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
             $options = array('statement_name' => 'ins_analysisfeatureprop_antyvara');
             $analysisfeatureprop = tripal_core_chado_insert('analysisfeatureprop', $values, $options);
             if (!$analysisfeatureprop) {
-              watchdog('T_blastXML_loader', "Cannot add analysis feature property record.", array(), 
+              watchdog('T_blastXML_load', "Cannot add analysis feature property record.", array(), 
                 WATCHDOG_ERROR);
               continue;   
             }
+          }
+          // if the user wants to store the keywords then do so
+          if ($search_keywords) {
 
-            // if the user wants to store the keywords then do so
-            if ($search_keywords) {
-              // remove any existing entries. we'll replace them.
-              $match = array('analysisfeature_id' => $analysisfeature_id);
-              tripal_core_chado_delete('blast_hit_data', $match);              
+            // remove any existing entries. we'll replace them.
+            $match = array('analysisfeature_id' => $analysisfeature_id);
+            tripal_core_chado_delete('blast_hit_data', $match);              
 
-              // get the db object
-              $columns = array('analysis_id', 'feature_id');                                     
-              $values = array('db_id' => $blastdb);
-              $options = array('statement_name' => 'sel_db_id');
-              $db = tripal_core_chado_select('db', $columns, $values, $options);
+            // get the db object
+            $values = array('db_id' => $blastdb);
+            $options = array('statement_name' => 'sel_db_id');
+            $db = tripal_core_chado_select('db', array('*'), $values, $options);
                    
-              // get the analysis object
-              $values = array('analysis_id' => $analysis_id);
-              $options = array('statement_name' => 'sel_analysis_id');
-              $analysis = tripal_core_chado_select('analysis', $columns, $values, $options);
+            // get the analysis object
+            $values = array('analysis_id' => $analysis_id);
+            $options = array('statement_name' => 'sel_analysis_id');
+            $analysis = tripal_core_chado_select('analysis', $columns, $values, $options);
                    
-              // get the blast object
-              $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], 0, $feature_id, $analysis[0]);                      
+            // get the blast object
+            $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], 0, $feature_id, $analysis[0]);                      
                       
-              // iterate through the hits and add the records to the 
-              // blast_hit_data table
-              $failed = 0;
-              for ($i = 0; $i < $blast_obj->number_hits; $i++) {
-                // add the organism to the blast_organisms table, but
-                // fisrt check to make sure it doesn't already exist                
-                $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
-                $blast_org_id = 0;
+            // iterate through the hits and add the records to the 
+            // blast_hit_data table
+            $failed = 0;
+            for ($i = 0; $i < $blast_obj->number_hits; $i++) {
+              // add the organism to the blast_organisms table, but
+              // fisrt check to make sure it doesn't already exist                
+              $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
+              $blast_org_id = NULL;
+              if ($blast_org_name) {
                 $values = array('blast_org_name' => $blast_org_name);
                 $options = array('statement_name' => 'sel_blastorgname_na');
                 $result = tripal_core_chado_select('blast_organisms', array('*'), $values, $options);
@@ -594,42 +580,41 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
                 else {
                   $options = array('statement_name' => 'ins_blastorgname_na');
                   $result = tripal_core_chado_insert('blast_organisms', $values, $options);
-                  if (array_key_exists('blast_org_id', $results)) {                  	
+                  if (array_key_exists('blast_org_id', $results)) {                    
                     $blast_org_id = $result->blast_org_id;                    
                   } 
                 }
-                  
-                $values = array(
-                  'analysisfeature_id' => $analysisfeature_id,
-                  'analysis_id' => $analysis_id,
-                  'feature_id' => $feature_id,
-                  'db_id' => $blastdb,
-                  'hit_num' => $i,
-                  'hit_name' => $blast_obj->hits_array[$i]['hit_name'],
-                  'hit_url' => $blast_obj->hits_array[$i]['hit_url'],
-                  'hit_description' => $blast_obj->hits_array[$i]['description'],
-                  'hit_organism' => $blast_org_name,
-                  'blast_org_id' => $blast_org_id,
-                  'hit_accession' => $blast_obj->hits_array[$i]['accession'],
-                  'hit_best_eval' => $blast_obj->hits_array[$i]['best_evalue'],
-                  'hit_best_score' => $blast_obj->hits_array[$i]['best_score'],
-                  'hit_pid' => $blast_obj->hits_array[$i]['percent_identity']
-                );
-                $options = array('statement_name' => 'ins_blasthitdata_all');
-                $result = tripal_core_chado_insert('blast_hit_data', $values, $options);
-                if (!$result) {
-                  $failed = 1;
-                }
+              }       
+              $values = array(
+                'analysisfeature_id' => $analysisfeature_id,
+                'analysis_id' => $analysis_id,
+                'feature_id' => $feature_id,
+                'db_id' => $blastdb,
+                'hit_num' => $i,
+                'hit_name' => $blast_obj->hits_array[$i]['hit_name'],
+                'hit_url' => $blast_obj->hits_array[$i]['hit_url'],
+                'hit_description' => $blast_obj->hits_array[$i]['description'],
+                'hit_organism' => $blast_org_name,
+                'blast_org_id' => $blast_org_id,
+                'hit_accession' => $blast_obj->hits_array[$i]['accession'],
+                'hit_best_eval' => $blast_obj->hits_array[$i]['best_evalue'],
+                'hit_best_score' => $blast_obj->hits_array[$i]['best_score'],
+                'hit_pid' => $blast_obj->hits_array[$i]['percent_identity']
+              );
+              $options = array('statement_name' => 'ins_blasthitdata_all');
+              $result = tripal_core_chado_insert('blast_hit_data', $values, $options);
+              if (!$result) {
+                $failed = 1;
               }
-              if ($failed) {
-                watchdog('T_blastXML_loader', "Failed to add keywords for searching: '$feature'", 
-                  array(), WATCHDOG_ERROR);   
-              }                      
-            } // end if ($search_keywords) ...
-          } // if ($analysisfeatureprop) else ...
-          break;
+            }
+            if ($failed) {
+              watchdog('T_blastXML_load', "Failed to add keywords for searching: '$feature'", 
+                array(), WATCHDOG_ERROR);   
+            }                      
+          } // end if ($search_keywords) ...
+          break; 
         default:
-          $iteration_tags_xml .= $value;                             
+          //$iteration_tags_xml .= "<$tag_value>$value</$tag_value>\n";
           break;
       }
     }
@@ -747,14 +732,14 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
 
   // Find node id for the analysis
   $ana_nid = db_result(db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = %d", $analysis->analysis_id));
-   $analysis->nid = $ana_nid;
+  $analysis->nid = $ana_nid;
 
 
   // Load the file.  This XML file should be an extract
   // of the original XML file with only a single iteration.
   // An iteration is essentially all the hits for a single
   // query sequence.
-  $xml_output = simplexml_load_string($xml_string);
+  $xml_output = XMLReader::xml($xml_string);
   $iteration = '';
   // new XML file parser has added the feature name within <Iteration_query-def> tags.
   if ($xml_output->getName() == 'Iteration') {
@@ -1275,4 +1260,38 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
   }
    print "100%\n";
   return;
+}
+
+/*
+ *
+ */
+function tripal_analysis_blast_loader_set_progress($nodes_read, $total = -1, $job = -1) {
+  
+  static $total_nodes;
+  static $interval;
+  static $job_id;
+  static $intv_read;
+  static $last_read;
+
+  if ($total != -1) {
+    $total_nodes = $total;
+    $interval = intval($total_nodes * 0.001);
+    if ($interval == 0) {
+      $interval = 1;
+    }
+    $job_id = $job;
+    $intv_read = 0;
+    $last_read = 0;
+  }  
+  $intv_read += $nodes_read - $last_read;
+  if ($intv_read >= $interval) {    
+    $intv_read = 0;
+    $percent = sprintf("%.2f", ($nodes_read / $total_nodes) * 100);
+    print "Parsing element " . number_format($nodes_read) . " of " . 
+      number_format($total_nodes) . " (" . $percent . "%). Memory: " . 
+      number_format(memory_get_usage()) . " bytes.\r";
+    $value = intval(($nodes_read / $total_nodes) * 100);
+    tripal_job_set_progress($job_id, $value);
+  }  
+  $last_read = $nodes_read;
 }
