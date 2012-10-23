@@ -739,45 +739,51 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
   // of the original XML file with only a single iteration.
   // An iteration is essentially all the hits for a single
   // query sequence.
-  $xml_output = XMLReader::xml($xml_string);
+  $xml = XMLReader::xml($xml_string);
   $iteration = '';
-  // new XML file parser has added the feature name within <Iteration_query-def> tags.
-  if ($xml_output->getName() == 'Iteration') {
-    foreach ($xml_output->children() as $xml_tag) {
-      if ($xml_tag->getName() == 'Iteration_query-def') {
-        // Here we show the feature name again to check if we pull the correct data
-        $blast_object->xml_tag = $xml_tag;
-      } 
-      elseif ($xml_tag->getName() == 'Iteration_hits') {
-        $iteration = $xml_tag;
+
+  // iterate though the child nodes of the <Iteration> tag
+  while ($xml->read()) {
+    // if we've hit the closing tag (</Iteration>) then return
+    if ($xml->nodeType == XMLReader::END_ELEMENT) {
+      if (strcmp($xml->name, 'Iteration') == 0) {
+        // we're done
+        return;
       }
     }
-    // This is for the file parsed by the old parser
-  } 
-  else {
-    $iteration = $xml_output;
-  }
 
-  $number_hits = 0;
-  foreach ($iteration->children() as $hits) {
-    $number_hits ++;
-  }
+    if ($xml->nodeType == XMLReader::ELEMENT) {
+      $tag_name =  $xml->name;
+      $xml->read();
+      $value = $xml->value;
 
-  // add the links for updating blast info using Ajax
-  $blast_object->max = $max;
-  $blast_object->number_hits = $number_hits;
-  $blast_object->feature_id = $feature_id;
-  
-  $hits_array = array();
-  $hit_count = 0;
+      switch ($tag_name) {
+        case 'Iteration_query-def':
+          $blast_object->xml_tag = $value;
+          break;
+        case 'Iteration_hits':
+          $blast_object->xml_tag = $value;
 
-  foreach ($iteration->children() as $hits) {
-    $hsp_array = array();
-    $counter = 0;
-    foreach ($hits->children() as $hit) {
-      $best_evalue = 0;
-      $best_identity = 0;
-      $best_len = 0;
+          $number_hits = 0;
+          foreach ($iteration->children() as $hits) {
+            $number_hits ++;
+          }
+
+          // add the links for updating blast info using Ajax
+          $blast_object->max = $max;
+          $blast_object->number_hits = $number_hits;
+          $blast_object->feature_id = $feature_id;
+          
+          $hits_array = array();
+          $hit_count = 0;
+
+          foreach ($iteration->children() as $hits) {
+            $hsp_array = array();
+            $counter = 0;
+            foreach ($hits->children() as $hit) {
+              $best_evalue = 0;
+              $best_identity = 0;
+              $best_len = 0;
       $element_name = $hit->getName();
       if ($element_name == 'Hit_id') {
         // if parsing "name, acc, desc" from three tags (1/3)
