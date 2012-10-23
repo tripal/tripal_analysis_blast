@@ -752,200 +752,261 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
       }
     }
 
+    // if this is the start of an iteration element
     if ($xml->nodeType == XMLReader::ELEMENT) {
-      $tag_name =  $xml->name;
+      $iteration_element_name =  $xml->name;
       $xml->read();
-      $value = $xml->value;
+      $iteration_element_value = $xml->value;
 
-      switch ($tag_name) {
+      switch ($iteration_element_name) {
         case 'Iteration_query-def':
-          $blast_object->xml_tag = $value;
+          $blast_object->xml_tag = $iteration_element_value;
           break;
         case 'Iteration_hits':
-          $blast_object->xml_tag = $value;
-
-          $number_hits = 0;
-          foreach ($iteration->children() as $hits) {
-            $number_hits ++;
-          }
+          $blast_object->xml_tag = $iteration_element_value;
 
           // add the links for updating blast info using Ajax
-          $blast_object->max = $max;
-          $blast_object->number_hits = $number_hits;
+          $blast_object->max = $max;          
           $blast_object->feature_id = $feature_id;
           
+          // initalize hit variables
           $hits_array = array();
-          $hit_count = 0;
-
-          foreach ($iteration->children() as $hits) {
-            $hsp_array = array();
-            $counter = 0;
-            foreach ($hits->children() as $hit) {
-              $best_evalue = 0;
-              $best_identity = 0;
-              $best_len = 0;
-      $element_name = $hit->getName();
-      if ($element_name == 'Hit_id') {
-        // if parsing "name, acc, desc" from three tags (1/3)
-        if ($is_genbank) {
-          $hit_name = $hit;
-        }
-      } 
-      elseif ($element_name == 'Hit_def') {
-        if ($is_genbank) {
-          $description = $hit;
-        } 
-        else {
-          $accession = preg_replace($regex_hit_accession, "$1", $hit);
-          $hit_name = preg_replace($regex_hit_id, "$1", $hit);
-          $description = preg_replace($regex_hit_def, "$1", $hit);
-          if ($regex_hit_organism) {
-             $hit_organism = preg_replace($regex_hit_organism, "$1", $hit);
-          }
-        }
-      } 
-      elseif ($element_name == 'Hit_accession') {
-        // if parsing "name, acc, desc" from three tags (3/3)
-        if ($is_genbank) {
-          $accession = $hit;
-        }
-        // now run through each HSP for this hit
-      } 
-      elseif ($element_name == 'Hit_hsps') {    
-        foreach ($hit->children() as $hsp) {
-          foreach ($hsp->children() as $hsp_info) {
-            $element_name = $hsp_info->getName();
-            if ($element_name == 'Hsp_num') {
-              $hsp_num = $hsp_info;
-            }
-            if ($element_name == 'Hsp_bit-score') {
-              $hsp_bit_score = $hsp_info;
-            }
-            if ($element_name == 'Hsp_score') {
-              $hsp_score = $hsp_info;
-            }
-            if ($element_name == 'Hsp_evalue') {
-              $hsp_evalue = $hsp_info;
-              // use the first evalue for this set of HSPs
-              // as the best evalue. This get's shown as
-              // info for the overall match.
-              if (!$best_evalue) {
-                $best_evalue = $hsp_evalue;
+          $hit_count = 0;       
+          $number_hits = 0;   
+          $accession = '';
+          $hit_name = '';
+          $description = '';
+          $hit_organism = '';
+          
+          // initalize hsp variables
+          $hsp_array = array();
+          $counter = 0;
+          $best_evalue = 0;
+          $best_identity = 0;
+          $best_len = 0;
+          
+          // iterate through hits
+          while ($xml->read()) {
+          	
+            // if we're at the begining of the hit then reset variables
+            if ($xml->nodeType == XMLReader::ELEMENT) {
+              if (strcmp($xml->name, 'Hit') == 0) {
+                $hsp_array = array();
+                $counter = 0;
+                $best_evalue = 0;
+                $best_identity = 0;
+                $best_len = 0;   
+                $accession = '';
+                $hit_name = '';
+                $description = '';
+                $hit_organism = '';             
               }
             }
-            if ($element_name == 'Hsp_query-from') {
-              $hsp_query_from = $hsp_info;
-            }
-            if ($element_name == 'Hsp_query-to') {
-              $hsp_query_to = $hsp_info;
-            }
-            if ($element_name == 'Hsp_hit-from') {
-              $hsp_hit_from = $hsp_info;
-            }
-            if ($element_name == 'Hsp_hit-to') {
-              $hsp_hit_to = $hsp_info;
-            }
-            if ($element_name == 'Hsp_query-frame') {
-              $hsp_query_frame = $hsp_info;
-            }
-            if ($element_name == 'Hsp_identity') {
-              $hsp_identity = $hsp_info;
-              // use the first evalue for this set of HSPs
-              // as the best evalue. This get's shown as
-              // info for the overall match.
-              if (!$best_identity) {
-                $best_identity = $hsp_identity;
-              }
-            }
-            if ($element_name == 'Hsp_positive') {
-              $hsp_positive = $hsp_info;
-            }
-            if ($element_name == 'Hsp_align-len') {
-              $hsp_align_len = $hsp_info;
-              // use the first evalue for this set of HSPs
-              // as the best evalue. This get's shown as
-              // info for the overall match.
-              if (!$best_len) {
-                $best_len = $hsp_align_len;
-              }
-            }
-            if ($element_name == 'Hsp_qseq') {
-              $hsp_qseq = $hsp_info;
-            }
-            if ($element_name == 'Hsp_hseq') {
-              $hsp_hseq = $hsp_info;
-            }
-            if ($element_name == 'Hsp_midline') {
-              $hsp_midline = $hsp_info;
-            }
-          }
-
-          $hsp_content = array();
-          $hsp_content['hsp_num'] = $hsp_num;
-          $hsp_content['bit_score'] = $hsp_bit_score;
-          $hsp_content['score'] = $hsp_score;
-          $hsp_content['evalue'] = $hsp_evalue;
-          $hsp_content['query_frame'] = $hsp_query_frame;
-          $hsp_content['qseq'] = $hsp_qseq;
-          $hsp_content['midline'] = $hsp_midline;
-          $hsp_content['hseq'] = $hsp_hseq;
-          $hsp_content['hit_from'] = $hsp_hit_from;
-          $hsp_content['hit_to'] = $hsp_hit_to;
-          $hsp_content['identity'] = $hsp_identity;
-          $hsp_content['align_len'] = $hsp_align_len;
-          $hsp_content['positive'] = $hsp_positive;
-          $hsp_content['query_from'] = $hsp_query_from;
-          $hsp_content['query_to'] = $hsp_query_to;
-          $hsp_array[$counter] = $hsp_content;
-          $counter ++;
-        }
-      }
-    }
-      $arrowr_url = url(drupal_get_path('theme', 'tripal') . "/images/arrow_r.png");
-    $hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
-    $hits_array[$hit_count]['accession'] = $accession;
-    $hits_array[$hit_count]['hit_organism'] = $hit_organism;    
-    $hits_array[$hit_count]['hit_name'] = $hit_name;
-    
-    if ($accession && $db->urlprefix) {
-      $hits_array[$hit_count]['hit_url'] = "$db->urlprefix$accession";
-    } 
-    else {
-      // Test if this is another feature in the database
-      $sql = "SELECT feature_id FROM {feature} WHERE uniquename = '%s'";
-      $previous_db = db_set_active('chado');
-      $hit_feature_id = db_result(db_query($sql, $hit_name));
-      db_set_active($previous_db);
-      // If it is, add link to that feature
-      if ($hit_feature_id) {
-        $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
-      }
-    }
-    
-    $hits_array[$hit_count]['best_evalue'] = $best_evalue;
-    
-    if (!empty($best_len)) {
-      $percent_identity = number_format($best_identity/$best_len*100, 2);
-      $hits_array[$hit_count]['percent_identity'] = $percent_identity;
-    }
-
-    $hits_array[$hit_count]['description'] = $description;
-    
-    // if there is at least one HSP
-    if (!empty($hsp_array[0]['query_frame'])) {
-      $hits_array[$hit_count]['hsp'] = $hsp_array;
-    } 
-    else {
-      $hits_array[$hit_count]['hsp'] = array();
-    }
-    
-    $hit_count ++;
-    
-    // if we've hit the maximum number of hits then return
-    if ($max > 0 && $hit_count >= $max) {
-      break;
-    }
-  }
+            
+            // if we're at the beginning of any other element then collect data
+          	if ($xml->nodeType == XMLReader::ELEMENT) {
+          		$hit_element_name =  $xml->name;
+              $xml->read();
+              $hit_element_value = $xml->value;          	  
+              
+              
+              switch ($hit_element_name) { 
+          		  case 'Hit_id':
+                  // if parsing "name, acc, desc" from three tags (1/3)
+                  if ($is_genbank) {
+                    $hit_name = $hit_element_value;
+                  }
+          		  	break;
+          		  case 'Hit_def':
+	                if ($is_genbank) {
+	                  $description = $hit_element_value;
+	                } 
+	                else {
+	                  $accession = preg_replace($regex_hit_accession, "$1", $hit_element_value);
+	                  $hit_name = preg_replace($regex_hit_id, "$1", $hit_element_value);
+	                  $description = preg_replace($regex_hit_def, "$1", $hit_element_value);
+	                  if ($regex_hit_organism) {
+	                     $hit_organism = preg_replace($regex_hit_organism, "$1", $hit_element_value);
+	                  }
+	                }
+          		  	break;
+          		  case 'Hit_accession':
+	                // if parsing "name, acc, desc" from three tags (3/3)
+	                if ($is_genbank) {
+	                  $accession = $hit_element_value;
+	                }
+          		  	break;
+          		  case 'Hit_hsps':
+          		  	// iterate through the HSP children                                     
+                  while ($xml->read()) {                  		          		  
+                    
+                    // if we're at the beginning of a new element collect data
+          		  	  if ($xml->nodeType == XMLReader::ELEMENT) {          		  		
+                      $hsp_element_name = $xml->name;
+                      $xml->read();
+                      $hsp_info = $xml->value;
+                    	switch ($hsp_element_name) {
+                    		case 'Hsp_num':
+                    			$hsp_num = $hsp_info;
+                    			break;
+                    		case 'Hsp_bit-score':
+                    			$hsp_bit_score = $hsp_info;
+                    			break;
+                    		case 'Hsp_score':
+                    			$hsp_score = $hsp_info;
+                    			break;
+                    		case 'Hsp_evalue':
+		                    	$hsp_evalue = $hsp_info;
+		                      // use the first evalue for this set of HSPs
+		                      // as the best evalue. This get's shown as
+		                      // info for the overall match.
+		                      if (!$best_evalue) {
+		                        $best_evalue = $hsp_evalue;
+		                      }
+                    			break;
+                    		case 'Hsp_query-from':
+                    			$hsp_query_from = $hsp_info;
+                    			break;
+                    		case 'Hsp_query-to':
+                    			$hsp_query_to = $hsp_info;
+                          break;
+                        case 'Hsp_hit-from':
+                        	$hsp_hit_from = $hsp_info;
+                          break;
+                    		case 'Hsp_hit-to':
+                    			$hsp_hit_to = $hsp_info;
+                    			break;
+                    		case 'Hsp_query-frame':
+                    			$hsp_query_frame = $hsp_info;
+                    			break;
+                    		case 'Hsp_identity':
+		                    	$hsp_identity = $hsp_info;
+		                      // use the first evalue for this set of HSPs
+		                      // as the best evalue. This get's shown as
+		                      // info for the overall match.
+		                      if (!$best_identity) {
+		                        $best_identity = $hsp_identity;
+		                      }
+                    			break;
+                    		case 'Hsp_positive':
+                    			$hsp_positive = $hsp_info;
+                    			break;
+                    		case 'Hsp_align-len':
+		                    	$hsp_align_len = $hsp_info;
+		                      // use the first evalue for this set of HSPs
+		                      // as the best evalue. This get's shown as
+		                      // info for the overall match.
+		                      if (!$best_len) {
+		                        $best_len = $hsp_align_len;
+		                      }
+                    			break;
+                    		case 'Hsp_qseq':
+                    			$hsp_qseq = $hsp_info;
+                    			break;
+                    		case 'Hsp_hseq':
+                    			$hsp_hseq = $hsp_info;
+                    			break;
+                    		case 'Hsp_midline':
+                    			$hsp_midline = $hsp_info;
+                    			break;                    		
+                    	} // end switch ($hsp_element_name) { ...                    	
+                    } //  end if ($xml->nodeType == XMLReader::ELEMENT) { ...
+                    
+                    // if we're at the end of the HSP then set the values
+                    // that we gather through previous iterations in this while loop.
+                    if ($xml->nodeType == XMLReader::END_ELEMENT) {
+                      if (strcmp($xml->name, 'Hsp') == 0) {
+                        $hsp_content = array();
+                        $hsp_content['hsp_num'] = $hsp_num;
+                        $hsp_content['bit_score'] = $hsp_bit_score;
+                        $hsp_content['score'] = $hsp_score;
+                        $hsp_content['evalue'] = $hsp_evalue;
+                        $hsp_content['query_frame'] = $hsp_query_frame;
+                        $hsp_content['qseq'] = $hsp_qseq;
+                        $hsp_content['midline'] = $hsp_midline;
+                        $hsp_content['hseq'] = $hsp_hseq;
+                        $hsp_content['hit_from'] = $hsp_hit_from;
+                        $hsp_content['hit_to'] = $hsp_hit_to;
+                        $hsp_content['identity'] = $hsp_identity;
+                        $hsp_content['align_len'] = $hsp_align_len;
+                        $hsp_content['positive'] = $hsp_positive;
+                        $hsp_content['query_from'] = $hsp_query_from;
+                        $hsp_content['query_to'] = $hsp_query_to;
+                        $hsp_array[$counter] = $hsp_content;
+                        $counter ++;                        
+                      }
+                      
+                      // if we're at the end of the <Hit_hsps> element then 
+                      // break out of this while loop                   
+                      if (strcmp($xml->name, 'Hit_hsps') == 0) {
+                        break; 
+                      }
+                    } // end if ($xml->nodeType == XMLReader::END_ELEMENT) { ...
+                  } // end while ($xml->read()) { ...                              		  	  	                   
+          		  	break;
+              } // end switch ($hit_element_name) { ... 
+          	} // end if ($xml->nodeType == XMLReader::ELEMENT) {
+          	
+            // if we're at the end of the <Hit> then add this hit to the
+            // hits_array
+            if ($xml->nodeType == XMLReader::END_ELEMENT) {
+              if (strcmp($xml->name, 'Hit') == 0) {
+              	
+                // if we've hit the maximum number of hits then just count otherwise add
+                // a new hit
+                if ($max > 0 && $hit_count >= $max) {
+                  $number_hits++; 
+                }
+                else {
+	                $arrowr_url = url(drupal_get_path('theme', 'tripal') . "/images/arrow_r.png");
+	                $hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
+	                $hits_array[$hit_count]['accession'] = $accession;
+	                $hits_array[$hit_count]['hit_organism'] = $hit_organism;    
+	                $hits_array[$hit_count]['hit_name'] = $hit_name;
+	                
+	                if ($accession && $db->urlprefix) {
+	                  $hits_array[$hit_count]['hit_url'] = "$db->urlprefix$accession";
+	                } 
+	                else {
+	                  // Test if this is another feature in the database
+	                  $sql = "SELECT feature_id FROM {feature} WHERE uniquename = '%s'";
+	                  $previous_db = db_set_active('chado');
+	                  $hit_feature_id = db_result(db_query($sql, $hit_name));
+	                  db_set_active($previous_db);
+	                  // If it is, add link to that feature
+	                  if ($hit_feature_id) {
+	                    $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
+	                  }
+	                }
+	                
+	                $hits_array[$hit_count]['best_evalue'] = $best_evalue;
+	                
+	                if (!empty($best_len)) {
+	                  $percent_identity = number_format($best_identity/$best_len*100, 2);
+	                  $hits_array[$hit_count]['percent_identity'] = $percent_identity;
+	                }
+	            
+	                $hits_array[$hit_count]['description'] = $description;
+	                
+	                // if there is at least one HSP
+	                if (!empty($hsp_array[0]['query_frame'])) {
+	                  $hits_array[$hit_count]['hsp'] = $hsp_array;
+	                } 
+	                else {
+	                  $hits_array[$hit_count]['hsp'] = array();
+	                }
+	                
+	                $hit_count ++;  
+                } // end if ($max > 0 && $hit_count >= $max) { ... } else { ...                          
+              } // end if (strcmp($xml->name, 'Hit') == 0) { ...
+            }	// end if ($xml->nodeType == XMLReader::END_ELEMENT) ...		      
+				  } // end while ($xml->read()) { ...
+				  break; // end case 'Iteration_hits': ...
+      } // end switch ($tag_name) { ...
+    } // end if ($xml->nodeType == XMLReader::ELEMENT) { ...
+  } // end while ($xml->read()) { ...
+  
+  $blast_object->number_hits = $number_hits;  
   $blast_object->hits_array = $hits_array;
   return $blast_object;
 }
