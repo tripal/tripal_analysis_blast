@@ -456,10 +456,10 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
   $record->hit_organism = $org;
   
   if ($check) {
-    $succss = drupal_write_record('tripal_analysis_blast',  $record, 'db_id');
+    $success = drupal_write_record('tripal_analysis_blast',  $record, 'db_id');
   } 
   else {
-    $succss = drupal_write_record('tripal_analysis_blast',  $record);
+    $success = drupal_write_record('tripal_analysis_blast',  $record);
   }
   if ($success) {
      drupal_set_message("Database settings updated");

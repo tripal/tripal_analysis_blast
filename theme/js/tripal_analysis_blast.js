@@ -59,8 +59,7 @@ if (Drupal.jsEnabled) {
 	   var dbid = options[index].value;
 
 	   // Form the link for the following ajax call	   
-      var baseurl = tripal_get_base_url();
-      var link = baseurl + '/tripal_blast_regex/' + dbid;
+     var link = baseurl + '/admin/tripal/tripal_analysis/tripal_blast_regex/' + dbid;
 	   
 	   // Make ajax call to retrieve regular expressions
 	   $.ajax( {
