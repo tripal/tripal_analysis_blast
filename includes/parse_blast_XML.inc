@@ -84,8 +84,10 @@ function parse_NCBI_Blast_XML_index_version($xml_string, $db, $feature_id) {
   // and generate the rows of the table
   foreach ($iteration->children() as $hits) {
     $best_evalue = 0;
+    $best_score = 0;
     foreach ($hits->children() as $hit) {
       $best_evalue = 0;
+      $best_score = 0;
       $element_name = $hit->getName();
       if ($element_name == 'Hit_id') {
         // if parsing "name, acc, desc" from three tags (1/3)
@@ -366,7 +368,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
   $feature_id = 0;   
   $analysisfeature_id = 0;  
   $iteration_tags_xml = '';
-  $num_hits = 0;
+  $num_hits = 1;
 
   // iterate though the child nodes of the <Iteration> tag
   while ($blastoutput->read()) {
@@ -376,7 +378,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
         return;
       }
     }
-
+    // act based on the type of element 
     if ($blastoutput->nodeType == XMLReader::ELEMENT) {
       $tag_name =  $blastoutput->name;
       $blastoutput->read();
@@ -387,7 +389,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
         // if the node is <Iteration_query-def>
         case 'Iteration_query-def':
 
-          $iteration_tags_xml .= "<$tag_name>$value</$tag_name>";
+          $iteration_tags_xml .= "  <$tag_name>$value</$tag_name>\n";
 
           // If the user provided a query RE to extract the feature name then use that now 
           if ($query_re and preg_match("/$query_re/", $value, $matches)) {
@@ -403,7 +405,8 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           }
 
           if (!$feature and $query_re) {
-            watchdog('T_blastXML_load', "Cannot find feature in '$value' using the regular expression: $query_re", array(), WATCHDOG_ERROR);
+            watchdog('T_blastXML_load', "Cannot find feature in '$value' using the " . 
+                     "regular expression: $query_re", array(), WATCHDOG_ERROR);
             exit;
           }
 
@@ -445,18 +448,17 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
   
         // if the node is <Iteration_hits>
         case 'Iteration_hits':
-                    
           if (!$feature_id) {
             watchdog('T_blastXML_load', "Cannot add blast results as feature_id is missing.", array(), 
               WATCHDOG_ERROR);
             continue;
           }                   
           // we are going to store the XML in the analysisfeatureprop table so we need to rebuild it.          
-          $xml_content =  "<Iteration>\n" . $iteration_tags_xml . "<$tag_name>\n";
+          $xml_content =  "<Iteration>\n" . $iteration_tags_xml . "    <$tag_name>\n";
 
           // iterate through each of the <Hit> tags, extract the XML and add to our $xml_content
           while ($blastoutput->next()) {
-            $num_hits++;
+
             // if we've reached the node </Iteration> then break out
             // of the while loop.
             if ($blastoutput->nodeType == XMLReader::END_ELEMENT) {              
@@ -464,19 +466,21 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
                 break;
               }
             }
+            // for each hit, just get the contents as a block of XML. We'll
+            // store it as XML in the analysisfeatureprop table.
             if ($blastoutput->nodeType == XMLReader::ELEMENT) {
-              // parse all hits
-              if ($no_parsed == 'all') {
-                $xml_content .= $blastoutput->readInnerXML();
-              } 
-              else {
-                if ($num_hits < $no_parsed) {
+              if (strcmp($blastoutput->name, 'Hit') == 0) {
+                // parse only the hits requested to parse
+                if ($no_parsed == 'all' or $num_hits <= $no_parsed) {
+                  $xml_content .= "        <Hit>"; # don't need ending \n as it's included in readInnerXML()
                   $xml_content .= $blastoutput->readInnerXML();                  
-                }                   
+                  $xml_content .= "</Hit>\n";  # don't need spacing before tag as it's included in readInnerXML()
+                }
               }
+              $num_hits++;
             }
           }
-          $xml_content .= "\n</$tag_name></Iteration>";
+          $xml_content .= "\n  </$tag_name>\n</Iteration>";
          
           // Make sure this iteration doesn't exist in analysisfeatureprop. If it does, update but not insert
           $psql = "
@@ -486,9 +490,30 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
               INNER JOIN analysisfeature AF ON AF.analysisfeature_id = AFP.analysisfeature_id        
             WHERE feature_id=$1 AND analysis_id=$2 AND type_id=$3 
           ";
-          tripal_core_chado_prepare('sel_synonym_graphML', $psql, array('int', 'int', 'int'));
+          tripal_core_chado_prepare('blast_loader_selaprop', $psql, array('int', 'int', 'int'));
           $sql = "EXECUTE blast_loader_selaprop (%d, %d, %d)";
           $analysisfeatureprop = db_fetch_object(chado_query($sql, $feature_id, $analysis_id, $type_id));
+
+          // if the analysis feature already exists then get that record
+          $values = array(
+            'feature_id' => $feature_id,
+            'analysis_id' => $analysis_id,
+          );
+          $options = array('statement_name' => 'sel_analysisfeature_fean');
+          $result = tripal_core_chado_select('analysisfeature', array('analysisfeature_id'), $values, $options);
+          if (count($result) == 0) {
+             $options = array('statement_name' => 'ins_analysisfeature_fean');
+             $result = tripal_core_chado_insert('analysisfeature', $values, $options);
+             if (!$result) {
+               watchdog('T_blastXML_load', "Cannot add analysis feature record for $feature.", array(), 
+                 WATCHDOG_ERROR);
+               continue;    
+             }
+            $analysisfeature_id = $result['analysisfeature_id'];
+          }
+          else {
+            $analysisfeature_id = $result[0]->analysisfeature_id;
+          }
           
           // If the analysisfeatureprop record exists then update it
           if ($analysisfeatureprop) {
@@ -509,27 +534,10 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           }  
           // if the analyisfeatureprop record doesn't exist then add it                       
           else {
-            // if the analysis feature already exists then get that record
-            $values = array(
-              'feature_id' => $feature_id,
-              'analysis_id' => $analysis_id,
-            );
-            $options = array('statement_name' => 'sel_analysisfeature_fean');
-            $result = tripal_core_chado_select('analysisfeature', array('analysisfeature_id'), $values, $options);
-            if (count($result) == 0) {
-               $options = array('statement_name' => 'ins_analysisfeature_fean');
-               $analysisfeature = tripal_core_chado_insert('analysisfeature', $values, $options);
-               if (!$analysisfeature) {
-                 watchdog('T_blastXML_load', "Cannot add analysis feature record for $feature.", array(), 
-                   WATCHDOG_ERROR);
-                 continue;    
-               }
-            }
-            $analysisfeature = $result[0];
 
             // add the analysisfeatureprop record
             $values = array(
-              'analysisfeature_id' => $analysisfeature->analysisfeature_id,
+              'analysisfeature_id' => $analysisfeature_id,
               'type_id' => $type_id,
               'value' => $xml_content,
               'rank' => 0,
@@ -547,50 +555,56 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
 
             // remove any existing entries. we'll replace them.
             $match = array('analysisfeature_id' => $analysisfeature_id);
-            tripal_core_chado_delete('blast_hit_data', $match);              
+            $options = array('statement_name' => 'del_analysisfeature_id');
+            tripal_core_chado_delete('blast_hit_data', $match, $options);
 
             // get the db object
             $values = array('db_id' => $blastdb);
             $options = array('statement_name' => 'sel_db_id');
             $db = tripal_core_chado_select('db', array('*'), $values, $options);
-                   
+
             // get the analysis object
             $values = array('analysis_id' => $analysis_id);
             $options = array('statement_name' => 'sel_analysis_id');
-            $analysis = tripal_core_chado_select('analysis', $columns, $values, $options);
-                   
+            $analysis = tripal_core_chado_select('analysis', array('*'), $values, $options);
+
             // get the blast object
-            $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], 0, $feature_id, $analysis[0]);                      
+            $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], 0, $feature_id, $analysis[0]);
                       
             // iterate through the hits and add the records to the 
             // blast_hit_data table
             $failed = 0;
             for ($i = 0; $i < $blast_obj->number_hits; $i++) {
               // add the organism to the blast_organisms table, but
-              // fisrt check to make sure it doesn't already exist                
+              // first check to make sure it doesn't already exist                
               $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
-              $blast_org_id = NULL;
+              $blast_org_id = 0;
               if ($blast_org_name) {
                 $values = array('blast_org_name' => $blast_org_name);
                 $options = array('statement_name' => 'sel_blastorgname_na');
                 $result = tripal_core_chado_select('blast_organisms', array('*'), $values, $options);
-                if (count($result) == 0){
+                if (count($result) == 1){
                   $blast_org_id = $result[0]->blast_org_id;
                 } 
+                // if this organism doesn't exist then add it
                 else {
                   $options = array('statement_name' => 'ins_blastorgname_na');
                   $result = tripal_core_chado_insert('blast_organisms', $values, $options);
-                  if (array_key_exists('blast_org_id', $results)) {                    
-                    $blast_org_id = $result->blast_org_id;                    
-                  } 
+                  if (!$result) {
+                    watchdog('T_blastXML_load', "Failed to add blast organism: '$blast_org_name'", 
+                      array(), WATCHDOG_ERROR);   
+                    exit;
+                  }
+                  $blast_org_id = $result['blast_org_id'];
                 }
               }       
+
               $values = array(
                 'analysisfeature_id' => $analysisfeature_id,
                 'analysis_id' => $analysis_id,
                 'feature_id' => $feature_id,
                 'db_id' => $blastdb,
-                'hit_num' => $i,
+                'hit_num' => $i + 1,
                 'hit_name' => $blast_obj->hits_array[$i]['hit_name'],
                 'hit_url' => $blast_obj->hits_array[$i]['hit_url'],
                 'hit_description' => $blast_obj->hits_array[$i]['description'],
@@ -610,11 +624,13 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
             if ($failed) {
               watchdog('T_blastXML_load', "Failed to add keywords for searching: '$feature'", 
                 array(), WATCHDOG_ERROR);   
+              exit;
             }                      
           } // end if ($search_keywords) ...
           break; 
+
         default:
-          //$iteration_tags_xml .= "<$tag_value>$value</$tag_value>\n";
+          $iteration_tags_xml .= "  <$tag_name>$value</$tag_name>\n";
           break;
       }
     }
@@ -660,6 +676,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
  *        $blast_obj->hits_array[$i]['hit_name']
  *        $blast_obj->hits_array[$i]['hit_url']
  *        $blast_obj->hits_array[$i]['best_evalue']
+ *        $blast_obj->hits_array[$i]['best_score']
  *        $blast_obj->hits_array[$i]['percent_identity']
  *        $blast_obj->hits_array[$i]['description']
  *
@@ -776,140 +793,153 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
           $accession = '';
           $hit_name = '';
           $description = '';
-          $hit_organism = '';
+          $hit_organism = NULL;
           
           // initalize hsp variables
           $hsp_array = array();
           $counter = 0;
           $best_evalue = 0;
+          $best_score = 0;
           $best_identity = 0;
           $best_len = 0;
           
           // iterate through hits
           while ($xml->read()) {
-          	
+            
             // if we're at the begining of the hit then reset variables
             if ($xml->nodeType == XMLReader::ELEMENT) {
               if (strcmp($xml->name, 'Hit') == 0) {
                 $hsp_array = array();
                 $counter = 0;
                 $best_evalue = 0;
+                $best_score = 0;
                 $best_identity = 0;
                 $best_len = 0;   
                 $accession = '';
                 $hit_name = '';
                 $description = '';
-                $hit_organism = '';             
+                $hit_organism = NULL;
               }
             }
             
             // if we're at the beginning of any other element then collect data
-          	if ($xml->nodeType == XMLReader::ELEMENT) {
-          		$hit_element_name =  $xml->name;
+            if ($xml->nodeType == XMLReader::ELEMENT) {
+              $hit_element_name =  $xml->name;
               $xml->read();
-              $hit_element_value = $xml->value;          	  
+              $hit_element_value = $xml->value;              
               
               
               switch ($hit_element_name) { 
-          		  case 'Hit_id':
+                case 'Hit_id':
                   // if parsing "name, acc, desc" from three tags (1/3)
                   if ($is_genbank) {
                     $hit_name = $hit_element_value;
                   }
-          		  	break;
-          		  case 'Hit_def':
-	                if ($is_genbank) {
-	                  $description = $hit_element_value;
-	                } 
-	                else {
-	                  $accession = preg_replace($regex_hit_accession, "$1", $hit_element_value);
-	                  $hit_name = preg_replace($regex_hit_id, "$1", $hit_element_value);
-	                  $description = preg_replace($regex_hit_def, "$1", $hit_element_value);
-	                  if ($regex_hit_organism) {
-	                     $hit_organism = preg_replace($regex_hit_organism, "$1", $hit_element_value);
-	                  }
-	                }
-          		  	break;
-          		  case 'Hit_accession':
-	                // if parsing "name, acc, desc" from three tags (3/3)
-	                if ($is_genbank) {
-	                  $accession = $hit_element_value;
-	                }
-          		  	break;
-          		  case 'Hit_hsps':
-          		  	// iterate through the HSP children                                     
-                  while ($xml->read()) {                  		          		  
+                  break;
+                case 'Hit_def':
+                  if ($is_genbank) {
+                    $description = $hit_element_value;
+                    // look for the organism in the defenition
+                    $hit_organism = preg_replace('/^.*\[(.*?)\].*$/', "$1", $hit_element_value, 1, $count);
+                    if($count == 0){
+                      $hit_organism = NULL;
+                    }
+                  } 
+                  else {
+                    $accession = preg_replace($regex_hit_accession, "$1", $hit_element_value);
+                    $hit_name = preg_replace($regex_hit_id, "$1", $hit_element_value);
+                    $description = preg_replace($regex_hit_def, "$1", $hit_element_value);
+                    if ($regex_hit_organism) {
+                       $hit_organism = preg_replace($regex_hit_organism, "$1", $hit_element_value);
+                    }
+                  }
+                  break;
+                case 'Hit_accession':
+                  // if parsing "name, acc, desc" from three tags (3/3)
+                  if ($is_genbank) {
+                    $accession = $hit_element_value;
+                  }
+                  break;
+                case 'Hit_hsps':
+                  // iterate through the HSP children                                     
+                  while ($xml->read()) {                                      
                     
                     // if we're at the beginning of a new element collect data
-          		  	  if ($xml->nodeType == XMLReader::ELEMENT) {          		  		
+                    if ($xml->nodeType == XMLReader::ELEMENT) {                    
                       $hsp_element_name = $xml->name;
                       $xml->read();
                       $hsp_info = $xml->value;
-                    	switch ($hsp_element_name) {
-                    		case 'Hsp_num':
-                    			$hsp_num = $hsp_info;
-                    			break;
-                    		case 'Hsp_bit-score':
-                    			$hsp_bit_score = $hsp_info;
-                    			break;
-                    		case 'Hsp_score':
-                    			$hsp_score = $hsp_info;
-                    			break;
-                    		case 'Hsp_evalue':
-		                    	$hsp_evalue = $hsp_info;
-		                      // use the first evalue for this set of HSPs
-		                      // as the best evalue. This get's shown as
-		                      // info for the overall match.
-		                      if (!$best_evalue) {
-		                        $best_evalue = $hsp_evalue;
-		                      }
-                    			break;
-                    		case 'Hsp_query-from':
-                    			$hsp_query_from = $hsp_info;
-                    			break;
-                    		case 'Hsp_query-to':
-                    			$hsp_query_to = $hsp_info;
+                      switch ($hsp_element_name) {
+                        case 'Hsp_num':
+                          $hsp_num = $hsp_info;
+                          break;
+                        case 'Hsp_bit-score':
+                          $hsp_bit_score = $hsp_info;
+                          break;
+                        case 'Hsp_score':
+                          $hsp_score = $hsp_info;
+                          // use the first score for this set of HSPs
+                          // as the best score. This get's shown as
+                          // info for the overall match.
+                          if (!$best_score) {
+                            $best_score = $hsp_score;
+                          }
+                          break;
+                        case 'Hsp_evalue':
+                          $hsp_evalue = $hsp_info;
+                          // use the first evalue for this set of HSPs
+                          // as the best evalue. This get's shown as
+                          // info for the overall match.
+                          if (!$best_evalue) {
+                            $best_evalue = $hsp_evalue;
+                          }
+                          break;
+                        case 'Hsp_query-from':
+                          $hsp_query_from = $hsp_info;
+                          break;
+                        case 'Hsp_query-to':
+                          $hsp_query_to = $hsp_info;
                           break;
                         case 'Hsp_hit-from':
-                        	$hsp_hit_from = $hsp_info;
+                          $hsp_hit_from = $hsp_info;
                           break;
-                    		case 'Hsp_hit-to':
-                    			$hsp_hit_to = $hsp_info;
-                    			break;
-                    		case 'Hsp_query-frame':
-                    			$hsp_query_frame = $hsp_info;
-                    			break;
-                    		case 'Hsp_identity':
-		                    	$hsp_identity = $hsp_info;
-		                      // use the first evalue for this set of HSPs
-		                      // as the best evalue. This get's shown as
-		                      // info for the overall match.
-		                      if (!$best_identity) {
-		                        $best_identity = $hsp_identity;
-		                      }
-                    			break;
-                    		case 'Hsp_positive':
-                    			$hsp_positive = $hsp_info;
-                    			break;
-                    		case 'Hsp_align-len':
-		                    	$hsp_align_len = $hsp_info;
-		                      // use the first evalue for this set of HSPs
-		                      // as the best evalue. This get's shown as
-		                      // info for the overall match.
-		                      if (!$best_len) {
-		                        $best_len = $hsp_align_len;
-		                      }
-                    			break;
-                    		case 'Hsp_qseq':
-                    			$hsp_qseq = $hsp_info;
-                    			break;
-                    		case 'Hsp_hseq':
-                    			$hsp_hseq = $hsp_info;
-                    			break;
-                    		case 'Hsp_midline':
-                    			$hsp_midline = $hsp_info;
-                    			break;                    		
-                    	} // end switch ($hsp_element_name) { ...                    	
+                        case 'Hsp_hit-to':
+                          $hsp_hit_to = $hsp_info;
+                          break;
+                        case 'Hsp_query-frame':
+                          $hsp_query_frame = $hsp_info;
+                          break;
+                        case 'Hsp_identity':
+                          $hsp_identity = $hsp_info;
+                          // use the first evalue for this set of HSPs
+                          // as the best evalue. This get's shown as
+                          // info for the overall match.
+                          if (!$best_identity) {
+                            $best_identity = $hsp_identity;
+                          }
+                          break;
+                        case 'Hsp_positive':
+                          $hsp_positive = $hsp_info;
+                          break;
+                        case 'Hsp_align-len':
+                          $hsp_align_len = $hsp_info;
+                          // use the first evalue for this set of HSPs
+                          // as the best evalue. This get's shown as
+                          // info for the overall match.
+                          if (!$best_len) {
+                            $best_len = $hsp_align_len;
+                          }
+                          break;
+                        case 'Hsp_qseq':
+                          $hsp_qseq = $hsp_info;
+                          break;
+                        case 'Hsp_hseq':
+                          $hsp_hseq = $hsp_info;
+                          break;
+                        case 'Hsp_midline':
+                          $hsp_midline = $hsp_info;
+                          break;                        
+                      } // end switch ($hsp_element_name) { ...                      
                     } //  end if ($xml->nodeType == XMLReader::ELEMENT) { ...
                     
                     // if we're at the end of the HSP then set the values
@@ -942,66 +972,68 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
                         break; 
                       }
                     } // end if ($xml->nodeType == XMLReader::END_ELEMENT) { ...
-                  } // end while ($xml->read()) { ...                              		  	  	                   
-          		  	break;
+                  } // end while ($xml->read()) { ...                                                             
+                  break;
               } // end switch ($hit_element_name) { ... 
-          	} // end if ($xml->nodeType == XMLReader::ELEMENT) {
-          	
+            } // end if ($xml->nodeType == XMLReader::ELEMENT) {
+            
             // if we're at the end of the <Hit> then add this hit to the
             // hits_array
             if ($xml->nodeType == XMLReader::END_ELEMENT) {
               if (strcmp($xml->name, 'Hit') == 0) {
-              	
+                
                 // if we've hit the maximum number of hits then just count otherwise add
                 // a new hit
                 if ($max > 0 && $hit_count >= $max) {
                   $number_hits++; 
                 }
                 else {
-	                $arrowr_url = url(drupal_get_path('theme', 'tripal') . "/images/arrow_r.png");
-	                $hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
-	                $hits_array[$hit_count]['accession'] = $accession;
-	                $hits_array[$hit_count]['hit_organism'] = $hit_organism;    
-	                $hits_array[$hit_count]['hit_name'] = $hit_name;
-	                
-	                if ($accession && $db->urlprefix) {
-	                  $hits_array[$hit_count]['hit_url'] = "$db->urlprefix$accession";
-	                } 
-	                else {
-	                  // Test if this is another feature in the database
-	                  $sql = "SELECT feature_id FROM {feature} WHERE uniquename = '%s'";
-	                  $previous_db = db_set_active('chado');
-	                  $hit_feature_id = db_result(db_query($sql, $hit_name));
-	                  db_set_active($previous_db);
-	                  // If it is, add link to that feature
-	                  if ($hit_feature_id) {
-	                    $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
-	                  }
-	                }
-	                
-	                $hits_array[$hit_count]['best_evalue'] = $best_evalue;
-	                
-	                if (!empty($best_len)) {
-	                  $percent_identity = number_format($best_identity/$best_len*100, 2);
-	                  $hits_array[$hit_count]['percent_identity'] = $percent_identity;
-	                }
-	            
-	                $hits_array[$hit_count]['description'] = $description;
-	                
-	                // if there is at least one HSP
-	                if (!empty($hsp_array[0]['query_frame'])) {
-	                  $hits_array[$hit_count]['hsp'] = $hsp_array;
-	                } 
-	                else {
-	                  $hits_array[$hit_count]['hsp'] = array();
-	                }
-	                
-	                $hit_count ++;  
+                  $number_hits++; 
+                  $arrowr_url = url(drupal_get_path('theme', 'tripal') . "/images/arrow_r.png");
+                  $hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
+                  $hits_array[$hit_count]['accession'] = $accession;
+                  $hits_array[$hit_count]['hit_organism'] = $hit_organism;    
+                  $hits_array[$hit_count]['hit_name'] = $hit_name;
+                  
+                  if ($accession && $db->urlprefix) {
+                    $hits_array[$hit_count]['hit_url'] = "$db->urlprefix$accession";
+                  } 
+                  else {
+                    // Test if this is another feature in the database
+                    $sql = "SELECT feature_id FROM {feature} WHERE uniquename = '%s'";
+                    $previous_db = db_set_active('chado');
+                    $hit_feature_id = db_result(db_query($sql, $hit_name));
+                    db_set_active($previous_db);
+                    // If it is, add link to that feature
+                    if ($hit_feature_id) {
+                      $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
+                    }
+                  }
+                  
+                  $hits_array[$hit_count]['best_evalue'] = $best_evalue;
+                  $hits_array[$hit_count]['best_score'] = $best_score;
+                  
+                  if (!empty($best_len)) {
+                    $percent_identity = number_format($best_identity/$best_len*100, 2);
+                    $hits_array[$hit_count]['percent_identity'] = $percent_identity;
+                  }
+              
+                  $hits_array[$hit_count]['description'] = $description;
+                  
+                  // if there is at least one HSP
+                  if (!empty($hsp_array[0]['query_frame'])) {
+                    $hits_array[$hit_count]['hsp'] = $hsp_array;
+                  } 
+                  else {
+                    $hits_array[$hit_count]['hsp'] = array();
+                  }
+                  
+                  $hit_count ++;  
                 } // end if ($max > 0 && $hit_count >= $max) { ... } else { ...                          
               } // end if (strcmp($xml->name, 'Hit') == 0) { ...
-            }	// end if ($xml->nodeType == XMLReader::END_ELEMENT) ...		      
-				  } // end while ($xml->read()) { ...
-				  break; // end case 'Iteration_hits': ...
+            }  // end if ($xml->nodeType == XMLReader::END_ELEMENT) ...          
+          } // end while ($xml->read()) { ...
+          break; // end case 'Iteration_hits': ...
       } // end switch ($tag_name) { ...
     } // end if ($xml->nodeType == XMLReader::ELEMENT) { ...
   } // end while ($xml->read()) { ...
@@ -1135,6 +1167,7 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
       $hit_count++;
       foreach ($hits->children() as $hit) {
         $best_evalue = 0;
+        $best_score = 0;
         $best_identity = 0;
         $best_len = 0;
         $element_name = $hit->getName();
@@ -1176,6 +1209,12 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
               }
               if ($element_name == 'Hsp_score') {
                 $hsp_score = $hsp_info;
+                // use the first evalue for this set of HSPs
+                // as the best evalue. This get's shown as
+                // info for the overall match.
+                if (!$best_score) {
+                  $best_score = $hsp_score;
+                }
               }
               if ($element_name == 'Hsp_evalue') {
                 $hsp_evalue = $hsp_info;
@@ -1325,7 +1364,7 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
       break;
     }
   }
-   print "100%\n";
+  print "100%\n";
   return;
 }
 

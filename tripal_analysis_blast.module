@@ -582,8 +582,8 @@ function chado_analysis_blast_form($node) {
   $form['blast']['no_parsed'] = array(
     '#title' => t('Number of hits to be parsed'),  
       '#type' => 'textfield',  
-      '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10'' in this field."),  
-      '#default_value' => 'all',  
+      '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10'' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),  
+      '#default_value' => '25',  
   );
 
   $form['blast']['query_re'] = array(
