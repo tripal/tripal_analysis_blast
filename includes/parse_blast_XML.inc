@@ -547,12 +547,9 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
             $values = array(
               'analysisfeature_id' => $analysisfeature_id,
               'type_id' => $type_id,
-              'value' => $xml_content,              
+              'value' => $xml_content,
+              'rank' => 0,              
             );
-            // if the version of chado is greater than 1.1 then there is a rank field in the analysisprop table
-            if (tripal_get_chado_version() >= 1.2) {
-              $values['rank'] = 0;
-            }
             $options = array('statement_name' => 'ins_analysisfeatureprop_antyvara');
             $analysisfeatureprop = tripal_core_chado_insert('analysisfeatureprop', $values, $options);
             if (!$analysisfeatureprop) {
