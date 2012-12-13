@@ -764,7 +764,8 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
   // of the original XML file with only a single iteration.
   // An iteration is essentially all the hits for a single
   // query sequence.
-  $xml = XMLReader::xml($xml_string);
+  $xml = new XMLReader();
+  $xml->xml($xml_string);
   $iteration = '';
 
   // iterate though the child nodes of the <Iteration> tag
