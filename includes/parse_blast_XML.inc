@@ -404,7 +404,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           } 
           // if no match up to the first space then just use the entire string
           else {
-            $feature = $iteration_tags;
+            $feature = $value;
           }
 
           if (!$feature and $query_re) {
@@ -436,7 +436,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
 
           $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select, $options);
           if (!$feature_arr) {
-            watchdog('T_blastXML_load', "Cannot find feature in '$value'. Check the Drupal log for additional errors.", 
+            watchdog('T_blastXML_load', "Database query failed when searching for feature '$value'. Check the Drupal log for additional errors.", 
               array(), WATCHDOG_ERROR);
             exit;  
           }
