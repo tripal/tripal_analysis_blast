@@ -196,9 +196,10 @@ function tripal_analysis_blast_preprocess_tripal_feature_blast_results(&$variabl
    }
 
    $blast_results = tripal_get_feature_blast_results($feature->feature_id,  $db_id, $max);
-   if ($blast_results) {
-     $feature->tripal_analysis_blast->blast_results_list = $blast_results;
-   }      
+   if (!is_object($feature->tripal_analysis_blast)) {
+     $feature->tripal_analysis_blast = new stdClass;
+   }
+   $feature->tripal_analysis_blast->blast_results_list = $blast_results;      
 }
 /*******************************************************************************
  * Prepare blast result for the feature shown on the page
