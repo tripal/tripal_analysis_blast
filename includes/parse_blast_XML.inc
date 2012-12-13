@@ -304,7 +304,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
         // close the temp file
         fclose($out_fh);
         // now parse this new temp file
-        print "\nQuery # $count\n";
+        print "\nQuery number $count\n";
         tripal_analysis_blast_parseXML($analysis_id, $blastdb, $temp, 
           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
           $job_id, 0, $search_keywords);
@@ -435,6 +435,11 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           }
 
           $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select, $options);
+          if (!$feature_arr) {
+            watchdog('T_blastXML_load', "Cannot find feature in '$value'. Check the Drupal log for additional errors.", 
+              array(), WATCHDOG_ERROR);
+            exit;  
+          }
           if (count($feature_arr) > 1) {
             watchdog('T_blastXML_load', "Ambiguous: '$feature' matches more than one " .
                      "feature and is being skipped", array(), WATCHDOG_ERROR);
