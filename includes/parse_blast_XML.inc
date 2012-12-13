@@ -285,6 +285,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
 
     // generate a temporary file name
     $temp = tempnam(sys_get_temp_dir(), 'blast_');
+    $count = 1;
     print "Blast XML file is concatenated.  Breaking apart and parsing each individually: $temp\n";
     $out_fh = fopen($temp, "w");
 
@@ -303,11 +304,13 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
         // close the temp file
         fclose($out_fh);
         // now parse this new temp file
+        print "\nQuery # $count\n";
         tripal_analysis_blast_parseXML($analysis_id, $blastdb, $temp, 
           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
           $job_id, 0, $search_keywords);
         // reopen the file for the next set of results
         $out_fh = fopen($temp, "w");
+        $count++;
       }
     }
     fclose($in_fh);
