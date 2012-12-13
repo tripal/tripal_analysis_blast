@@ -1396,7 +1396,12 @@ function tripal_analysis_blast_loader_set_progress($nodes_read, $total = -1, $jo
     $last_read = 0;
   }  
   $intv_read += $nodes_read - $last_read;
-  if ($intv_read >= $interval) {    
+  if ($total_nodes == 0) {
+    print "Parsing element " . number_format($nodes_read) . " of " . 
+      number_format($total_nodes) . " (100%). Memory: " . 
+      number_format(memory_get_usage()) . " bytes.\r";
+  }  
+  elseif ($intv_read >= $interval) {    
     $intv_read = 0;
     $percent = sprintf("%.2f", ($nodes_read / $total_nodes) * 100);
     print "Parsing element " . number_format($nodes_read) . " of " . 
