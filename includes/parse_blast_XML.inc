@@ -175,6 +175,9 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
    $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
    $is_concat, $search_keywords, $job_id) {
 
+  // get a persistant connection
+  $connection = tripal_db_persistent_chado();
+     
   // If user input a file (e.g. blast.xml)
   if (is_file($blastfile)) {
       tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
