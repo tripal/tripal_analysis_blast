@@ -87,9 +87,6 @@ if (Drupal.jsEnabled) {
    <!-- Basic Details Theme -->
    <?php print theme('tripal_analysis_blast_base', $node); ?>
    
-   <!-- Network Visualization -->
-   <?php print theme('tripal_analysis_blast_base', $node); ?>
-   
    <!-- Resource Blocks CCK elements --><?php
    for($i = 0; $i < count($node->field_resource_titles); $i++){
      if($node->field_resource_titles[$i]['value']){ ?>
