@@ -589,16 +589,12 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
               // add the organism to the blast_organisms table, but
               // first check to make sure it doesn't already exist                
               $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
-              $blast_org_id = 0;
               if ($blast_org_name) {
                 $values = array('blast_org_name' => $blast_org_name);
                 $options = array('statement_name' => 'sel_blastorgname_na');
                 $result = tripal_core_chado_select('blast_organisms', array('*'), $values, $options);
-                if (count($result) == 1){
-                  $blast_org_id = $result[0]->blast_org_id;
-                } 
                 // if this organism doesn't exist then add it
-                else {
+                if (!$result or count($result) == 0) {
                   $options = array('statement_name' => 'ins_blastorgname_na');
                   $result = tripal_core_chado_insert('blast_organisms', $values, $options);
                   if (!$result) {
@@ -607,6 +603,9 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
                     exit;
                   }
                   $blast_org_id = $result['blast_org_id'];
+                }
+                else {                                  
+                  $blast_org_id = $result[0]->blast_org_id;                
                 }
               }       
 
@@ -722,7 +721,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
   $regex_hit_def = $parser->regex_hit_def;
   $regex_hit_organism = $parser->regex_hit_organism;
   $regex_hit_accession = $parser->regex_hit_accession;  
-  $hit_organism = $parser->hit_organism;
+  $db_organism = $parser->hit_organism;
 
   // set default if regular expressions have not been specified
   if (!$regex_hit_id) {
@@ -805,7 +804,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
           $accession = '';
           $hit_name = '';
           $description = '';
-          $hit_organism = NULL;
+          $hit_organism = 'Unknown';
           
           // initalize hsp variables
           $hsp_array = array();
@@ -830,7 +829,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
                 $accession = '';
                 $hit_name = '';
                 $description = '';
-                $hit_organism = NULL;
+                $hit_organism = 'Unknown';
               }
             }
             
@@ -854,7 +853,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
                     // look for the organism in the defenition
                     $hit_organism = preg_replace('/^.*\[(.*?)\].*$/', "$1", $hit_element_value, 1, $count);
                     if($count == 0){
-                      $hit_organism = NULL;
+                      $hit_organism = 'Unknown';
                     }
                   } 
                   else {
@@ -863,6 +862,9 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
                     $description = preg_replace($regex_hit_def, "$1", $hit_element_value);
                     if ($regex_hit_organism) {
                        $hit_organism = preg_replace($regex_hit_organism, "$1", $hit_element_value);
+                    }
+                    elseif ($db_organism) {
+                      $hit_organism = $db_organism;
                     }
                   }
                   break;
@@ -1120,6 +1122,9 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
   }
   if ($regex_hit_organism) {
     $regex_hit_organism = '/' . $regex_hit_accession . '/';
+  }
+  if (!$hit_organism) {
+    $hit_organism = 'Unknown';    
   }
   
    $interval = intval($counter * 0.01);
