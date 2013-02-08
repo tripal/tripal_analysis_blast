@@ -731,26 +731,36 @@ function chado_analysis_blast_load($node) {
 */
 function chado_analysis_blast_insert($node) {
 
-   // insert the analysistripal_core_generate_chado_var
-   chado_analysis_insert($node);
-
-   // set the type for this analysis
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_type', 'tripal_analysis_blast');
-
-   // now add in the remaining settings as a single property but separated by bars
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastdb', $node->blastdb);
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile', $node->blastfile);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastparameters', $node->blastparameters);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_no_parsed', $node->no_parsed);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_re', $node->query_re);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_type', $node->query_type);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_uniquename', $node->query_uniquename);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile_ext', $node->blastfile_ext);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_is_concat', $node->is_concat);  
-   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_search_keywords', $node->search_keywords);  
+  // get the analysis_id from the node before the call below
+  $analysis_id = $node->analysis_id;
   
-   // submit the parsing jobs
-   chado_analysis_blast_submit_jobs($node);
+  // insert the analysis. If the analysis already exist then this
+  // call will link it to a new Drupa node.
+  chado_analysis_insert($node);
+  
+  // If this analysis already exists then don't recreate it in chado. This can happen
+  // when nodes are synced.  They already exist but Drupal doesn't know it and calls 
+  // this function.
+  if (!$analysis_id) {   
+    
+    // set the type for this analysis
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_type', 'tripal_analysis_blast');
+    
+    // now add in the remaining settings as a single property but separated by bars
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastdb', $node->blastdb);
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile', $node->blastfile);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastparameters', $node->blastparameters);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_no_parsed', $node->no_parsed);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_re', $node->query_re);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_type', $node->query_type);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_uniquename', $node->query_uniquename);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile_ext', $node->blastfile_ext);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_is_concat', $node->is_concat);  
+    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_search_keywords', $node->search_keywords);  
+    
+    // submit the parsing jobs
+    chado_analysis_blast_submit_jobs($node);
+  }
 }
 /**
  * 
