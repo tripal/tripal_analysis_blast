@@ -556,7 +556,13 @@ function chado_analysis_blast_form($node) {
   $form['blast']['blastdb'] = array(
       '#title' => t('Database'),  
       '#type' => 'select',  
-      '#description' => t('The database used for the blast analysis. If the database does not appear in this list,  please add it.'), 
+      '#description' => t('The database used for the blast analysis. If the database does not appear in this list, please ') . 
+        l(t('add a new database.  '), 'admin/tripal/tripal_db/add_db', array('attributes' => array('target' => '_blank')) ) . 
+        t('Each database may have a different format for each match. This blast module will attempt to extract the match name,
+         match accession, and organism from each match.  To ensure the parser is able to properly extract
+         this information. Please set the proper regular expression values on the ') . 
+         l(t('Blast Settings page. '), 'admin/tripal/tripal_analysis/tripal_blast_analysis',array('attributes' => array('target' => '_blank'))  ) .
+         t('Databases from NCBI have a built-in parser. On the Blast Settings page, simply click the box "Use Genebank style parser"'), 
       '#options' => $form['db_options']['#value'],  
       '#default_value' => $blastdb,
   );
