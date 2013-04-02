@@ -304,7 +304,7 @@ function tripal_get_blast_results_index_version($feature_id) {
   // for inserting into the analysisfeatureprop table
   $previous_db = tripal_db_set_active('chado');
   $sql = "SELECT CVT.cvterm_id FROM {cvterm} CVT ".
-         "  INNER JOIN cv ON cv.cv_id = CVT.cv_id ".
+         "  INNER JOIN {cv} ON cv.cv_id = CVT.cv_id ".
          "WHERE CVT.name = 'analysis_blast_output_iteration_hits' ".
          "  AND CV.name = 'tripal'";
   $type_id = db_result(db_query($sql));
@@ -313,8 +313,8 @@ function tripal_get_blast_results_index_version($feature_id) {
   // ,   and get analysis_id from analysisfeature table
   $sql = "SELECT AP.value AS apvalue,  AFP.value AS afpvalue, AF.analysis_id AS aid
            FROM {analysisfeatureprop} AFP
-             INNER JOIN analysisfeature AF ON AF.analysisfeature_id = AFP.analysisfeature_id
-             INNER JOIN analysisprop AP ON AP.analysis_id = AF.analysis_id
+             INNER JOIN {analysisfeature} AF ON AF.analysisfeature_id = AFP.analysisfeature_id
+             INNER JOIN {analysisprop} AP ON AP.analysis_id = AF.analysis_id
            WHERE feature_id = %d
              AND AFP.type_id = %d ";
   $result = db_query($sql,  $feature_id, $type_id);

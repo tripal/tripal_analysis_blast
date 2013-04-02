@@ -498,7 +498,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
             PREPARE blast_loader_selaprop(int, int, int) AS
             SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id 
             FROM {analysisfeatureprop} AFP 
-              INNER JOIN analysisfeature AF ON AF.analysisfeature_id = AFP.analysisfeature_id        
+              INNER JOIN {analysisfeature} AF ON AF.analysisfeature_id = AFP.analysisfeature_id        
             WHERE feature_id=$1 AND analysis_id=$2 AND type_id=$3 
           ";
           tripal_core_chado_prepare('blast_loader_selaprop', $psql, array('int', 'int', 'int'));
