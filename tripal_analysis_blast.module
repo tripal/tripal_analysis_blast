@@ -301,13 +301,12 @@ function tripal_get_feature_blast_results($feature_id, $db_id, $max) {
 function tripal_get_blast_results_index_version($feature_id) {
 
   // Get cvterm_id for 'analysis_blast_output_iteration_hits' which is required
-  // for inserting into the analysisfeatureprop table
-  $previous_db = tripal_db_set_active('chado');
+  // for inserting into the analysisfeatureprop table  
   $sql = "SELECT CVT.cvterm_id FROM {cvterm} CVT ".
          "  INNER JOIN {cv} ON cv.cv_id = CVT.cv_id ".
          "WHERE CVT.name = 'analysis_blast_output_iteration_hits' ".
          "  AND CV.name = 'tripal'";
-  $type_id = db_result(db_query($sql));
+  $type_id = db_result(chado_query($sql));
 
   // Get xml string from analysisfeatureprop value column,  get db_id from analysisprop value column
   // ,   and get analysis_id from analysisfeature table
@@ -317,26 +316,23 @@ function tripal_get_blast_results_index_version($feature_id) {
              INNER JOIN {analysisprop} AP ON AP.analysis_id = AF.analysis_id
            WHERE feature_id = %d
              AND AFP.type_id = %d ";
-  $result = db_query($sql,  $feature_id, $type_id);
-  tripal_db_set_active($previous_db);
+  $result = chado_query($sql,  $feature_id, $type_id);
 
   // get the HTML content for viewing each of the XML file
   while ($analysisfeatureprop = db_fetch_object($result)) {
-    // get analysis name and date
-    $previous_db = tripal_db_set_active('chado');
+    // get analysis name and date    
     $sql = "SELECT analysis_id AS aid,  name, to_char(timeexecuted, 'MM-DD-YYYY') AS time
             FROM {analysis}               WHERE analysis_id = %d";
-    $analysis = db_fetch_object(db_query($sql,  $analysisfeatureprop->aid));
-    tripal_db_set_active($previous_db);
+    $analysis = db_fetch_object(chado_query($sql,  $analysisfeatureprop->aid));
+    
 
     $blastsettings = explode("|",   $analysisfeatureprop->apvalue);
     $att_db_id = $blastsettings [0];
 
-    // Get db object using the db_id
-    $previous_db = tripal_db_set_active('chado');
+    // Get db object using the db_id    
     $sql = "SELECT * FROM {db} WHERE db_id=%d";
-    $db = db_fetch_object(db_query($sql,  $att_db_id));
-    tripal_db_set_active($previous_db);
+    $db = db_fetch_object(chado_query($sql,  $att_db_id));
+    
     // Only index best 10 hits because the default page only shows 10 blast results
     $max = 10;
     $content .= parse_NCBI_Blast_XML_index_version($analysisfeatureprop->afpvalue, $db, $max, $feature_id, $ajax, $analysis);
@@ -362,11 +358,11 @@ function tripal_analysis_blast_settings_form() {
       '#default_value' => variable_get('tripal_analysis_blast_setting',  array('chado_feature')),  
   );
 
-  $previous_db = tripal_db_set_active('chado');  // use chado database
+  
   // get a list of db from chado for user to choose
   $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
-  $results = db_query($sql);
-  tripal_db_set_active($previous_db); // use drupal database
+  $results = chado_query($sql);
+  
   $blastdbs = array();
   while ($db = db_fetch_object($results)) {
     $blastdbs[$db->db_id] = $db->name;
@@ -444,7 +440,7 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
   
   // Check if the blast settings exists
   $sql = "SELECT db_id FROM {tripal_analysis_blast} WHERE db_id=%d";
-  $check = db_result(db_query($sql,  $db_id));
+  $check = db_result(chado_query($sql,  $db_id));
   
   $record = new stdClass();
   $record->db_id = $db_id;
@@ -476,7 +472,7 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
  */
 function tripal_get_blast_regex($db_id) {
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $settings = db_fetch_object(db_query($sql,  $db_id));
+  $settings = db_fetch_object(chado_query($sql,  $db_id));
   drupal_json(array(
        'name' => $settings->displayname,
        'genbank_style' => $settings->genbank_style,
@@ -539,12 +535,11 @@ function chado_analysis_blast_form($node) {
       '#attributes' => array('id' => 'blast-extra-settings'),  
       '#weight' => 11
   );
-
-  $previous_db = tripal_db_set_active('chado');  // use chado database
+  
   // get a list of db from chado for user to choose
   $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
-  $results = db_query($sql);
-  tripal_db_set_active($previous_db);
+  $results = chado_query($sql);
+  
   $blastdbs = array();
   while ($db = db_fetch_object($results)) {
     $blastdbs[$db->db_id] = $db->name;

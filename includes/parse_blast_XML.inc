@@ -25,7 +25,7 @@
 function parse_NCBI_Blast_XML_index_version($xml_string, $db, $feature_id) {
   // Get the parser using db_id
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $parser = db_fetch_object(db_query($sql, $db->db_id));
+  $parser = db_fetch_object(chado_query($sql, $db->db_id));
   $db_name = $parser->displayname;
   $is_genbank = $parser->genbank_style;
   $regex_hit_id = $parser->regex_hit_id;
@@ -714,7 +714,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
 
   // Get the parser using db_id
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $parser = db_fetch_object(db_query($sql, $db->db_id));
+  $parser = db_fetch_object(chado_query($sql, $db->db_id));
   $db_name = $parser->displayname;
   $is_genbank = $parser->genbank_style;
   $regex_hit_id = $parser->regex_hit_id;
@@ -1016,7 +1016,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
                     // Test if this is another feature in the database
                     $sql = "SELECT feature_id FROM {feature} WHERE uniquename = '%s'";
                     $previous_db = db_set_active('chado');
-                    $hit_feature_id = db_result(db_query($sql, $hit_name));
+                    $hit_feature_id = db_result(chado_query($sql, $hit_name));
                     db_set_active($previous_db);
                     // If it is, add link to that feature
                     if ($hit_feature_id) {
@@ -1066,8 +1066,7 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
   $sql = "SELECT feature_id
           FROM {analysisfeature} AF  
                WHERE analysis_id = %d";
-  $previous_db = tripal_db_set_active('chado');
-  $result = db_query($sql, $analysis_id);
+  $result = chado_query($sql, $analysis_id);
   $feature_set = array();
   $counter = 0;
   while ($feature = db_fetch_object($result)) {
@@ -1082,16 +1081,15 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
                 WHERE A.analysis_id = %d
                 AND type_id= (SELECT cvterm_id FROM {cvterm} 
                               WHERE name = 'analysis_blast_settings')";
-  $analysis = db_fetch_object(db_query($sql, $analysis_id));
+  $analysis = db_fetch_object(chado_query($sql, $analysis_id));
   
   // Parse the blast settings
   $blastsettings = explode("|", $analysis->value);
   $db_id = $blastsettings [0];
   
   // Get the xml description parser using db_id
-  tripal_db_set_active($previous_db);
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $parser = db_fetch_object(db_query($sql, $db_id));
+  $parser = db_fetch_object(chado_query($sql, $db_id));
 
   $db_name = $parser->displayname;
   $is_genbank = $parser->genbank_style;
@@ -1143,9 +1141,8 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
                AND feature_id = %d
                AND type_id = (SELECT cvterm_id FROM {cvterm}  
                               WHERE name='analysis_blast_output_iteration_hits' 
-                                 AND cv_id = (SELECT cv_id FROM cv WHERE name='tripal'))";
-    $previous_db = tripal_db_set_active('chado');
-    $xml_output = simplexml_load_string(db_result(db_query($sql, $analysis_id, $feature_set[$i])));
+                                 AND cv_id = (SELECT cv_id FROM cv WHERE name='tripal'))";    
+    $xml_output = simplexml_load_string(db_result(chado_query($sql, $analysis_id, $feature_set[$i])));
     
     $iteration = '';
     // new XML file parser has added the feature name within <Iteration_query-def> tags.
@@ -1294,47 +1291,47 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
       
       // Get analysisfeature_id
       $sql = "SELECT analysisfeature_id FROM {analysisfeature} WHERE analysis_id = %d AND feature_id = %d";
-      $af_id = db_result(db_query($sql, $analysis_id, $feature_set[$i]));
+      $af_id = db_result(chado_query($sql, $analysis_id, $feature_set[$i]));
       
       // Get type_id
       $sql = "SELECT cvterm_id FROM {cvterm} WHERE name = '%s' AND cv_id = (SELECT cv_id FROM {cv} WHERE name = 'tripal')"; 
-      $type_id = db_result(db_query($sql, 'analysis_blast_besthit_query'));
+      $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_query'));
       
       $sql_test = "SELECT analysisfeatureprop_id FROM {analysisfeatureprop} WHERE analysisfeature_id = %d AND type_id = %d";
-      $test_afpid = db_result(db_query($sql_test, $af_id, $type_id));
+      $test_afpid = db_result(chado_query($sql_test, $af_id, $type_id));
       
       //Insert only if this blast query not exists. 
       if (!$test_afpid) {
         $afp_sql = "INSERT INTO {analysisfeatureprop} (analysisfeature_id, type_id, value, rank) VALUES (%d, %d, '%s', 0)";
         
         //$query;
-        db_query($afp_sql, $af_id, $type_id, $query);
+        chado_query($afp_sql, $af_id, $type_id, $query);
 
         //$hit_name;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_match'));
-        db_query($afp_sql, $af_id, $type_id, $hit_name);
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_match'));
+        chado_query($afp_sql, $af_id, $type_id, $hit_name);
           
         //$description;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_description'));
-        db_query($afp_sql, $af_id, $type_id, $description);
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_description'));
+        chado_query($afp_sql, $af_id, $type_id, $description);
           
         //$best_evalue;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_evalue'));
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_evalue'));
         $e_digit = explode("e-", $best_evalue);
         if (count($e_digit) == 2) {
           $evalue_shown = number_format($e_digit [0], 1);
           $best_evalue = $evalue_shown . "e-" . $e_digit[1];
         } 
-        db_query($afp_sql, $af_id, $type_id, $best_evalue);
+        chado_query($afp_sql, $af_id, $type_id, $best_evalue);
           
         //$best_identity;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_identity'));
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_identity'));
         $percent_identity = number_format($best_identity/$best_len*100, 1);
-        db_query($afp_sql, $af_id, $type_id, $percent_identity);
+        chado_query($afp_sql, $af_id, $type_id, $percent_identity);
           
         //$best_len;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_length'));
-        db_query($afp_sql, $af_id, $type_id, $best_len);
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_length'));
+        chado_query($afp_sql, $af_id, $type_id, $best_len);
         
       // Otherwise, update all instead
       } 
@@ -1342,41 +1339,40 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
         $afp_sql = "UPDATE {analysisfeatureprop} SET analysisfeature_id = %d, type_id = %d, value = '%s', rank = 0 WHERE analysisfeatureprop_id = %d";
 
         //$query;
-        db_query($afp_sql, $af_id, $type_id, $query, $test_afpid);
+        chado_query($afp_sql, $af_id, $type_id, $query, $test_afpid);
         
         //$hit_name;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_match'));
-        $test_afpid = db_result(db_query($sql_test, $type_id));
-        db_query($afp_sql, $af_id, $type_id, $hit_name, $test_afpid);
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_match'));
+        $test_afpid = db_result(chado_query($sql_test, $type_id));
+        chado_query($afp_sql, $af_id, $type_id, $hit_name, $test_afpid);
 
         //$description;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_description'));
-        $test_afpid = db_result(db_query($sql_test, $type_id));
-        db_query($afp_sql, $af_id, $type_id, $description, $test_afpid);
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_description'));
+        $test_afpid = db_result(chado_query($sql_test, $type_id));
+        chado_query($afp_sql, $af_id, $type_id, $description, $test_afpid);
           
         //$best_evalue;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_evalue'));
-        $test_afpid = db_result(db_query($sql_test, $type_id));
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_evalue'));
+        $test_afpid = db_result(chado_query($sql_test, $type_id));
         $e_digit = explode("e-", $best_evalue);
         if (count($e_digit) == 2) {
           $evalue_shown = number_format($e_digit [0], 1);
           $best_evalue = $evalue_shown . "e-" . $e_digit[1];
         } 
-        db_query($afp_sql, $af_id, $type_id, $best_evalue, $test_afpid);
+        chado_query($afp_sql, $af_id, $type_id, $best_evalue, $test_afpid);
           
         //$best_identity;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_identity'));
-        $test_afpid = db_result(db_query($sql_test, $type_id));
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_identity'));
+        $test_afpid = db_result(chado_query($sql_test, $type_id));
         $percent_identity = number_format($best_identity/$best_len*100, 1);
-        db_query($afp_sql, $af_id, $type_id, $percent_identity, $test_afpid);
+        chado_query($afp_sql, $af_id, $type_id, $percent_identity, $test_afpid);
           
         //$best_len;
-        $type_id = db_result(db_query($sql, 'analysis_blast_besthit_length'));
-        $test_afpid = db_result(db_query($sql_test, $type_id));
-        db_query($afp_sql, $af_id, $type_id, $best_len, $test_afpid);
+        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_length'));
+        $test_afpid = db_result(chado_query($sql_test, $type_id));
+        chado_query($afp_sql, $af_id, $type_id, $best_len, $test_afpid);
         
       }
-      tripal_db_set_active($previous_db);
       
       break;
     }
