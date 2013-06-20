@@ -440,7 +440,7 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
   
   // Check if the blast settings exists
   $sql = "SELECT db_id FROM {tripal_analysis_blast} WHERE db_id=%d";
-  $check = db_result(chado_query($sql,  $db_id));
+  $check = db_result(db_query($sql,  $db_id));
   
   $record = new stdClass();
   $record->db_id = $db_id;
@@ -472,7 +472,7 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
  */
 function tripal_get_blast_regex($db_id) {
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $settings = db_fetch_object(chado_query($sql,  $db_id));
+  $settings = db_fetch_object(db_query($sql,  $db_id));
   drupal_json(array(
        'name' => $settings->displayname,
        'genbank_style' => $settings->genbank_style,

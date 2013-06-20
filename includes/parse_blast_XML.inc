@@ -25,7 +25,7 @@
 function parse_NCBI_Blast_XML_index_version($xml_string, $db, $feature_id) {
   // Get the parser using db_id
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $parser = db_fetch_object(chado_query($sql, $db->db_id));
+  $parser = db_fetch_object(db_query($sql, $db->db_id));
   $db_name = $parser->displayname;
   $is_genbank = $parser->genbank_style;
   $regex_hit_id = $parser->regex_hit_id;
@@ -714,7 +714,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
 
   // Get the parser using db_id
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $parser = db_fetch_object(chado_query($sql, $db->db_id));
+  $parser = db_fetch_object(db_query($sql, $db->db_id));
   $db_name = $parser->displayname;
   $is_genbank = $parser->genbank_style;
   $regex_hit_id = $parser->regex_hit_id;
