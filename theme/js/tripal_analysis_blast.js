@@ -2,11 +2,6 @@
 if (Drupal.jsEnabled) {
    
    $(document).ready(function(){
-	   // If Anlaysis admin page is shown, get the settings for selected database
-	   if ($("#edit-blastdb")[0]) {
-		   tripal_update_regex($("#edit-blastdb")[0]);
-		   tripal_set_genbank_style();
-	   }
       // hide the alignment information on the blast results box
       $(".tripal_analysis_blast-info-hsp-desc").hide();
 
@@ -50,80 +45,7 @@ if (Drupal.jsEnabled) {
 	   }
       return false;
    }
-   
-   //------------------------------------------------------------
-   // Update regular expression for selected database
-   function tripal_update_regex(options){
-	   // Get the dbname from DOM
-	   var index = options.selectedIndex;
-	   var dbid = options[index].value;
-
-	   // Form the link for the following ajax call	   
-     var link = baseurl + '/admin/tripal/tripal_analysis/tripal_blast_regex/' + dbid;
-	   
-	   // Make ajax call to retrieve regular expressions
-	   $.ajax( {
-			url : link,
-			dataType : 'json',
-			type : 'POST',
-			success : tripal_set_parser,
-		});
-	}
-   
-   // Set parser for the admin page
-   function tripal_set_parser(data) {
-	   // Set title if it exists
-	   if (data.name) {
-			$("#edit-displayname").val(data.name);
-	   } else {
-			$("#edit-displayname").val("");
-	   }
-		
-	   // If genbank_style is TRUE, check the Genbank style box, clear all regular expressions, and disable
-	   // the text fields
-	   if (data.genbank_style == 1) {
-		   $("#edit-gb-style-parser").attr("checked", true);
-		   $("#edit-hit-id").val("");
-		   $("#edit-hit-def").val("");
-		   $("#edit-hit-accession").val("");
-			$("#edit-hit-organism_re").val("");
-			$("#edit-hit-organism").val("");
-		
-	   // Otherwise, uncheck the Genbank style box and set the regular expressions
-	   } else {
-			$("#edit-gb-style-parser").attr("checked", false);
-			if (data.reg1) {
-				$("#edit-hit-id").val(data.reg1);			
-			// Show default hit-id parser if it's not set
-			} else {
-				$("#edit-hit-id").val("^(.*?)\\s.*$");
-			}
-			if (data.reg2) {
-				$("#edit-hit-def").val(data.reg2);
-			// Show default hit-def parser if it's not set
-			} else {
-				$("#edit-hit-def").val("^.*?\\s(.*)$");
-			}
-			if (data.reg3) {
-				$("#edit-hit-accession").val(data.reg3);			
-			// Show default hit-accession parser if it's not set
-			} else {
-				$("#edit-hit-accession").val("^(.*?)\\s.*$");
-			}
-			if (data.reg4) {
-				$("#edit-hit-organism-re").val(data.reg4);			
-		   // Show default hit-organism-re parser if it's not set
-			} else {
-				$("#edit-hit-organism-re").val("");
-			}
-         if (data.hit_organism) {
-				$("#edit-hit-organism").val(data.hit_organism);			
-			} else {
-				$("#edit-hit-organism").val("");						
-			}
-		}
-		tripal_set_genbank_style();  
-   }
+    
    // ------------------------------------------------------------
    // Use genbank style parser. Hide regular expression text feilds
    function tripal_set_genbank_style (){

@@ -1,7 +1,8 @@
 <?php
 
 require_once "includes/parse_blast_XML.inc";
-//require_once "tripal_analysis_blast.install";  # we need to include this for the custom table definition
+require_once "includes/blast_settings_form.inc";
+require_once "includes/chado_analysis_blast_form.inc";
 
 
 /*******************************************************************************
@@ -20,17 +21,8 @@ function tripal_analysis_blast_init() {
  * Entry points and paths of the module
  */
 function tripal_analysis_blast_menu() {
-
-   $items['admin/tripal/tripal_analysis/tripal_blast_analysis'] = array(
-      'title' => 'BLAST Settings',  
-      'description' => 'Settings for the displays of analysis results.',  
-      'page callback' => 'drupal_get_form',  
-      'page arguments' => array('tripal_analysis_blast_settings_form'),  
-      'access arguments' => array('administer site configuration'),  
-      'type' => MENU_NORMAL_ITEM,
-  );
-  
-  // Show top 10/25/all blast results for ajax calls
+	
+	// Show top 10/25/all blast results for ajax calls
   $items['tripal_top_blast'] = array(
       'path' => 'top_blast',  
       'title' => t('Blast Hits'),  
@@ -39,13 +31,21 @@ function tripal_analysis_blast_menu() {
       'access arguments' => array('access content'),  
       'type' => MENU_CALLBACK
   );
-  // Show regular expressions for selected database in Blast admin page
-  $items['admin/tripal/tripal_analysis/tripal_blast_regex/%'] = array(
-      'title' => t('Blast Regex'),  
-      'page callback' => 'tripal_get_blast_regex',  
-      'page arguments' => array(4),  
+
+   $items['admin/tripal/tripal_analysis/tripal_blast_analysis'] = array(
+      'title' => 'BLAST Settings',  
+      'description' => 'Settings for the displays of analysis results.',  
+      'page callback' => 'drupal_get_form',  
+      'page arguments' => array('tripal_analysis_blast_settings_form'),  
       'access arguments' => array('administer site configuration'),  
-      'type' => MENU_CALLBACK
+      'type' => MENU_NORMAL_ITEM,
+  );  
+
+  // Show regular expressions for selected database in Blast admin page
+  $items['admin/tripal/tripal_analysis/tripal_blast_analysis/update_settings'] = array(
+    'page callback' => 'tripal_analysis_blast_settings_form_callback',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
   );
   
   return $items;
@@ -165,7 +165,11 @@ function tripal_analysis_blast_theme() {
       'template' => 'tripal_analysis_blast_base',  
       'arguments' =>  array('node' => NULL),  
       'path' => $path . '/tripal_analysis_blast',  
-    )
+    ),
+    // Themed Forms
+    'chado_analysis_blast_node_form' => array(
+      'arguments' => array('form'),
+    ),
   );
   return $theme;
 }
@@ -342,147 +346,8 @@ function tripal_get_blast_results_index_version($feature_id) {
 
 }
 
-/**
- * 
- */
-function tripal_analysis_blast_settings_form() {
-  // Get an array of node types with internal names as keys
-  $options = node_get_types('names');
-  
-  // Add 'chado_feature' to allowed content types for showing blast results
-  $allowedoptions ['chado_feature'] = "Show blast results on feature pages";
 
-  $form['tripal_analysis_blast_setting'] = array(
-      '#type' => 'checkboxes',  
-      '#options' => $allowedoptions,
-      '#default_value' => variable_get('tripal_analysis_blast_setting',  array('chado_feature')),  
-  );
 
-  
-  // get a list of db from chado for user to choose
-  $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
-  $results = chado_query($sql);
-  
-  $blastdbs = array();
-  while ($db = db_fetch_object($results)) {
-    $blastdbs[$db->db_id] = $db->name;
-  }
-  $form['db_options'] = array(
-      '#type' => 'value',  
-      '#value' => $blastdbs
-  );
-  $form['blastdb'] = array(
-      '#title' => t('Database'),  
-      '#type' => 'select',  
-      '#description' => t('You may customize how blast results are parsed and displayed to the end-user,  by selecting a database from the list above, and the customizing the fields below.  The fields below specify how to extract hit names, descriptions, database accessions, and organisms from the blast results.'), 
-      '#options' => $form['db_options']['#value'],  
-      '#attributes' => array(
-         'onChange' => "return tripal_update_regex(this)",  
-      )
-  );
-  $form['displayname'] = array(
-      '#title' => t('Title for the blast analysis'),  
-      '#type' => 'textfield',  
-  );
-  $form['gb_style_parser'] = array(
-      '#title' => t('Use Genebank style parser. This will clear all regular expression settings for the selected database.'),  
-      '#type' => 'checkbox',  
-      '#attributes' => array(
-         'onClick' => "return tripal_set_genbank_style(this)",  
-      )
-  );
-  $form['hit_id'] = array(
-      '#title' => t('Regular expression for Hit Name'),  
-      '#type' => 'textfield',  
-  );
-  $form['hit_def'] = array(
-      '#title' => t('Regular expression for Hit Description'),  
-      '#type' => 'textfield',  
-  );
-  $form['hit_accession'] = array(
-      '#title' => t('Regular expression for Hit Accession'),  
-      '#type' => 'textfield',  
-  );
-  $form['hit_organism_re'] = array(
-      '#title' => t('Regular expression for Organism.'),  
-      '#type' => 'textfield',  
-  );
-  $form['hit_organism'] = array(
-      '#title' => t('Organism Name.'),  
-      '#description' => t('If the organism for the match cannot be determined using
-          a regular expression but the database only contains a single organism,  then
-          you may specify the organism here. Be sure to include the genus,  species,
-          subspeices,  cultivar, etc.,  to properly identify the organism. If the organism
-          cannot be determined using a regular expression or is not unique in the database
-          then leave this field blank.'),        
-      '#type' => 'textfield',  
-  );
-  $form['button'] = array(
-      '#type' => 'submit',  
-      '#value' => t('Save settings')
-  );
-
-  
-  return $form;
-}
-/**
- * 
- */
-function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
-  $db_id = $form_state['values']['blastdb'];
-  $name = $form_state['values']['displayname'];
-  $gbstyle = $form_state['values']['gb_style_parser'];
-  $reg1 = $form_state['values']['hit_id'];
-  $reg2 = $form_state['values']['hit_def'];
-  $reg3 = $form_state['values']['hit_accession'];
-  $reg4 = $form_state['values']['hit_organism_re'];
-  $org = $form_state['values']['hit_organism'];
-  
-  // Check if the blast settings exists
-  $sql = "SELECT db_id FROM {tripal_analysis_blast} WHERE db_id=%d";
-  $check = db_result(db_query($sql,  $db_id));
-  
-  $record = new stdClass();
-  $record->db_id = $db_id;
-  $record->displayname = $name;
-  $record->regex_hit_id = $reg1;
-  $record->regex_hit_def = $reg2;
-  $record->regex_hit_accession = $reg3;
-  $record->genbank_style = $gbstyle;
-  $record->regex_hit_organism = $reg4;
-  $record->hit_organism = $org;
-  
-  if ($check) {
-    $success = drupal_write_record('tripal_analysis_blast',  $record, 'db_id');
-  } 
-  else {
-    $success = drupal_write_record('tripal_analysis_blast',  $record);
-  }
-  if ($success) {
-     drupal_set_message("Database settings updated");
-  } 
-  else {
-     drupal_set_message("Failure updated database settings");
-  }
-}
-
-/*******************************************************************************
- * This function is only called by ajax to get regular expressions for blast
- * admin page
- */
-function tripal_get_blast_regex($db_id) {
-  $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $settings = db_fetch_object(db_query($sql,  $db_id));
-  drupal_json(array(
-       'name' => $settings->displayname,
-       'genbank_style' => $settings->genbank_style,
-       'reg1' => $settings->regex_hit_id,
-       'reg2' => $settings->regex_hit_def,
-       'reg3' => $settings->regex_hit_accession,
-       'reg4' => $settings->regex_hit_organism,
-       'hit_organism' => $settings->hit_organism)
-  );
-}
 
 /*******************************************************************************
  *  Provide information to drupal about the node types that we're creating
@@ -504,172 +369,7 @@ function tripal_analysis_blast_node_info() {
 }
 
 
-/*******************************************************************************
- *  Provide a Blast Analysis form
- */
-function chado_analysis_blast_form($node) {
 
-   // add in the default fields
-   $form = chado_analysis_form($node);
-
-   // set the default values
-   $blast = $node->analysis->tripal_analysis_blast;
-
-   $blastdb = $blast->blastdb;
-   $blastfile    = $blast->blastfile;
-   $blastfile_ext    = $blast->blastfile_ext;
-   $blastparameters = $blast->blastparameters;
-
-   $query_re = $blast->query_re;
-   $query_type = $blast->query_type;
-   $query_uniquename = $blast->query_uniquename;
-   $is_concat = $blast->is_concat;
-   $search_keywords = $blast->search_keywords;
-
-    
-  $form['blast'] = array(
-      '#title' => t('Blast Settings'),  
-      '#type' => 'fieldset',  
-      '#description' => t('Specific Settings for Blast Analysis.'),  
-      '#collapsible' => TRUE,
-      '#attributes' => array('id' => 'blast-extra-settings'),  
-      '#weight' => 11
-  );
-  
-  // get a list of db from chado for user to choose
-  $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
-  $results = chado_query($sql);
-  
-  $blastdbs = array();
-  while ($db = db_fetch_object($results)) {
-    $blastdbs[$db->db_id] = $db->name;
-  }
-  $form['db_options'] = array(
-      '#type' => 'value',  
-      '#value' => $blastdbs
-  );
-  $form['blast']['blastdb'] = array(
-      '#title' => t('Database'),  
-      '#type' => 'select',  
-      '#description' => t('The database used for the blast analysis. If the database does not appear in this list, please ') . 
-        l(t('add a new database.  '), 'admin/tripal/tripal_db/add_db', array('attributes' => array('target' => '_blank')) ) . 
-        t('Each database may have a different format for each match. This blast module will attempt to extract the match name,
-         match accession, and organism from each match.  To ensure the parser is able to properly extract
-         this information. Please set the proper regular expression values on the ') . 
-         l(t('Blast Settings page. '), 'admin/tripal/tripal_analysis/tripal_blast_analysis',array('attributes' => array('target' => '_blank'))  ) .
-         t('Databases from NCBI have a built-in parser. On the Blast Settings page, simply click the box "Use Genebank style parser"'), 
-      '#options' => $form['db_options']['#value'],  
-      '#default_value' => $blastdb,
-  );
-
-  $form['blast']['blastfile'] = array(
-      '#title' => t('Blast XML File/Directory: (if you input a directory without the tailing slash,  all xml files in the directory will be loaded)'), 
-      '#type' => 'textfield',  
-      '#description' => t('The xml output file generated by blast in full path.'),  
-      '#default_value' => $blastfile,
-  ); 
-   $form['blast']['blastfile_ext'] = array(
-      '#title' => t('Blast XML file extension'),  
-      '#type' => 'textfield',  
-      '#description' => t('If a directory is provide for the blast file setting above,  then a file extension can be provided here. Files with this extension in the directory will be parsed.  If no extension is provided then files with a .xml extension will be parsed within the directory. Please provide the extension without the preceeding period (e.g. "out" rather than ".out"'), 
-      '#default_value' => $blastfile_ext,
-  );
-  $form['blast']['is_concat'] = array(
-      '#title' => t('Is the XML file concatenated?'),  
-      '#type' => 'checkbox',  
-      '#description' => t('Is the XML file a set of concatenated XML results?  Such is the case,  for instance, if <a href="http://www.blast2go.org/">Blast2GO</a> was used to generate the blast results. If
-      NCBI BLAST was used with output in XML then this options should not be checked.'),  
-      '#default_value' => $is_concat,
-  );
-  $form['blast']['no_parsed'] = array(
-    '#title' => t('Number of hits to be parsed'),  
-      '#type' => 'textfield',  
-      '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10'' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),  
-      '#default_value' => '25',  
-  );
-
-  $form['blast']['query_re'] = array(
-      '#title' => t('Query Name RE'),  
-      '#type' => 'textfield',  
-      '#description' => t('Enter the regular expression that will extract the '.
-         'feature name from the query line in the blast results. This should be '.
-         'the same as the definition line in the query FASTA file.  This option is '.
-         'is only required when the query does not identically match a feature '.
-         'in the database.'),  
-      '#default_value' => $query_re,
-  );
-
-  $form['blast']['query_type'] = array(
-      '#title' => t('Query Type'),  
-      '#type' => 'textfield',  
-      '#description' => t('Please enter the Sequence Ontology term that describes '.
-         'the query sequences used for blasting.  This is only necessary if two '.
-         'or more sequences have the same name.'),  
-      '#default_value' => $query_type,
-  );
-
-  $form['blast']['query_uniquename'] = array(
-      '#title' => t('Use Unique Name'),  
-      '#type' => 'checkbox',  
-      '#description' => t('Select this checboxk if the query name in the blast file '.
-        'matches the uniquename of the feature.  By default,  the blast results will '.
-        'mapped to the "name" of the feature.'),  
-      '#default_value' => $query_uniquename,
-  );
-
-  $form['blast']['blastparameters'] = array(
-      '#title' => t('Parameters'),  
-      '#type' => 'textfield',  
-      '#description' => t('The parameters for running the blast analysis.'),  
-      '#default_value' => $blastparameters,
-  );
-  
-  $form['blast']['blastjob'] = array(
-      '#type' => 'checkbox',  
-      '#title' => t('Submit a job to parse the xml output into Chado'),  
-      '#description' => t('Note: features associated with the blast results must '.
-                          'exist in chado before parsing the file. Otherwise,  blast '.
-                          'results that cannot be linked to a feature will be '.
-                          'discarded. '),  
-      '#default_value' => $blastjob
-  );
-   
-  $search_keywords_options = array(
-     'blast_match_name' => '*The match name (property name: blast_match_name)',  
-     'blast_match_description' => '*The match description (property name: blast_match_description)',       
-     'blast_match_organism' => '*The organism the match belongs to. (property name: blast_match_organism)',  
-      'blast_match_accession' => '*The accession of the match. (property name: blast_match_accession)',  
-     'blast_database' => 'The name of the database blasted against (property name: blast_database)',       
-//     'blast_evalue' => 'The match e-value score (property name: blast_evalue)',  
-//     'blast_score' => 'The match bit score (property name: blast_score)',  
-//     'blast_pid' => 'The match percent identity (property name: blast_pid)',       
-  );
-  $form['blast']['search_keywords'] = array(
-      '#type' => 'checkbox',  
-      '#description' => t('By default the blast results will be available for Drupal-style 
-         search indexing. However,  custom searching can be made available to site visitors using 
-         the Tripal Views module.  Some fields can only be identified in the blast results if the 
-         database record in Tripal is properly configured. Navigate to Administer -> 
-         Tripal Management -> Analysis and look for the \'Tripal Blast\' section. Select 
-         the database that these blast results belong to. Be sure
-         to set the regular expressions for identifying the match name,  accession, description and 
-         organism.  When constructing a materialized view for these data,  or for setting a 
-         search filter in Drupal Views,  use the property names indicated in parentheses above. These
-         results will be housed in the analysisfeatureprop table of Chado.'),  
-      '#title' => t('Keywords For Custom Search'),  
-      '#default_value' => $search_keywords,
-      '#description' => t('Parse blast results for integration with Tripal Views'),  
-  );
-  
-  return $form;
-}
-/**
-*
-*/
-function chado_analysis_blast_validate($node,  &$form) {
-   // use the analysis parent to validate the node
-   tripal_analysis_validate($node,  $form); 
-}
 
 /*******************************************************************************
  *  When a node is requested by the user this function is called to allow us
@@ -959,4 +659,19 @@ function tripal_analysis_blast_job_describe_args($callback, $args) {
       }
    }
    return $new_args;
+}
+
+/**
+ * 
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ * @param unknown_type $form_id
+ */
+function tripal_analysis_blast_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == "tripal_analysis_blast_settings_form") {    
+    // updating the form through the ahah callback sets the action of
+    // the form to the ahah callback URL. We need to set it back
+    // to the normal form URL
+    $form['#action'] = url("admin/tripal/tripal_analysis/tripal_blast_analysis");
+  }
 }
