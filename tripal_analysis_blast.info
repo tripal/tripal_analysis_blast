@@ -2,7 +2,7 @@
 name = Tripal Blast
 description = An analysis sub-module for adding,  editing, and displaying blast analysis results.
 core = 6.x
-version = 6.x-1.0-tripal_v1.0
+version = 6.x-1.1-tripal_v1.1
 project = tripal_analysis_blast
 package = Tripal Extensions 
 dependencies[] = tripal_core
