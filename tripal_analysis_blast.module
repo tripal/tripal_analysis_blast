@@ -1,8 +1,8 @@
 <?php
 
-require_once "includes/parse_blast_XML.inc";
-require_once "includes/blast_settings_form.inc";
-require_once "includes/chado_analysis_blast_form.inc";
+require_once "includes/tripal_analysis_blast.xml_parser.inc";
+require_once "includes/tripal_analysis_blast.admin.inc";
+require_once "includes/tripal_analysis_blast.chado_node.inc";
 
 
 /*******************************************************************************
@@ -32,20 +32,13 @@ function tripal_analysis_blast_menu() {
       'type' => MENU_CALLBACK
   );
 
-   $items['admin/tripal/tripal_analysis/tripal_blast_analysis'] = array(
-      'title' => 'BLAST Settings',  
-      'description' => 'Settings for the displays of analysis results.',  
+   $items['admin/tripal/extension/tripal_blast_analysis'] = array(
+      'title' => 'Tripal Analysis Blast Settings',  
+      'description' => 'Settings for the displays of blast analysis results.',  
       'page callback' => 'drupal_get_form',  
       'page arguments' => array('tripal_analysis_blast_settings_form'),  
       'access arguments' => array('administer site configuration'),  
       'type' => MENU_NORMAL_ITEM,
-  );  
-
-  // Show regular expressions for selected database in Blast admin page
-  $items['admin/tripal/tripal_analysis/tripal_blast_analysis/update_settings'] = array(
-    'page callback' => 'tripal_analysis_blast_settings_form_callback',
-    'access arguments' => array('administer site configuration'),
-    'type' => MENU_CALLBACK,
   );
   
   return $items;
@@ -92,59 +85,6 @@ function tripal_analysis_blast_block($op = 'list',   $delta = 0, $edit=array()) 
    }
 }
 
-/*******************************************************************************
- * tripal_analysis_blast_nodeapi()
- * HOOK: Implementation of hook_nodeapi()
- * Display blast results for allowed node types
- */
-function tripal_analysis_blast_nodeapi(&$node,  $op, $teaser, $page) {
-
-  switch ($op) {
-    case 'view':
-
-         if ($teaser) {
-            return '';
-         }
-      // Find out which node types for showing the blast
-      $types_to_show = variable_get('tripal_analysis_blast_setting',  
-      array('chado_feature'));
-
-      // Abort if this node is not one of the types we should show.
-      if (!in_array($node->type,  $types_to_show, TRUE)) {
-        break;
-      }
-
-         if (strcmp($node->type, 'chado_feature')==0) {
-        if ($node->build_mode == NODE_BUILD_SEARCH_INDEX) {
-          $node->content['tripal_analysis_blast_index_version'] = array(
-                  '#value' => theme('tripal_analysis_blast_results_index_version',  $node),
-                  '#weight' => 8,
-          );
-        } 
-        else {
-           // Show blast result if not at teaser view
-           $node->content['tripal_feature_blast_results'] = array(
-                  '#value' => theme('tripal_feature_blast_results',   $node),
-                  '#weight' => 8
-           );
-        }
-      }
-      break;
-  }
-}
-
-/**
- * Implements hook_theme_registry_alter().
- */
-
-function tripal_analysis_blast_theme_registry_alter(&$info) {
-  // Inject our module into the node theme registry as being an available theme
-  // path so that we can override the node template for our content type.
-  array_splice($info['node']['theme paths'],   1, 0, array(drupal_get_path('module', 'tripal_analysis_blast')));
-}
-
-
-
 /**
  *  We need to let drupal know about our theme functions and their arguments.
  *  We create theme functions to allow users of the module to customize the
@@ -153,22 +93,19 @@ function tripal_analysis_blast_theme_registry_alter(&$info) {
 function tripal_analysis_blast_theme() {
   $path = drupal_get_path('module', 'tripal_analysis_blast') . '/theme';
   $theme = array(
-    'tripal_analysis_blast_results_index_version' => array(
-      'arguments' => array('node'),  
-    ),  
     'tripal_feature_blast_results' => array(
-      'template' => 'tripal_feature_blast_results',  
-      'arguments' =>  array('node' => NULL),  
+      'template' => 'tripal_feature_blast.results',  
+      'variables' =>  array('node' => NULL),  
       'path' => $path . '/tripal_feature',  
     ),  
     'tripal_analysis_blast_base' => array(
-      'template' => 'tripal_analysis_blast_base',  
-      'arguments' =>  array('node' => NULL),  
+      'template' => 'tripal_analysis_blast.base',  
+      'variables' =>  array('node' => NULL),  
       'path' => $path . '/tripal_analysis_blast',  
     ),
     // Themed Forms
     'chado_analysis_blast_node_form' => array(
-      'arguments' => array('form'),
+      'variables' => array('form'),
     ),
   );
   return $theme;
@@ -177,8 +114,9 @@ function tripal_analysis_blast_theme() {
  *  
  */
 function tripal_get_feature_blast_results_ajax($feature_id,  $db_id, $max) {
-   $sql = "SELECT nid FROM {chado_feature} WHERE feature_id = %d";
-   $nid = db_fetch_object(db_query($sql, $feature_id));
+   $sql = "SELECT nid FROM {chado_feature} WHERE feature_id = :feature_id";
+   $results = db_query($sql, array(':feature_id' => $feature_id));
+   $nid = $results->fetchObject($results);
    $node = node_load($nid->nid);
 
    // add the additional variables that the theme needs to generate the output
@@ -204,14 +142,6 @@ function tripal_analysis_blast_preprocess_tripal_feature_blast_results(&$variabl
      $feature->tripal_analysis_blast = new stdClass;
    }
    $feature->tripal_analysis_blast->blast_results_list = $blast_results;      
-}
-/*******************************************************************************
- * Prepare blast result for the feature shown on the page
- */
-function theme_tripal_analysis_blast_results_index_version($node) {
-  $feature = $node->feature;
-  $content = tripal_get_blast_results_index_version($feature->feature_id);
-  return $content;
 }
 
 /*******************************************************************************
@@ -299,198 +229,8 @@ function tripal_get_feature_blast_results($feature_id, $db_id, $max) {
 
    return $blast_obj_array;
 }
-/*******************************************************************************
- * Scanning the file folder for blast results and prepare content for indexing
- */
-function tripal_get_blast_results_index_version($feature_id) {
-
-  // Get cvterm_id for 'analysis_blast_output_iteration_hits' which is required
-  // for inserting into the analysisfeatureprop table  
-  $sql = "SELECT CVT.cvterm_id FROM {cvterm} CVT ".
-         "  INNER JOIN {cv} ON cv.cv_id = CVT.cv_id ".
-         "WHERE CVT.name = 'analysis_blast_output_iteration_hits' ".
-         "  AND CV.name = 'tripal'";
-  $type_id = db_result(chado_query($sql));
-
-  // Get xml string from analysisfeatureprop value column,  get db_id from analysisprop value column
-  // ,   and get analysis_id from analysisfeature table
-  $sql = "SELECT AP.value AS apvalue,  AFP.value AS afpvalue, AF.analysis_id AS aid
-           FROM {analysisfeatureprop} AFP
-             INNER JOIN {analysisfeature} AF ON AF.analysisfeature_id = AFP.analysisfeature_id
-             INNER JOIN {analysisprop} AP ON AP.analysis_id = AF.analysis_id
-           WHERE feature_id = %d
-             AND AFP.type_id = %d ";
-  $result = chado_query($sql,  $feature_id, $type_id);
-
-  // get the HTML content for viewing each of the XML file
-  while ($analysisfeatureprop = db_fetch_object($result)) {
-    // get analysis name and date    
-    $sql = "SELECT analysis_id AS aid,  name, to_char(timeexecuted, 'MM-DD-YYYY') AS time
-            FROM {analysis}               WHERE analysis_id = %d";
-    $analysis = db_fetch_object(chado_query($sql,  $analysisfeatureprop->aid));
-    
-
-    $blastsettings = explode("|",   $analysisfeatureprop->apvalue);
-    $att_db_id = $blastsettings [0];
-
-    // Get db object using the db_id    
-    $sql = "SELECT * FROM {db} WHERE db_id=%d";
-    $db = db_fetch_object(chado_query($sql,  $att_db_id));
-    
-    // Only index best 10 hits because the default page only shows 10 blast results
-    $max = 10;
-    $content .= parse_NCBI_Blast_XML_index_version($analysisfeatureprop->afpvalue, $db, $max, $feature_id, $ajax, $analysis);
-      
-  }
-  return $content;
-
-}
 
 
-
-
-/*******************************************************************************
- *  Provide information to drupal about the node types that we're creating
- *  in this module
- */
-function tripal_analysis_blast_node_info() {
-  $nodes = array();
-  $nodes['chado_analysis_blast'] = array(
-      'name' => t('Analysis: Blast'),  
-      'module' => 'chado_analysis_blast',  
-      'description' => t('A blast analysis from the chado database'),  
-      'has_title' => FALSE,
-      'title_label' => t('Analysis: Blast'),  
-      'has_body' => FALSE,
-      'body_label' => t('Blast Analysis Description'),  
-      'locked' => TRUE
-  );
-  return $nodes;
-}
-
-
-
-
-/*******************************************************************************
- *  When a node is requested by the user this function is called to allow us
- *  to add auxiliary data to the node object.
- */
-function chado_analysis_blast_load($node) {
-
-   // load the default set of analysis fields
-  $additions = chado_analysis_load($node);
-
-   // create some variables for easier lookup
-   $analysis = $additions->analysis;
-   $analysis_id = $analysis->analysis_id;
-
-   $blast_settings  = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_settings');  
-   $blastdb         = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastdb');
-   $blastfile       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastfile');  
-   $blastparameters = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastparameters');
-   $no_parsed       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_no_parsed');  
-   $query_re        = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_query_re');  
-   $query_type      = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_query_type');  
-   $query_uniquename= tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_query_uniquename');  
-   $blastfile_ext   = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastfile_ext');  
-   $is_concat       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_is_concat');  
-   $search_keywords = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_search_keywords');
-   
-   if (!is_object($analysis->tripal_analysis_blast)) {
-     $analysis->tripal_analysis_blast = new stdClass;  
-   }
-   
-   $analysis->tripal_analysis_blast->blastdb         = $blastdb->value;
-   $analysis->tripal_analysis_blast->blastfile       = $blastfile->value;  
-   $analysis->tripal_analysis_blast->blastparameters = $blastparameters->value;
-   $analysis->tripal_analysis_blast->no_parsed       = $no_parsed->value;  
-   $analysis->tripal_analysis_blast->query_re        = $query_re->value;  
-   $analysis->tripal_analysis_blast->query_type      = $query_type->value;  
-   $analysis->tripal_analysis_blast->query_uniquename= $query_uniquename->value;  
-   $analysis->tripal_analysis_blast->blastfile_ext   = $blastfile_ext->value;  
-   $analysis->tripal_analysis_blast->is_concat       = $is_concat->value;  
-   $analysis->tripal_analysis_blast->search_keywords = $search_keywords->value;
-
-   // get the database information so that we don't have to require callers
-   // to do the lookup
-   $select = array('db_id' => $blastdb->value);
-   $analysis->tripal_analysis_blast->db = tripal_core_generate_chado_var('db',  $select);
-
-   // if there is an old style 'blast_settings' array,  then break these out for
-   // use in the new format
-   if (count($blast_settings) > 0) {
-     $prop_values = explode("|", $blast_settings->value);
-      $analysis->tripal_analysis_blast->blastdb = $prop_values[0];
-      $analysis->tripal_analysis_blast->blastfile = $prop_values[1];
-      $analysis->tripal_analysis_blast->blastparameters = $prop_values[2];
-   } 
-
-  return $additions;
-}
-/**
-*
-*/
-function chado_analysis_blast_insert($node) {
-
-  // get the analysis_id from the node before the call below
-  $analysis_id = $node->analysis_id;
-  
-  // insert the analysis. If the analysis already exist then this
-  // call will link it to a new Drupal node. It will also add the 
-  // analysis_id field to the $node object.
-  chado_analysis_insert($node);
-  
- 
-  // If this analysis already exists then don't recreate it in chado. This can happen
-  // when nodes are synced.  They already exist but Drupal doesn't know it and calls 
-  // this function.
-  if (!$analysis_id) {   
-    
-    // now add in the remaining settings as a single property but separated by bars
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastdb',          $node->blastdb);
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile',        $node->blastfile);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastparameters',  $node->blastparameters);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_no_parsed',        $node->no_parsed);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_re',         $node->query_re);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_type',       $node->query_type);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_uniquename', $node->query_uniquename);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile_ext',    $node->blastfile_ext);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_is_concat',        $node->is_concat);  
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_search_keywords',  $node->search_keywords);  
-    
-    // submit the parsing jobs
-    chado_analysis_blast_submit_jobs($node);
-  }
-}
-/**
- * 
- */
-function chado_analysis_blast_update($node) {
-
-  // update the anlaysis
-  chado_analysis_update($node); 
-
-  // add the blast settings
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastdb',          $node->blastdb, 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastfile',        $node->blastfile, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastparameters',  $node->blastparameters, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_no_parsed',        $node->no_parsed, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_query_re',         $node->query_re, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_query_type',       $node->query_type, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_query_uniquename', $node->query_uniquename, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastfile_ext',    $node->blastfile_ext, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_is_concat',        $node->is_concat, 1);  
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_search_keywords',  $node->search_keywords, 1);  
-
-  // if this analysis uses the old style blast settings cvterm then remove that term
-  $old = tripal_analysis_get_property($node->analysis_id, 'analysis_blast_settings');
-  if (count($old) > 0) {
-     tripal_analysis_delete_property($node->analysis_id, 'analysis_blast_settings');
-  }
-
-  // submit the parsing jobs
-  chado_analysis_blast_submit_jobs($node);
-}
 /**
 *
 */
@@ -500,16 +240,16 @@ function chado_analysis_blast_submit_jobs($node) {
    // add a job if the user wants to parse the XML        
   if ($node->blastjob) {
       $job_args = array(
-          $node->analysis_id,
-          $node->blastdb,
-          $node->blastfile,
-          $node->no_parsed,
-          $node->blastfile_ext,
-          $node->query_re,
+        $node->analysis_id,
+        $node->blastdb,
+        $node->blastfile,
+        $node->no_parsed,
+        $node->blastfile_ext,
+        $node->query_re,
         $node->query_type,  
-          $node->query_uniquename,
-          $node->is_concat,
-          $node->search_keywords,
+        $node->query_uniquename,
+        $node->is_concat,
+        $node->search_keywords,
       );
 
     if (is_readable($node->blastfile)) {
@@ -530,84 +270,32 @@ function chado_analysis_blast_submit_jobs($node) {
    }
     
 }
-/*******************************************************************************
- * Delete blast anlysis
- */
-function chado_analysis_blast_delete($node) {
-  chado_analysis_delete($node);
-}
 
-/*******************************************************************************
- *  This function customizes the view of the chado_analysis node.  It allows
- *  us to generate the markup.
- */
-function chado_analysis_blast_view($node,  $teaser = FALSE, $page = FALSE) {
-  // use drupal's default node view:
-    //dprint_r($node);
-  if (!$teaser) {
-    $node = node_prepare($node,  $teaser);
-    // When previewing a node submitting form,  it shows 'Array' instead of
-    // correct date format. We need to format the date here
-    $time = $node->timeexecuted;
-    if (is_array($time)) {
-      $month = $time['month'];
-      $day = $time['day'];
-      $year = $time['year'];
-      $timestamp = $year . '-' . $month . '-' . $day;
-      $node->timeexecuted = $timestamp;
-    }
-    // When viewing a node,  we need to reformat the analysisprop since we
-    // separate each value with a bar |
-    if (preg_match("/.*\|.*\|.*/",  $node->blastdb)) {
-      $prop_values = explode("|", $node->blastdb);
-      $node->blastdb = $prop_values[0];
-      $node->blastfile = $prop_values[1];
-      $node->blastparameters = $prop_values[2];
-    }
-  }
-  return $node;
-}
 
 /*******************************************************************************
  * Set the permission types that the chado module uses.  Essentially we
  * want permissionis that protect creation,  editing and deleting of chado
  * data objects
  */
-function tripal_analysis_blast_perm() {
+function tripal_analysis_blast_permissions() {
   return array(
-      'access chado_analysis_blast content',  
-      'create chado_analysis_blast content',  
-      'delete chado_analysis_blast content',  
-      'edit chado_analysis_blast content',  
+    'access chado_analysis_blast content' => array(
+      'title' => t('View Chado Analysis Blast'),
+      'description' => t('Allow users to view chado analysis blast pages.'),
+    ),  
+    'create chado_analysis_blast content' => array(
+      'title' => t('Create Chado Analysis Blast'),
+      'description' => t('Allow users to create new chado analysis blast pages.'),
+    ),  
+    'delete chado_analysis_blast content'=> array(
+      'title' => t('Delete Chado Analysis Blast'),
+      'description' => t('Allow users to delete chado analysis blast pages.'),
+    ),
+    'edit chado_analysis_blast content'=> array(
+      'title' => t('Edit Chado Analysis Blast'),
+      'description' => t('Allow users to edit chado analysis blast pages.'),
+    ),
   );
-}
-
-/*******************************************************************************
- *  The following function proves access control for users trying to
- *  perform actions on data managed by this module
- */
-function chado_analysis_blast_access($op,  $node, $account) {
-  if ($op == 'create') {
-    if (!user_access('create chado_analysis_blast content',   $account)) {
-      return FALSE;
-      }
-  }
-  if ($op == 'update') {
-    if (!user_access('edit chado_analysis_blast content',   $account)) {
-      return FALSE;
-    }
-  }
-  if ($op == 'delete') {
-    if (!user_access('delete chado_analysis_blast content',   $account)) {
-      return FALSE;
-    }
-  }
-  if ($op == 'view') {
-    if (!user_access('access chado_analysis_blast content',   $account)) {
-         return FALSE;
-      }
-  }
-   return NULL;
 }
 
 /**
@@ -657,19 +345,4 @@ function tripal_analysis_blast_job_describe_args($callback, $args) {
       }
    }
    return $new_args;
-}
-
-/**
- * 
- * @param unknown_type $form
- * @param unknown_type $form_state
- * @param unknown_type $form_id
- */
-function tripal_analysis_blast_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id == "tripal_analysis_blast_settings_form") {    
-    // updating the form through the ahah callback sets the action of
-    // the form to the ahah callback URL. We need to set it back
-    // to the normal form URL
-    $form['#action'] = url("admin/tripal/tripal_analysis/tripal_blast_analysis");
-  }
 }

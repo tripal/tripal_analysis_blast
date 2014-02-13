@@ -23,38 +23,62 @@ function tripal_analysis_blast_install() {
    // Add cvterms
    tripal_analysis_blast_add_cvterms();
    
-   // Create a tripal_analysis_blast table to store parsers
-   drupal_install_schema('tripal_analysis_blast');
-   
    // add custom tables
    tripal_analysis_blast_add_custom_tables();
     
    // Create default parser for swissprot,  DB:genbank, and go-seqdb
-   $sql_db = "SELECT db_id,  name FROM {db} WHERE name like '%s'";
+   $sql_db = "SELECT db_id,  name FROM {db} WHERE lower(name) like :name";
    $sql_parser = "INSERT INTO {tripal_analysis_blast} ".
                  "  (db_id,  displayname, regex_hit_id, regex_hit_def, ".
                  "   regex_hit_accession,  genbank_style, regex_hit_organism) ".
-                 "VALUES (%d,  '%s',  '%s', '%s', '%s', %d, '%s')";
+                 "VALUES (:db_id,  :displayname,  :regex_hit_id, :regex_hit_def, :regex_hit_accession, :genbank_style, :regex_hit_organism)";
    
    // Add swissprot parser   
-   $results = chado_query($sql_db,  "%swissprot%");   
-   while ($db = db_fetch_object($results)) {
-      db_query($sql_parser,  $db->db_id, 'ExPASy Swissprot',  
-         '^sp\|.*?\|(.*?)\s.*?$',   '^sp\|.*?\|.*?\s(.*)$', 'sp\|(.*?)\|.*?\s.*?$', 
-         0, '^.*?OS=(.*?)\s\w\w=.*$');
-   }
+   $results = chado_query($sql_db,  array(':name' => "%swissprot%"));
+   foreach ($results AS $db) {
+    db_query(
+      $sql_parser,  
+      array(
+        ':db_id' => $db->db_id,
+        ':displayname' => 'ExPASy Swissprot',
+        ':regex_hit_id' => '^sp\|.*?\|(.*?)\s.*?$', 
+        ':regex_hit_def' => '^sp\|.*?\|.*?\s(.*)$', 
+        ':regex_hit_accession' => 'sp\|(.*?)\|.*?\s.*?$', 
+        ':genbank_style' => 0, 
+        ':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
+      );
+    }
    
    // Add trembl parser   
-   $results = chado_query($sql_db,  "%trembl%");  
-   while ($db = db_fetch_object($results)) {
-      db_query($sql_parser,  $db->db_id, 'ExPASy TrEMBL',  '^.*?\|(.*?)\s.*?$', 
-         '^.*?\|.*?\s(.*)$',   '^(.*?)\|.*?\s.*?$', 0, '^.*?OS=(.*?)\s\w\w=.*$');
+   $results = chado_query($sql_db,  array(':name' => "%trembl%"));  
+   foreach ($results AS $db) {
+   	db_query(
+   	$sql_parser,
+   	array(
+   	':db_id' => $db->db_id,
+   	':displayname' => 'ExPASy TrEMBL',
+   	':regex_hit_id' => '^.*?\|(.*?)\s.*?$',
+   	':regex_hit_def' => '^.*?\|.*?\s(.*)$',
+   	':regex_hit_accession' => '^(.*?)\|.*?\s.*?$',
+   	':genbank_style' => 0,
+   	':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
+   	);
    }
    
    // Add NCBI genbank parser
-   $results = chado_query($sql_db, "%genbank%");
-   while ($db = db_fetch_object($results)) {
-      db_query($sql_parser,  $db->db_id, 'Genbank',  '', '', '', 1, '');
+   $results = chado_query($sql_db, array(':name' => "%genbank%"));
+   foreach ($results AS $db) {
+   	db_query(
+   	$sql_parser,
+   	array(
+   	':db_id' => $db->db_id,
+   	':displayname' => 'Genbank',
+   	':regex_hit_id' => '',
+   	':regex_hit_def' => '',
+   	':regex_hit_accession' => '',
+   	':genbank_style' => 1,
+   	':regex_hit_organism' => '')
+   	);
    }
 }
 
@@ -73,11 +97,9 @@ function tripal_analysis_blast_uninstall() {
    tripal_analysis_unregister_child('tripal_analysis_blast');
 
    // Delete module's variables from variables table.
-   db_query("DELETE FROM {variable} WHERE name='%s'",  
-            'tripal_analysis_blast_setting');
-            
-   // Delete a tripal_analysis_blast table
-   drupal_uninstall_schema('tripal_analysis_blast');
+   db_query("DELETE FROM {variable} WHERE name = :name",  
+   array('name' => 'tripal_analysis_blast_setting'));
+
 }
 /*******************************************************************************
 *  The blast analysis module creates it's own custom table for storing
@@ -221,46 +243,14 @@ function tripal_analysis_blast_requirements($phase) {
 /*******************************************************************************
  * Provide update script for adding new cvterms
  */
-function tripal_analysis_blast_update_6000() {
-
-   // we have some new cvterms to add
-   tripal_analysis_blast_add_cvterms();
-
-   $ret = array(
-      '#finished' => 1,
-   );
-   
-   return $ret;
-}
-/*******************************************************************************
- * Provide update for module version v6.x-0.4-0.1
- */
-function tripal_analysis_blast_update_6001() {
-
-   // we have some new cvterms to add
-   tripal_analysis_blast_add_cvterms();
-   
-   // add new blast hit data table
-   $schema = tripal_analysis_blast_schema();
-   
-   // alter the tripal_blast_analysis table we need to add two new columns
-   // and extend the sizes of the others.
-   db_add_field($ret,  'tripal_analysis_blast',  'regex_hit_organism', array('type' => 'varchar', 'length' => 255));   
-   db_add_field($ret,  'tripal_analysis_blast',  'hit_organism', array('type' => 'varchar', 'length' => 255));  
-   db_change_field($ret, 'tripal_analysis_blast', 'regex_hit_id', 'regex_hit_id', array('type' => 'varchar', 'length' => 255, ));
-   db_change_field($ret, 'tripal_analysis_blast', 'regex_hit_def', 'regex_hit_def', array('type' => 'varchar', 'length' => 255, ));
-   db_change_field($ret, 'tripal_analysis_blast', 'regex_hit_accession', 'regex_hit_accession', array('type' => 'varchar', 'length' => 255, ));
-   db_change_field($ret, 'tripal_analysis_blast', 'genbank_style', 'genbank_style', array('type' => 'int', 'unsigned' => TRUE, 'default' => 0));
-   db_change_field($ret, 'tripal_analysis_blast', 'displayname', 'displayname', array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, ));
-
-   // add new custom blast hit table
-   tripal_analysis_blast_add_custom_tables();
-
-   $ret = array(
-      '#finished' => 1,
-   );
-   
-   return $ret;
+function tripal_analysis_blast_update_7000() {
+  if (chado_table_exists('tripal_analysis_blast')) {
+    $sql = "ALTER TABLE chado.tripal_analysis_blast SET schema public";
+    $success = db_query($sql);
+  }
+  if (!$success) {
+    throw new DrupalUpdateException('Could not move tripal_analysis_blast table.');
+  }
 }
 
 /*******************************************************************************
