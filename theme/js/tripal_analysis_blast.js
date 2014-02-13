@@ -45,31 +45,7 @@ if (Drupal.jsEnabled) {
 	   }
       return false;
    }
-    
-   // ------------------------------------------------------------
-   // Use genbank style parser. Hide regular expression text feilds
-   function tripal_set_genbank_style (){
-	  // Disable regular expressions if genbank style parser is used (checked)
-	  if ($("#edit-gb-style-parser").is(":checked")) {
-		  $("#edit-hit-id-wrapper > label").css("color", "grey");
-		  $("#edit-hit-def-wrapper > label").css("color", "grey");
-		  $("#edit-hit-accession-wrapper > label").css("color", "grey");
-		  $("#edit-hit-id").attr('disabled', 'disabled');
-		  $("#edit-hit-def").attr('disabled', 'disabled');
-		  $("#edit-hit-accession").attr('disabled', 'disabled');
-		  $("#edit-hit-organism-re").attr('disabled', 'disabled');
-		  $("#edit-hit-organism").attr('disabled', 'disabled');		  
-	  } else {
-		  $("#edit-hit-id-wrapper > label").css("color", "black");
-		  $("#edit-hit-def-wrapper > label").css("color", "black");
-		  $("#edit-hit-accession-wrapper > label").css("color", "black");
-		  $("#edit-hit-id").removeAttr('disabled');
-		  $("#edit-hit-def").removeAttr('disabled');
-		  $("#edit-hit-accession").removeAttr('disabled');
-		  $("#edit-hit-organism-re").removeAttr('disabled', 'disabled');
-		  $("#edit-hit-organism").removeAttr('disabled', 'disabled');
-	  }
-   }
+   
    // -------------------------------------------------------------
    // Function that toggles the blast droppable subbox content
    function tripal_set_blast_subbox(db_id){
@@ -86,36 +62,4 @@ if (Drupal.jsEnabled) {
 	        
      });
    }
-   
-   	//------------------------------------------------------------
-	// Update the blast best hit report for selected page and sorting
-	function tripal_update_best_hit_report(obj, analysis_id, sort, descending, per_page){
-		var page = obj.selectedIndex + 1;
-		var baseurl = location.href.substring(0,location.href.lastIndexOf('/tripal_blast_report/'));
-		var link = baseurl + '/tripal_blast_report/' + analysis_id + "/" + page + "/" + sort + "/" + descending + "/" + per_page;
-
-		tripal_startAjax();
-		$.ajax({
-			url: link,
-			dataType: 'html',
-			type: 'POST',
-			success: function(data){
-				var d = document.createElement('div');
-				d.innerHTML = data;
-				var divs = d.getElementsByTagName("div");
-				for (var i = 0; i < divs.length; i ++) {
-					if (divs[i].getAttribute('id') == 'blast-hits-report') {	
-						var report_table = document.getElementById('blast-hits-report');
-						report_table.innerHTML = divs[i].innerHTML;
-						var table_breport = document.getElementById('tripal_blast_report_table');
-						var sel = document.getElementById('tripal_blast_report_page_selector');
-						sel.options[page - 1].selected = true;
-						tripal_stopAjax();
-					}
-				}
-			}
-		});
-		
-		return false;
-	}
 }
