@@ -29,6 +29,20 @@ function tripal_analysis_blast_node_info() {
 function tripal_analysis_blast_node_view($node, $view_mode, $langcode) {
 
   switch ($node->type) {
+  	case 'chado_analysis_blast':
+      if ($view_mode == 'full') {
+        $node->content['tripal_analysis_blast_base'] = array(
+          '#markup' => theme('tripal_analysis_blast_base', array('node' => $node)),
+          '#tripal_toc_id'    => 'base',
+          '#tripal_toc_title' => 'Overview',
+          '#weight' => -100,
+        );
+      }
+      if ($view_mode == 'teaser') {
+        $node->content['tripal_analysis_blast_teaser'] = array(
+          '#markup' => theme('tripal_analysis_blast_teaser', array('node' => $node)),
+        );
+      }
     case 'chado_feature':
       if ($view_mode == 'full') {
         $node->content['tripal_feature_blast.results'] = array(
@@ -86,28 +100,28 @@ function chado_analysis_blast_form($node, $form_state) {
   // if we are re constructing the form from a failed validation or ajax callback
   // then use the $form_state['values'] values
   if (array_key_exists('values', $form_state)) {
-  	$blastdb  = $form_state['values']['blastdb'];
-  	$blastfile   = $form_state['values']['blastfile'];
-  	$blastfile_ext = $form_state['values']['blastfile_ext'];
-  	$blastparameters  = $form_state['values']['blastparameters'];
-  	$query_re  = $form_state['values']['query_re'];
-  	$query_type  = $form_state['values']['query_type'];
-  	$query_uniquename  = $form_state['values']['query_uniquename'];
-  	$is_concat  = $form_state['values']['is_concat'];
-  	$search_keywords  = $form_state['values']['search_keywords'];
+    $blastdb  = $form_state['values']['blastdb'];
+    $blastfile   = $form_state['values']['blastfile'];
+    $blastfile_ext = $form_state['values']['blastfile_ext'];
+    $blastparameters  = $form_state['values']['blastparameters'];
+    $query_re  = $form_state['values']['query_re'];
+    $query_type  = $form_state['values']['query_type'];
+    $query_uniquename  = $form_state['values']['query_uniquename'];
+    $is_concat  = $form_state['values']['is_concat'];
+    $search_keywords  = $form_state['values']['search_keywords'];
   }
   // if we are re building the form from after submission (from ajax call) then
   // the values are in the $form_state['input'] array
   if (array_key_exists('input', $form_state) and !empty($form_state['input'])) {
-  	$blastdb  = $form_state['input']['blastdb'];
-  	$blastfile   = $form_state['input']['blastfile'];
-  	$blastfile_ext = $form_state['input']['blastfile_ext'];
-  	$blastparameters  = $form_state['input']['blastparameters'];
-  	$query_re  = $form_state['input']['query_re'];
-  	$query_type  = $form_state['input']['query_type'];
-  	$query_uniquename  = $form_state['input']['query_uniquename'];
-  	$is_concat  = $form_state['input']['is_concat'];
-  	$search_keywords  = $form_state['input']['search_keywords'];
+    $blastdb  = $form_state['input']['blastdb'];
+    $blastfile   = $form_state['input']['blastfile'];
+    $blastfile_ext = $form_state['input']['blastfile_ext'];
+    $blastparameters  = $form_state['input']['blastparameters'];
+    $query_re  = $form_state['input']['query_re'];
+    $query_type  = $form_state['input']['query_type'];
+    $query_uniquename  = $form_state['input']['query_uniquename'];
+    $is_concat  = $form_state['input']['is_concat'];
+    $search_keywords  = $form_state['input']['search_keywords'];
   }
     
   $form['blast'] = array(
@@ -285,12 +299,13 @@ function chado_analysis_blast_form_alter(&$form, &$form_state, $form_id) {
 
 function chado_analysis_blast_load($nodes) {
 
+  // load the default set of analysis fields
+  chado_analysis_load($nodes);
+  
   foreach ($nodes as $nid => $node) {
-    // load the default set of analysis fields
-    $additions = chado_analysis_load($node);
 
     // create some variables for easier lookup
-    $analysis = $additions->analysis;
+    $analysis = $node->analysis;
     $analysis_id = $analysis->analysis_id;
 
     $blast_settings  = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_settings');
@@ -305,10 +320,7 @@ function chado_analysis_blast_load($nodes) {
     $is_concat       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_is_concat');
     $search_keywords = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_search_keywords');
    
-    if (!is_object($analysis->tripal_analysis_blast)) {
-      $analysis->tripal_analysis_blast = new stdClass;
-    }
-   
+    $analysis->tripal_analysis_blast = new stdClass;
     $analysis->tripal_analysis_blast->blastdb         = $blastdb->value;
     $analysis->tripal_analysis_blast->blastfile       = $blastfile->value;
     $analysis->tripal_analysis_blast->blastparameters = $blastparameters->value;
