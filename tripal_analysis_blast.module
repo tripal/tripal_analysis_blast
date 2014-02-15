@@ -272,12 +272,6 @@ function chado_analysis_blast_submit_jobs($node) {
            Job not scheduled.")));
     }
   }
-   // add a job if the user wants to create a best hits report.
-  if ($node->blastbesthit) {
-      $j_args[0] = $node->analysis_id;  
-    tripal_add_job("Parse best hit: $node->blastfile",  'tripal_analysis_blast',
-                     'tripal_analysis_blast_parse_best_hit',   $j_args, $user->uid);      
-   }
     
 }
 

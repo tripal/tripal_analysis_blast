@@ -29,7 +29,7 @@ function tripal_analysis_blast_node_info() {
 function tripal_analysis_blast_node_view($node, $view_mode, $langcode) {
 
   switch ($node->type) {
-  	case 'chado_analysis_blast':
+    case 'chado_analysis_blast':
       if ($view_mode == 'full') {
         $node->content['tripal_analysis_blast_base'] = array(
           '#markup' => theme('tripal_analysis_blast_base', array('node' => $node)),
@@ -45,8 +45,11 @@ function tripal_analysis_blast_node_view($node, $view_mode, $langcode) {
       }
     case 'chado_feature':
       if ($view_mode == 'full') {
-        $node->content['tripal_feature_blast.results'] = array(
-          '#value' => theme('tripal_feature_blast.results', array('node' => $node)),
+        $node->content['tripal_feature_blast_results'] = array(
+            '#markup' => theme('tripal_feature_blast_results', array('node' => $node)),
+            '#tripal_toc_id'    => 'homology',
+            '#tripal_toc_title' => 'Homology',
+            '#weight' => -100,
         );
       }
       break;
@@ -263,9 +266,9 @@ function chado_analysis_blast_form($node, $form_state) {
 /**
 *
 */
-function chado_analysis_blast_validate($node,  &$form) {
+function chado_analysis_blast_validate($node,  &$form, &$form_state) {
    // use the analysis parent to validate the node
-   tripal_analysis_validate($node,  $form); 
+   tripal_analysis_validate($node,  $form, $form_state); 
 }
 
 /*

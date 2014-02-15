@@ -55,9 +55,6 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
    $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
    $is_concat, $search_keywords, $job_id) {
 
-  // get a persistant connection
-  $connection = tripal_db_persistent_chado();
-     
   // If user input a file (e.g. blast.xml)
   if (is_file($blastfile)) {
       tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
@@ -374,15 +371,10 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           $xml_content .= "\n  </$tag_name>\n</Iteration>";
          
           // Make sure this iteration doesn't exist in analysisfeatureprop. If it does, update but not insert
-          $psql = "
-            PREPARE blast_loader_selaprop(int, int, int) AS
-            SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id 
+          $sql = "SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id 
             FROM {analysisfeatureprop} AFP 
               INNER JOIN {analysisfeature} AF ON AF.analysisfeature_id = AFP.analysisfeature_id        
-            WHERE feature_id=$1 AND analysis_id=$2 AND type_id=$3 
-          ";
-          tripal_core_chado_prepare('blast_loader_selaprop', $psql, array('int', 'int', 'int'));
-          $sql = "EXECUTE blast_loader_selaprop (:feature_id, :analysis_id, :type_id)";
+            WHERE feature_id = :feature_id AND analysis_id = :analysis_id AND type_id = :type_id";
           $results = chado_query($sql, array(':feature_id' => $feature_id, ':analysis_id' => $analysis_id, ':type_id' => $type_id));
           $analysisfeatureprop = $results->fetchObject();
 
@@ -409,14 +401,9 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           
           // If the analysisfeatureprop record exists then update it
           if ($analysisfeatureprop) {
-            $psql = "
-              PREPARE blast_loader_updaprop(text, int) AS 
-              UPDATE {analysisfeatureprop}
-              SET value = $1 
-              WHERE analysisfeatureprop_id = $2 
-            ";
-            tripal_core_chado_prepare('blast_loader_updaprop', $psql, array('text', 'int'));  
-            $sql = "EXECUTE blast_loader_updaprop (:xml_content, :analysisfeatureprop_id)";
+            $sql = "UPDATE {analysisfeatureprop}
+              SET value = :xml_content 
+              WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
             $success = chado_query($sql, array(':xml_content' => $xml_content, 'analysisfeatureprop_id' => $analysisfeatureprop->analysisfeatureprop_id));
             if (!$success) {
               watchdog('T_blastXML_load', "Cannot update analysis feature property record for $feature.", array(), 
