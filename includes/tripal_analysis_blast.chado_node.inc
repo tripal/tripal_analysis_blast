@@ -43,13 +43,13 @@ function tripal_analysis_blast_node_view($node, $view_mode, $langcode) {
           '#markup' => theme('tripal_analysis_blast_teaser', array('node' => $node)),
         );
       }
+      break;
     case 'chado_feature':
       if ($view_mode == 'full') {
         $node->content['tripal_feature_blast_results'] = array(
-            '#markup' => theme('tripal_feature_blast_results', array('node' => $node)),
-            '#tripal_toc_id'    => 'homology',
-            '#tripal_toc_title' => 'Homology',
-            '#weight' => -100,
+          '#markup' => theme('tripal_feature_blast_results', array('node' => $node)),
+          '#tripal_toc_id'    => 'homology',
+          '#tripal_toc_title' => 'Homology',
         );
       }
       break;
@@ -271,35 +271,6 @@ function chado_analysis_blast_validate($node,  &$form, &$form_state) {
    tripal_analysis_validate($node,  $form, $form_state); 
 }
 
-/*
- *
- */
-function theme_chado_analysis_blast_node_form($form) {
-/*
-  $properties_table = tripal_analysis_theme_node_form_properties($form);
-  $markup .= $properties_table;
-
-  $form['properties']['table'] = array(
-    '#type' => 'markup',
-    '#value' =>  $markup,
-    '#prefix' => '<div id="tripal-analysis-edit-properties-table">',
-    '#suffix' => '</div>',
-  );
-  $form['buttons']['#weight'] = 50;
-  return drupal_render($form);
-  */
-}
-
-/**
- *
- */
-function chado_analysis_blast_form_alter(&$form, &$form_state, $form_id) {
-  // turn of preview button for insert/updates
-  if ($form_id == "chado_analysis_blast_node_form") {
-    $form['actions']['preview']['#access'] = FALSE;
-  }
-}
-
 function chado_analysis_blast_load($nodes) {
 
   // load the default set of analysis fields
@@ -324,16 +295,16 @@ function chado_analysis_blast_load($nodes) {
     $search_keywords = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_search_keywords');
    
     $analysis->tripal_analysis_blast = new stdClass;
-    $analysis->tripal_analysis_blast->blastdb         = $blastdb->value;
-    $analysis->tripal_analysis_blast->blastfile       = $blastfile->value;
-    $analysis->tripal_analysis_blast->blastparameters = $blastparameters->value;
-    $analysis->tripal_analysis_blast->no_parsed       = $no_parsed->value;
-    $analysis->tripal_analysis_blast->query_re        = $query_re->value;
-    $analysis->tripal_analysis_blast->query_type      = $query_type->value;
-    $analysis->tripal_analysis_blast->query_uniquename= $query_uniquename->value;
-    $analysis->tripal_analysis_blast->blastfile_ext   = $blastfile_ext->value;
-    $analysis->tripal_analysis_blast->is_concat       = $is_concat->value;
-    $analysis->tripal_analysis_blast->search_keywords = $search_keywords->value;
+    $analysis->tripal_analysis_blast->blastdb         = is_object($blastdb)          ? $blastdb->value          : '';
+    $analysis->tripal_analysis_blast->blastfile       = is_object($blastfile)        ? $blastfile->value        : '';
+    $analysis->tripal_analysis_blast->blastparameters = is_object($blastparameters)  ? $blastparameters->value  : '';
+    $analysis->tripal_analysis_blast->no_parsed       = is_object($no_parsed)        ? $no_parsed->value        : '';
+    $analysis->tripal_analysis_blast->query_re        = is_object($query_re)         ? $query_re->value         : '';
+    $analysis->tripal_analysis_blast->query_type      = is_object($query_type)       ? $query_type->value       : '';
+    $analysis->tripal_analysis_blast->query_uniquename= is_object($query_uniquename) ? $query_uniquename->value : '';
+    $analysis->tripal_analysis_blast->blastfile_ext   = is_object($blastfile_ext)    ? $blastfile_ext->value    : '';
+    $analysis->tripal_analysis_blast->is_concat       = is_object($is_concat)        ? $is_concat->value        : '';
+    $analysis->tripal_analysis_blast->search_keywords = is_object($search_keywords)  ? $search_keywords->value  : '';
 
     // get the database information so that we don't have to require callers
     // to do the lookup
@@ -422,62 +393,39 @@ function chado_analysis_blast_update($node) {
 *  perform actions on data managed by this module
 */
 function chado_analysis_blast_access($op,  $node, $account) {
-  if ($op == 'create') {
-    if (!user_access('create chado_analysis_blast content',   $account)) {
-      return FALSE;
-    }
+  $node_type = $node;
+  if (is_object($node)) {
+    $node_type = $node->type;
   }
-  if ($op == 'update') {
-    if (!user_access('edit chado_analysis_blast content',   $account)) {
-      return FALSE;
+  
+  if($node_type == 'chado_analysis_blast') {
+    if ($op == 'create') {
+      if (!user_access('create chado_analysis_blast content',   $account)) {
+        return NODE_ACCESS_DENY;
+      }
+      return NODE_ACCESS_ALLOW;
     }
-  }
-  if ($op == 'delete') {
-    if (!user_access('delete chado_analysis_blast content',   $account)) {
-      return FALSE;
+    if ($op == 'update') {
+      if (!user_access('edit chado_analysis_blast content',   $account)) {
+        return NODE_ACCESS_DENY;
+      }
     }
-  }
-  if ($op == 'view') {
-    if (!user_access('access chado_analysis_blast content',   $account)) {
-      return FALSE;
+    if ($op == 'delete') {
+      if (!user_access('delete chado_analysis_blast content',   $account)) {
+        return NODE_ACCESS_DENY;
+      }
     }
+    if ($op == 'view') {
+      if (!user_access('access chado_analysis_blast content',   $account)) {
+        return NODE_ACCESS_DENY;
+      }
+    }
+    return NODE_ACCESS_IGNORE;
   }
-  return NULL;
 }
 /*******************************************************************************
  * Delete blast anlysis
 */
 function chado_analysis_blast_delete($node) {
   chado_analysis_delete($node);
-}
-
-/*******************************************************************************
- *  This function customizes the view of the chado_analysis node.  It allows
-*  us to generate the markup.
-*/
-function chado_analysis_blast_view($node,  $teaser = FALSE, $page = FALSE) {
-  // use drupal's default node view:
-  //dprint_r($node);
-  if (!$teaser) {
-    $node = node_prepare($node,  $teaser);
-    // When previewing a node submitting form,  it shows 'Array' instead of
-    // correct date format. We need to format the date here
-    $time = $node->timeexecuted;
-    if (is_array($time)) {
-      $month = $time['month'];
-      $day = $time['day'];
-      $year = $time['year'];
-      $timestamp = $year . '-' . $month . '-' . $day;
-      $node->timeexecuted = $timestamp;
-    }
-    // When viewing a node,  we need to reformat the analysisprop since we
-    // separate each value with a bar |
-    if (preg_match("/.*\|.*\|.*/",  $node->blastdb)) {
-      $prop_values = explode("|", $node->blastdb);
-      $node->blastdb = $prop_values[0];
-      $node->blastfile = $prop_values[1];
-      $node->blastparameters = $prop_values[2];
-    }
-  }
-  return $node;
-}  
+} 

@@ -243,13 +243,16 @@ function tripal_analysis_blast_requirements($phase) {
 /*******************************************************************************
  * Provide update script for adding new cvterms
  */
-function tripal_analysis_blast_update_7000() {
+function tripal_analysis_blast_update_7200() {
   if (chado_table_exists('tripal_analysis_blast')) {
-    $sql = "ALTER TABLE chado.tripal_analysis_blast SET schema public";
-    $success = db_query($sql);
-  }
-  if (!$success) {
-    throw new DrupalUpdateException('Could not move tripal_analysis_blast table.');
+    try {
+      $sql = "ALTER TABLE chado.tripal_analysis_blast SET schema public";
+      db_query($sql);
+    }
+    catch (\PDOException $e) {
+      $error = $e->getMessage();
+      throw new DrupalUpdateException('Failed to change the vocabulary from tripal_library_types to library_type: '. $error);
+    }
   }
 }
 

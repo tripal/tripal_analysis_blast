@@ -1,38 +1,18 @@
 <?php
 
+require_once "api/tripal_analysis_blast.api.inc";
 require_once "includes/tripal_analysis_blast.xml_parser.inc";
 require_once "includes/tripal_analysis_blast.admin.inc";
 require_once "includes/tripal_analysis_blast.chado_node.inc";
+require_once "theme/tripal_analysis_blast.theme.inc";
 
-
-/*******************************************************************************
- * Tripal Blast Result lets users show/hide blast results associated
- * with a tripal feature
- ******************************************************************************/
-function tripal_analysis_blast_init() {
-  // Add javascript and style sheet
-  drupal_add_css(drupal_get_path('module',  'tripal_analysis_blast') .'/theme/css/tripal_analysis_blast.css', 'theme');
-  drupal_add_js(drupal_get_path('module',   'tripal_analysis_blast') .'/theme/js/tripal_analysis_blast.js');
-}
-
-/*******************************************************************************
+/**
  * tripal_analysis_blast_menu()
  * HOOK: Implementation of hook_menu()
  * Entry points and paths of the module
  */
 function tripal_analysis_blast_menu() {
-  
-  // Show top 10/25/all blast results for ajax calls
-  $items['tripal_top_blast'] = array(
-      'path' => 'top_blast',  
-      'title' => t('Blast Hits'),  
-      'page callback' => 'tripal_get_feature_blast_results_ajax',  
-      'page arguments' => array(1, 2, 3), 
-      'access arguments' => array('access content'),  
-      'type' => MENU_CALLBACK
-  );
-
-   $items['admin/tripal/extension/tripal_blast_analysis'] = array(
+  $items['admin/tripal/extension/tripal_blast_analysis'] = array(
       'title' => 'Tripal Analysis Blast Settings',  
       'description' => 'Settings for the displays of blast analysis results.',  
       'page callback' => 'drupal_get_form',  
@@ -93,26 +73,26 @@ function tripal_analysis_blast_block($op = 'list',   $delta = 0, $edit=array()) 
 function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
   $core_path = drupal_get_path('module', 'tripal_core');
   $items = array (
-      'node__chado_analysis_blast' => array (
-          'template' => 'node--chado-generic',
-          'render element' => 'node',
-          'base hook' => 'node',
-          'path' => "$core_path/theme" 
-      ),
+    'node__chado_analysis_blast' => array (
+      'template' => 'node--chado-generic',
+      'render element' => 'node',
+      'base hook' => 'node',
+      'path' => "$core_path/theme" 
+    ),
     'tripal_analysis_blast_base' => array(
       'variables' => array('node' => NULL),
-      'template' => 'tripal_analysis_blast.base',
+      'template' => 'tripal_analysis_blast_base',
       'path' => "$path/theme/tripal_analysis_blast",
     ),
     'tripal_analysis_blast_teaser' => array(
       'variables' => array('node' => NULL),
-      'template' => 'tripal_analysis_blast.teaser',
+      'template' => 'tripal_analysis_blast_teaser',
       'path' => "$path/theme/tripal_analysis_blast",
     ),
     
     // tripal_feature theme
     'tripal_feature_blast_results' => array (
-        'template' => 'tripal_feature_blast.results',
+        'template' => 'tripal_feature_blast_results',
         'variables' => array ('node' => NULL),
         'path' => "$path/theme/tripal_feature"
     ),
@@ -120,126 +100,6 @@ function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
  
   return $items;
 }
-/*******************************************************************************
- *  
- */
-function tripal_get_feature_blast_results_ajax($feature_id,  $db_id, $max) {
-   $sql = "SELECT nid FROM {chado_feature} WHERE feature_id = :feature_id";
-   $results = db_query($sql, array(':feature_id' => $feature_id));
-   $nid = $results->fetchObject($results);
-   $node = node_load($nid->nid);
-
-   // add the additional variables that the theme needs to generate the output
-   $node->db_id = $db_id;
-   $node->max = $max;
-   // call the theme to rebuild the blast results
-   drupal_json(array('update' => theme('tripal_feature_blast_results',  $node)));
-}
-/*******************************************************************************
- *  
- */
-function tripal_analysis_blast_preprocess_tripal_feature_blast_results(&$variables) {
-   $feature = $variables['node']->feature;
-   $db_id = $variables['node']->db_id; // this value only gets set on an ajax call
-  
-   $max = 10;
-   if (isset($variables['node']->max)) {
-      $max = $variables['node']->max;
-   }
-
-   $blast_results = tripal_get_feature_blast_results($feature->feature_id,  $db_id, $max);
-   if (!is_object($feature->tripal_analysis_blast)) {
-     $feature->tripal_analysis_blast = new stdClass;
-   }
-   $feature->tripal_analysis_blast->blast_results_list = $blast_results;      
-}
-
-/*******************************************************************************
- * tripal_get_feature_blast_results()
- * Get blast result from featureprop table for the feature
- */
-function tripal_get_feature_blast_results($feature_id, $db_id, $max) {
-
-  // Get the blast results stored as XML from the analysisfeatureprop table
-   // the type for the property is named 'analysis_blast_output_iteration_hits'
-   // and is found in the 'tripal' controlled vocabulary.  This CV term was
-   // added by this module.
-   $select = array(
-      'analysisfeature_id' => array(
-         'feature_id' => $feature_id,
-      ),   
-      'type_id' => array(
-         'name' => 'analysis_blast_output_iteration_hits',  
-         'cv_id' => array(
-            'name' => 'tripal'
-         ),  
-      ),           
-   );
-   $blast_results = tripal_core_chado_select('analysisfeatureprop', array('*'), $select);
-   if (!$blast_results) {
-      return;
-   }
-
-  // get the HTML content for viewing each of the XML file
-  $blast_obj_array = array();
-  $blast_obj_counter = 0;
-  foreach ($blast_results as $index => $analysisfeatureprop) {
-      // get the blast XML for this feature
-      $blast_xml = $analysisfeatureprop->value;
-
-      // get the analysis record
-      $analysisfeature_arr = tripal_core_chado_select('analysisfeature', array('analysis_id'), 
-         array('analysisfeature_id' => $analysisfeatureprop->analysisfeature_id));
-      $analysis_arr = tripal_core_chado_select('analysis', array('*'), 
-         array('analysis_id' => $analysisfeature_arr[0]->analysis_id));
-      $analysis = $analysis_arr[0];
-      $analysis_id = $analysis->analysis_id;
-
-      // the old style was to store all parameters in a single CV term in the analysisprop 
-      // table. However now each property has it's own CV term in that table. But,
-      // we still need to support the old method for backwards compatibility.
-      // so,  first get the old style variable and see if it has values. In
-      // particular we need the database setting
-      $blast_settings  = tripal_analysis_get_property($analysis_id, 'analysis_blast_settings');  
-      if ($blast_settings) {
-       $blastsettings = explode("|",   $blast_settings->value);
-         // if we don't have the proper number of fields in the value column then
-         // skip this entry
-         if (count($blastsettings) != 3) {
-           continue;
-         }
-       $adb_id = $blastsettings[0];
-      }
-      // if we're not using the old style then try the new method to get the 
-      // database id
-      else {
-         $blastdb = tripal_analysis_get_property($analysis_id, 'analysis_blast_blastdb');
-         $adb_id = $blastdb->value;
-      }
-      // if the callee specified a database to show then we want to check that
-      // with the database id of the analysis we're looking at.  If they
-      // don't match then skip this blast.  If a database id was not specified
-      // then continue
-      if ($db_id and $adb_id != $db_id) {
-         continue;
-      } 
-
-      // get the database
-      if ($adb_id) {
-        $db_arr = tripal_core_chado_select('db', array('*'), array('db_id' => $adb_id)); 
-        $db = $db_arr[0];
-      }
-
-      // parse the XML and add it to the array of blast results to be returned
-    $blast_obj = tripal_analysis_blast_get_result_object($blast_xml, $db, $max, $feature_id, $analysis);
-      $blast_obj->analysis = $analysis;
-    $blast_obj_array [$blast_obj_counter] = $blast_obj;
-    $blast_obj_counter ++;
-  }
-
-   return $blast_obj_array;
-}
-
 
 /**
 *
@@ -272,7 +132,6 @@ function chado_analysis_blast_submit_jobs($node) {
            Job not scheduled.")));
     }
   }
-    
 }
 
 
@@ -349,4 +208,20 @@ function tripal_analysis_blast_job_describe_args($callback, $args) {
       }
    }
    return $new_args;
+}
+/**
+ * Implementation of hook_form_alter()
+ * 
+ * @param $form
+ * @param $form_state
+ * @param $form_id
+ * 
+ * 
+ */
+function tripal_analysis_blast_form_alter(&$form, &$form_state, $form_id) {
+  
+  if ($form_id == "chado_analysis_blast_node_form") {
+    // turn of preview button for insert/updates
+    $form['actions']['preview']['#access'] = FALSE;
+  }
 }

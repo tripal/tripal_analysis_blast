@@ -448,7 +448,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
             $analysis = tripal_core_chado_select('analysis', array('*'), $values, $options);
 
             // get the blast object
-            $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], 0, $feature_id, $analysis[0]);
+            $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], $feature_id, $analysis[0]);
                       
             // iterate through the hits and add the records to the 
             // blast_hit_data table
@@ -524,9 +524,6 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
  * @param $db
  *   An instantiated object containing the database record of the database
  *   the features were blasted against.
- * @param $max
- *   The maximum number of matches to retreive from the blast XML results. Set to
- *   zero to retrieve all hits.
  * @param $feature_id
  *   The feature ID to which this blast XML belongs.
  * @param $analysis
@@ -577,7 +574,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
  *        $blast_obj->hits_array[$i]['hsp'][$j]['query_from']
  *        $blast_obj->hits_array[$i]['hsp'][$j]['query_to']
  */
-function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $feature_id, $analysis) {
+function tripal_analysis_blast_get_result_object($xml_string, $db, $feature_id, $analysis) {
   $blast_object = new stdClass();
 
   // Get the parser using db_id
@@ -662,7 +659,6 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
           $blast_object->xml_tag = $iteration_element_value;
 
           // add the links for updating blast info using Ajax
-          $blast_object->max = $max;          
           $blast_object->feature_id = $feature_id;
           
           // initalize hit variables
@@ -864,54 +860,47 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
             if ($xml->nodeType == XMLReader::END_ELEMENT) {
               if (strcmp($xml->name, 'Hit') == 0) {
                 
-                // if we've hit the maximum number of hits then just count otherwise add
-                // a new hit
-                if ($max > 0 && $hit_count >= $max) {
-                  $number_hits++; 
-                }
+                $number_hits++; 
+                $arrowr_url = url(drupal_get_path('theme', 'tripal') . "/images/arrow_r.png");
+                $hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
+                $hits_array[$hit_count]['accession'] = $accession;
+                $hits_array[$hit_count]['hit_organism'] = $hit_organism;    
+                $hits_array[$hit_count]['hit_name'] = $hit_name;
+                
+                if ($accession && $db->urlprefix) {
+                  $hits_array[$hit_count]['hit_url'] = "$db->urlprefix$accession";
+                } 
                 else {
-                  $number_hits++; 
-                  $arrowr_url = url(drupal_get_path('theme', 'tripal') . "/images/arrow_r.png");
-                  $hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
-                  $hits_array[$hit_count]['accession'] = $accession;
-                  $hits_array[$hit_count]['hit_organism'] = $hit_organism;    
-                  $hits_array[$hit_count]['hit_name'] = $hit_name;
-                  
-                  if ($accession && $db->urlprefix) {
-                    $hits_array[$hit_count]['hit_url'] = "$db->urlprefix$accession";
-                  } 
-                  else {
-                    // Test if this is another feature in the database
-                    $sql = "SELECT feature_id FROM {feature} WHERE uniquename = :uniquename";
-                    $previous_db = db_set_active('chado');
-                    $hit_feature_id = chado_query($sql, array(':uniquename' => $hit_name))->fetchField();
-                    db_set_active($previous_db);
-                    // If it is, add link to that feature
-                    if ($hit_feature_id) {
-                      $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
-                    }
+                  // Test if this is another feature in the database
+                  $sql = "SELECT feature_id FROM {feature} WHERE uniquename = :uniquename";
+                  $previous_db = db_set_active('chado');
+                  $hit_feature_id = chado_query($sql, array(':uniquename' => $hit_name))->fetchField();
+                  db_set_active($previous_db);
+                  // If it is, add link to that feature
+                  if ($hit_feature_id) {
+                    $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
                   }
-                  
-                  $hits_array[$hit_count]['best_evalue'] = $best_evalue;
-                  $hits_array[$hit_count]['best_score'] = $best_score;
-                  
-                  if (!empty($best_len)) {
-                    $percent_identity = number_format($best_identity/$best_len*100, 2);
-                    $hits_array[$hit_count]['percent_identity'] = $percent_identity;
-                  }
-              
-                  $hits_array[$hit_count]['description'] = $description;
-                  
-                  // if there is at least one HSP
-                  if (!empty($hsp_array[0]['query_frame'])) {
-                    $hits_array[$hit_count]['hsp'] = $hsp_array;
-                  } 
-                  else {
-                    $hits_array[$hit_count]['hsp'] = array();
-                  }
-                  
-                  $hit_count ++;  
-                } // end if ($max > 0 && $hit_count >= $max) { ... } else { ...                          
+                }
+                
+                $hits_array[$hit_count]['best_evalue'] = $best_evalue;
+                $hits_array[$hit_count]['best_score'] = $best_score;
+                
+                if (!empty($best_len)) {
+                  $percent_identity = number_format($best_identity/$best_len*100, 2);
+                  $hits_array[$hit_count]['percent_identity'] = $percent_identity;
+                }
+            
+                $hits_array[$hit_count]['description'] = $description;
+                
+                // if there is at least one HSP
+                if (!empty($hsp_array[0]['query_frame'])) {
+                  $hits_array[$hit_count]['hsp'] = $hsp_array;
+                } 
+                else {
+                  $hits_array[$hit_count]['hsp'] = array();
+                }
+                
+                $hit_count ++;
               } // end if (strcmp($xml->name, 'Hit') == 0) { ...
             }  // end if ($xml->nodeType == XMLReader::END_ELEMENT) ...          
           } // end while ($xml->read()) { ...

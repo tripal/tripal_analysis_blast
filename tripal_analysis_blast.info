@@ -4,6 +4,11 @@ core = 7.x
 version = 7.x-2.x-tripal_v2.x
 project = tripal_analysis_blast
 package = Tripal Extensions 
+
+stylesheets[all][] = theme/css/tripal_analysis_blast.css
+scripts[]          = theme/js/tripal_analysis_blast.js
+
+
 dependencies[] = tripal_core
 dependencies[] = tripal_feature
 dependencies[] = tripal_analysis
