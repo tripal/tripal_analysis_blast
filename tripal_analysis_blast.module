@@ -21,8 +21,8 @@ function tripal_analysis_blast_init() {
  * Entry points and paths of the module
  */
 function tripal_analysis_blast_menu() {
-	
-	// Show top 10/25/all blast results for ajax calls
+  
+  // Show top 10/25/all blast results for ajax calls
   $items['tripal_top_blast'] = array(
       'path' => 'top_blast',  
       'title' => t('Blast Hits'),  
@@ -90,25 +90,35 @@ function tripal_analysis_blast_block($op = 'list',   $delta = 0, $edit=array()) 
  *  We create theme functions to allow users of the module to customize the
  *  look and feel of the output generated in this module
  */
-function tripal_analysis_blast_theme() {
-  $path = drupal_get_path('module', 'tripal_analysis_blast') . '/theme';
-  $theme = array(
-    'tripal_feature_blast_results' => array(
-      'template' => 'tripal_feature_blast.results',  
-      'variables' =>  array('node' => NULL),  
-      'path' => $path . '/tripal_feature',  
-    ),  
+function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
+  $core_path = drupal_get_path('module', 'tripal_core');
+  $items = array (
+      'node__chado_analysis_blast' => array (
+          'template' => 'node--chado-generic',
+          'render element' => 'node',
+          'base hook' => 'node',
+          'path' => "$core_path/theme" 
+      ),
     'tripal_analysis_blast_base' => array(
-      'template' => 'tripal_analysis_blast.base',  
-      'variables' =>  array('node' => NULL),  
-      'path' => $path . '/tripal_analysis_blast',  
+      'variables' => array('node' => NULL),
+      'template' => 'tripal_analysis_blast.base',
+      'path' => "$path/theme/tripal_analysis_blast",
     ),
-    // Themed Forms
-    'chado_analysis_blast_node_form' => array(
-      'variables' => array('form'),
+    'tripal_analysis_blast_teaser' => array(
+      'variables' => array('node' => NULL),
+      'template' => 'tripal_analysis_blast.teaser',
+      'path' => "$path/theme/tripal_analysis_blast",
+    ),
+    
+    // tripal_feature theme
+    'tripal_feature_blast_results' => array (
+        'template' => 'tripal_feature_blast.results',
+        'variables' => array ('node' => NULL),
+        'path' => "$path/theme/tripal_feature"
     ),
   );
-  return $theme;
+ 
+  return $items;
 }
 /*******************************************************************************
  *  
@@ -262,12 +272,6 @@ function chado_analysis_blast_submit_jobs($node) {
            Job not scheduled.")));
     }
   }
-   // add a job if the user wants to create a best hits report.
-  if ($node->blastbesthit) {
-      $j_args[0] = $node->analysis_id;  
-    tripal_add_job("Parse best hit: $node->blastfile",  'tripal_analysis_blast',
-                     'tripal_analysis_blast_parse_best_hit',   $j_args, $user->uid);      
-   }
     
 }
 

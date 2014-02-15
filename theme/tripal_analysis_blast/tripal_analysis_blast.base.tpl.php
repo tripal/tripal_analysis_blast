@@ -1,4 +1,5 @@
 <?php
+
 $node = $variables['node'];
 $analysis = $variables['node']->analysis;
 
@@ -10,7 +11,6 @@ $blast = $node->analysis->tripal_analysis_blast;
 
 ?>
 <div id="tripal_analysis_blast-base-box" class="tripal_analysis_blast-info-box tripal-info-box">
-  <div class="tripal_analysis_blast-info-box-title tripal-info-box-title">Blast Analysis Details</div>
   <div class="tripal_analysis_blast-info-box-desc tripal-info-box-desc"></div>
    <table id="tripal_analysis_blast-table-base" class="tripal_analysis_blast-table tripal-table tripal-table-vert">
       <tr class="tripal_analysis_blast-table-odd-row tripal-table-even-row">

@@ -3,127 +3,6 @@
  * @file
  * @todo Add file header description
  */
- 
-/**
- * Parse NCBI BLAST XML results into HTML text that can be used by Drupal
- * for default Drupal indexing of pages.  This function parses a single feature
- * at a time.
- *
- * @param $xml_string
- *   The XML text containing blast results for a given feature
- * @param $db
- *   The database object of the database blasted against. This object should 
- *   contain the database id ($db->db_id) that will be used to lookup 
- *   regular expressions for parsing of blast hits.
- * @param $feature_id 
- *   The feature ID of the feature the XML blast results belong to.
- *
- * @return
- *   Returns HTML formatted text results with non informative words removed, and
- *   more significant words enclosed in HTML tags ranked by the Drupal indexer
- */
-function parse_NCBI_Blast_XML_index_version($xml_string, $db, $feature_id) {
-  // Get the parser using db_id
-  $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = :db_id";
-  $results = db_query($sql, array(':db_id' => $db->db_id));
-  $parser = $results->fetchObject();
-  $db_name = $parser->displayname;
-  $is_genbank = $parser->genbank_style;
-  $regex_hit_id = $parser->regex_hit_id;
-  $regex_hit_def = $parser->regex_hit_def;
-  $regex_hit_accession = $parser->regex_hit_accession;
-  $hit_organism = $parser->hit_organism;
-
-  // set default if regular expressions have not been specified
-  if (!$regex_hit_id) {
-    $regex_hit_id = '/^(.*?)\s.*$/';
-  } 
-  else {
-    $regex_hit_id = '/' . $regex_hit_id . '/';
-  }
-  if (!$regex_hit_def) {
-    $regex_hit_def = '/^.*?\s(.*)$/';
-  } 
-  else {
-    $regex_hit_def = '/' . $regex_hit_def . '/';
-  }
-  if (!$regex_hit_accession) {
-    $regex_hit_accession = '/^(.*?)\s.*$/';
-  } 
-  else {
-    $regex_hit_accession = '/' . $regex_hit_accession . '/';
-  }
-  if ($regex_hit_organism) {
-    $regex_hit_organism = '/' . $regex_hit_organism . '/';
-  }
-
-  $html_out .= "<h3>$db_name</h3>";
-
-  // Load the XML string. This XML should be an extract
-  // of the original XML file with only a single iteration.
-  // An iteration is essentially all the hits for a single
-  // query sequence.
-  $xml_output = simplexml_load_string($xml_string);
-  $iteration = '';
-  // new XML file parser has added the feature name within <Iteration_query-def> tags.
-  if ($xml_output->getName() == 'Iteration') {
-    foreach ($xml_output->children() as $xml_tag) {
-      if ($xml_tag->getName() == 'Iteration_query-def') {
-        $html_out .= "Query: $xml_tag<br>";
-      } 
-      elseif ($xml_tag->getName() == 'Iteration_hits') {
-        $iteration = $xml_tag;
-      }
-    }
-    // This is for the file parsed by the old parser
-  } 
-  else {
-    $iteration = $xml_output;
-  }
-
-  // now run through the blast hits/hsps of this iteration
-  // and generate the rows of the table
-  foreach ($iteration->children() as $hits) {
-    $best_evalue = 0;
-    $best_score = 0;
-    foreach ($hits->children() as $hit) {
-      $best_evalue = 0;
-      $best_score = 0;
-      $element_name = $hit->getName();
-      if ($element_name == 'Hit_id') {
-        // if parsing "name, acc, desc" from three tags (1/3)
-        if ($is_genbank) {
-          $hit_name = $hit;
-        }
-      } 
-      elseif ($element_name == 'Hit_def') {
-        if ($is_genbank) {
-          $description = $hit;
-        } 
-        else {
-          $accession = preg_replace($regex_hit_accession, "$1", $hit);
-          $hit_name = preg_replace($regex_hit_id, "$1", $hit);
-          $description = preg_replace($regex_hit_def, "$1", $hit);
-          if ($regex_hit_organism) {
-              $hit_organism = preg_replace($regex_hit_organism, "$1", $hit);
-           }
-        }
-      } 
-      elseif ($element_name == 'Hit_accession') {
-        // if parsing "name, acc, desc" from three tags (3/3)
-        if ($is_genbank) {
-          $accession = $hit;
-        }
-        // now run through each HSP for this hit
-      }
-    }
-    $html_out .= "<p>$hit_name<br>";
-    $html_out .= "$accession<br>";
-    $html_out .= "<b>$description</b></br>";
-    $hsp_html_out = '';
-  }
-  return $html_out;
-}
 
 /*******************************************************************************
  * This function is a wrapper for the tripal_analysis_blast_parseXML function. 
@@ -176,9 +55,6 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
    $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
    $is_concat, $search_keywords, $job_id) {
 
-  // get a persistant connection
-  $connection = tripal_db_persistent_chado();
-     
   // If user input a file (e.g. blast.xml)
   if (is_file($blastfile)) {
       tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
@@ -495,15 +371,10 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           $xml_content .= "\n  </$tag_name>\n</Iteration>";
          
           // Make sure this iteration doesn't exist in analysisfeatureprop. If it does, update but not insert
-          $psql = "
-            PREPARE blast_loader_selaprop(int, int, int) AS
-            SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id 
+          $sql = "SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id 
             FROM {analysisfeatureprop} AFP 
               INNER JOIN {analysisfeature} AF ON AF.analysisfeature_id = AFP.analysisfeature_id        
-            WHERE feature_id=$1 AND analysis_id=$2 AND type_id=$3 
-          ";
-          tripal_core_chado_prepare('blast_loader_selaprop', $psql, array('int', 'int', 'int'));
-          $sql = "EXECUTE blast_loader_selaprop (:feature_id, :analysis_id, :type_id)";
+            WHERE feature_id = :feature_id AND analysis_id = :analysis_id AND type_id = :type_id";
           $results = chado_query($sql, array(':feature_id' => $feature_id, ':analysis_id' => $analysis_id, ':type_id' => $type_id));
           $analysisfeatureprop = $results->fetchObject();
 
@@ -530,15 +401,10 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
           
           // If the analysisfeatureprop record exists then update it
           if ($analysisfeatureprop) {
-            $psql = "
-              PREPARE blast_loader_updaprop(text, int) AS 
-              UPDATE {analysisfeatureprop}
-              SET value = $1 
-              WHERE analysisfeatureprop_id = $2 
-            ";
-            tripal_core_chado_prepare('blast_loader_updaprop', $psql, array('text', 'int'));  
-            $sql = "EXECUTE blast_loader_updaprop ('%s', %d)";
-            $success = chado_query($sql, $xml_content, $analysisfeatureprop->analysisfeatureprop_id);
+            $sql = "UPDATE {analysisfeatureprop}
+              SET value = :xml_content 
+              WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
+            $success = chado_query($sql, array(':xml_content' => $xml_content, 'analysisfeatureprop_id' => $analysisfeatureprop->analysisfeatureprop_id));
             if (!$success) {
               watchdog('T_blastXML_load', "Cannot update analysis feature property record for $feature.", array(), 
                 WATCHDOG_ERROR);
@@ -715,8 +581,8 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
   $blast_object = new stdClass();
 
   // Get the parser using db_id
-  $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $parser = db_fetch_object(db_query($sql, $db->db_id));
+  $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = :db_id";
+  $parser = db_query($sql, array(':db_id' => $db->db_id))->fetchObject();
   $db_name = $parser->displayname;
   $is_genbank = $parser->genbank_style;
   $regex_hit_id = $parser->regex_hit_id;
@@ -760,7 +626,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
   }
 
   // Find node id for the analysis
-  $ana_nid = db_result(db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = %d", $analysis->analysis_id));
+  $ana_nid = db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id", array(':analysis_id' => $analysis->analysis_id))->fetchField();
   $analysis->nid = $ana_nid;
 
 
@@ -1016,9 +882,9 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $max, $featur
                   } 
                   else {
                     // Test if this is another feature in the database
-                    $sql = "SELECT feature_id FROM {feature} WHERE uniquename = '%s'";
+                    $sql = "SELECT feature_id FROM {feature} WHERE uniquename = :uniquename";
                     $previous_db = db_set_active('chado');
-                    $hit_feature_id = db_result(chado_query($sql, $hit_name));
+                    $hit_feature_id = chado_query($sql, array(':uniquename' => $hit_name))->fetchField();
                     db_set_active($previous_db);
                     // If it is, add link to that feature
                     if ($hit_feature_id) {
@@ -1067,11 +933,11 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
   // Select all features for this blast analysis, and save them to the 'feature_set' array
   $sql = "SELECT feature_id
           FROM {analysisfeature} AF  
-               WHERE analysis_id = %d";
-  $result = chado_query($sql, $analysis_id);
+               WHERE analysis_id = :analysis_id";
+  $result = chado_query($sql, array(':analysis_id' => $analysis_id));
   $feature_set = array();
   $counter = 0;
-  while ($feature = db_fetch_object($result)) {
+  while ($feature = $result->fetchObject()) {
     $feature_set[$counter] = $feature->feature_id;
     $counter ++;
   }
@@ -1080,18 +946,18 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
   $sql = "SELECT value, name, to_char(timeexecuted, 'MM-DD-YYYY') AS time
                 FROM {analysis}  A
                 INNER JOIN {analysisprop} AP ON  A.analysis_id = AP.analysis_id 
-                WHERE A.analysis_id = %d
+                WHERE A.analysis_id = :analysis_id
                 AND type_id= (SELECT cvterm_id FROM {cvterm} 
                               WHERE name = 'analysis_blast_settings')";
-  $analysis = db_fetch_object(chado_query($sql, $analysis_id));
+  $analysis = chado_query($sql, array(':analysis_id' => $analysis_id))->fetchObject();
   
   // Parse the blast settings
   $blastsettings = explode("|", $analysis->value);
   $db_id = $blastsettings [0];
   
   // Get the xml description parser using db_id
-  $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = %d";
-  $parser = db_fetch_object(chado_query($sql, $db_id));
+  $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = :db_id";
+  $parser = chado_query($sql, array(':db_id' => $db_id))->fetchObject();
 
   $db_name = $parser->displayname;
   $is_genbank = $parser->genbank_style;
@@ -1139,12 +1005,12 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
     $sql = "SELECT value
             FROM {analysisfeatureprop} AFP 
                INNER JOIN {analysisfeature} AF ON AFP.analysisfeature_id = AF.analysisfeature_id 
-            WHERE analysis_id = %d 
-               AND feature_id = %d
+            WHERE analysis_id = :analysis_id 
+               AND feature_id = :feature_id
                AND type_id = (SELECT cvterm_id FROM {cvterm}  
                               WHERE name='analysis_blast_output_iteration_hits' 
                                  AND cv_id = (SELECT cv_id FROM cv WHERE name='tripal'))";    
-    $xml_output = simplexml_load_string(db_result(chado_query($sql, $analysis_id, $feature_set[$i])));
+    $xml_output = simplexml_load_string(chado_query($sql, array(':analysis_id' => $analysis_id, ':feature_id' => $feature_set[$i]))->fetchField());
     
     $iteration = '';
     // new XML file parser has added the feature name within <Iteration_query-def> tags.
@@ -1292,87 +1158,87 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
       }
       
       // Get analysisfeature_id
-      $sql = "SELECT analysisfeature_id FROM {analysisfeature} WHERE analysis_id = %d AND feature_id = %d";
-      $af_id = db_result(chado_query($sql, $analysis_id, $feature_set[$i]));
+      $sql = "SELECT analysisfeature_id FROM {analysisfeature} WHERE analysis_id = :analysis_id AND feature_id = :feature_id";
+      $af_id = chado_query($sql, array(':analysis_id' => $analysis_id, ':feature_id' => $feature_set[$i]))->fetchField();
       
       // Get type_id
-      $sql = "SELECT cvterm_id FROM {cvterm} WHERE name = '%s' AND cv_id = (SELECT cv_id FROM {cv} WHERE name = 'tripal')"; 
-      $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_query'));
+      $sql = "SELECT cvterm_id FROM {cvterm} WHERE name = :name AND cv_id = (SELECT cv_id FROM {cv} WHERE name = 'tripal')"; 
+      $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_query'))->fetchField();
       
-      $sql_test = "SELECT analysisfeatureprop_id FROM {analysisfeatureprop} WHERE analysisfeature_id = %d AND type_id = %d";
-      $test_afpid = db_result(chado_query($sql_test, $af_id, $type_id));
+      $sql_test = "SELECT analysisfeatureprop_id FROM {analysisfeatureprop} WHERE analysisfeature_id = :analysisfeature_id AND type_id = :type_id";
+      $test_afpid = chado_query($sql_test, array('analysisfeature_id:' => $af_id, ':type_id' => $type_id))->fetchField();
       
       //Insert only if this blast query not exists. 
       if (!$test_afpid) {
-        $afp_sql = "INSERT INTO {analysisfeatureprop} (analysisfeature_id, type_id, value, rank) VALUES (%d, %d, '%s', 0)";
+        $afp_sql = "INSERT INTO {analysisfeatureprop} (analysisfeature_id, type_id, value, rank) VALUES (:analysisfeature_id, :type_id, :rank, 0)";
         
         //$query;
-        chado_query($afp_sql, $af_id, $type_id, $query);
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $query));
 
         //$hit_name;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_match'));
-        chado_query($afp_sql, $af_id, $type_id, $hit_name);
+        $type_id = chado_query($sql, 'analysis_blast_besthit_match')->fetchField();
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, 'rank' => $hit_name));
           
         //$description;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_description'));
-        chado_query($afp_sql, $af_id, $type_id, $description);
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_description'))->fetchField();
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $description));
           
         //$best_evalue;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_evalue'));
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_evalue'))->fetchField();
         $e_digit = explode("e-", $best_evalue);
         if (count($e_digit) == 2) {
           $evalue_shown = number_format($e_digit [0], 1);
           $best_evalue = $evalue_shown . "e-" . $e_digit[1];
         } 
-        chado_query($afp_sql, $af_id, $type_id, $best_evalue);
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $best_evalue));
           
         //$best_identity;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_identity'));
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_identity'))->fetchField();
         $percent_identity = number_format($best_identity/$best_len*100, 1);
-        chado_query($afp_sql, $af_id, $type_id, $percent_identity);
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $percent_identity));
           
         //$best_len;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_length'));
-        chado_query($afp_sql, $af_id, $type_id, $best_len);
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_length'))->fetchField();
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $best_len));
         
       // Otherwise, update all instead
       } 
       else {
-        $afp_sql = "UPDATE {analysisfeatureprop} SET analysisfeature_id = %d, type_id = %d, value = '%s', rank = 0 WHERE analysisfeatureprop_id = %d";
+        $afp_sql = "UPDATE {analysisfeatureprop} SET analysisfeature_id = :analysisfeature_id, type_id = :type_id, value = :value, rank = 0 WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
 
         //$query;
-        chado_query($afp_sql, $af_id, $type_id, $query, $test_afpid);
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $query, ':analysisfeatureprop_id' => $test_afpid));
         
         //$hit_name;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_match'));
-        $test_afpid = db_result(chado_query($sql_test, $type_id));
-        chado_query($afp_sql, $af_id, $type_id, $hit_name, $test_afpid);
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_match'))->fetchField();
+        $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $hit_name, ':analysisfeatureprop_id' => $test_afpid));
 
         //$description;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_description'));
-        $test_afpid = db_result(chado_query($sql_test, $type_id));
-        chado_query($afp_sql, $af_id, $type_id, $description, $test_afpid);
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_description'))->fetchField();
+        $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $description, ':analysisfeatureprop_id' => $test_afpid));
           
         //$best_evalue;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_evalue'));
-        $test_afpid = db_result(chado_query($sql_test, $type_id));
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_evalue'))->fetchField();
+        $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
         $e_digit = explode("e-", $best_evalue);
         if (count($e_digit) == 2) {
           $evalue_shown = number_format($e_digit [0], 1);
           $best_evalue = $evalue_shown . "e-" . $e_digit[1];
-        } 
-        chado_query($afp_sql, $af_id, $type_id, $best_evalue, $test_afpid);
+        }
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $best_evalue, ':analysisfeatureprop_id' => $test_afpid));
           
         //$best_identity;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_identity'));
-        $test_afpid = db_result(chado_query($sql_test, $type_id));
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_identity'))->fetchField();
+        $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
         $percent_identity = number_format($best_identity/$best_len*100, 1);
-        chado_query($afp_sql, $af_id, $type_id, $percent_identity, $test_afpid);
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $percent_identity, ':analysisfeatureprop_id' => $test_afpid));
           
         //$best_len;
-        $type_id = db_result(chado_query($sql, 'analysis_blast_besthit_length'));
-        $test_afpid = db_result(chado_query($sql_test, $type_id));
-        chado_query($afp_sql, $af_id, $type_id, $best_len, $test_afpid);
+        $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_length'))->fetchField();
+        $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
+        chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $best_len, ':analysisfeatureprop_id' => $test_afpid));
         
       }
       
