@@ -84,7 +84,7 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
     }
   }
 
-  print "Done.\n";
+  print "\nDone.\n";
 
   return;
 }
@@ -205,13 +205,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
   while ($blastoutput->read()) {
     if ($blastoutput->nodeType == XMLReader::ELEMENT) {
       if (strcmp($blastoutput->name, 'Iteration') == 0) {
-        // iterate through each Iteration (without descending into the subtree)
-        // to count the number of iterations in the file
-        while($blastoutput->next()){
-          if ($blastoutput->nodeType == XMLReader::ELEMENT) {
             $no_iterations ++;
-          }
-        }
       }
     }
   }
