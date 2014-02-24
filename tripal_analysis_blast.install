@@ -36,29 +36,23 @@ function tripal_analysis_blast_install() {
                  "   regex_hit_accession,  genbank_style, regex_hit_organism) ".
                  "VALUES (%d,  '%s',  '%s', '%s', '%s', %d, '%s')";
    
-   // Add swissprot parser
-   $previous_db = tripal_db_set_active('chado');
-   $results = db_query($sql_db,  "%swissprot%");
-   tripal_db_set_active($previous_db);
+   // Add swissprot parser   
+   $results = chado_query($sql_db,  "%swissprot%");   
    while ($db = db_fetch_object($results)) {
       db_query($sql_parser,  $db->db_id, 'ExPASy Swissprot',  
          '^sp\|.*?\|(.*?)\s.*?$',   '^sp\|.*?\|.*?\s(.*)$', 'sp\|(.*?)\|.*?\s.*?$', 
          0, '^.*?OS=(.*?)\s\w\w=.*$');
    }
    
-   // Add trembl parser
-   $previous_db = tripal_db_set_active('chado');
-   $results = db_query($sql_db,  "%trembl%");
-   tripal_db_set_active($previous_db);
+   // Add trembl parser   
+   $results = chado_query($sql_db,  "%trembl%");  
    while ($db = db_fetch_object($results)) {
       db_query($sql_parser,  $db->db_id, 'ExPASy TrEMBL',  '^.*?\|(.*?)\s.*?$', 
          '^.*?\|.*?\s(.*)$',   '^(.*?)\|.*?\s.*?$', 0, '^.*?OS=(.*?)\s\w\w=.*$');
    }
    
    // Add NCBI genbank parser
-   $previous_db = tripal_db_set_active('chado');
-   $results = db_query($sql_db, "%genbank%");
-   tripal_db_set_active($previous_db);
+   $results = chado_query($sql_db, "%genbank%");
    while ($db = db_fetch_object($results)) {
       db_query($sql_parser,  $db->db_id, 'Genbank',  '', '', '', 1, '');
    }
@@ -170,8 +164,8 @@ function tripal_analysis_blast_add_custom_tables() {
              'feature_id' => 'feature_id',  
           ),  
         ),  
-        'blast_orgnaisms' => array(
-           'table' => 'blast_orgnaisms',  
+        'blast_organisms' => array(
+           'table' => 'blast_organisms',  
            'columns' => array(
               'blast_org_id' => 'blast_org_id',  
            ),  
