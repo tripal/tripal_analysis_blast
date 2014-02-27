@@ -13,7 +13,7 @@ require_once "theme/tripal_analysis_blast.theme.inc";
  */
 function tripal_analysis_blast_menu() {
   $items['admin/tripal/extension/tripal_blast_analysis'] = array(
-      'title' => 'Tripal Analysis Blast Settings',  
+      'title' => 'Tripal Blast Analyses',  
       'description' => 'Settings for the displays of blast analysis results.',  
       'page callback' => 'drupal_get_form',  
       'page arguments' => array('tripal_analysis_blast_settings_form'),  
@@ -129,7 +129,7 @@ function chado_analysis_blast_submit_jobs($node) {
     else {
       drupal_set_message(filter_xss(t("Blast output file,  $node->blastfile, is not readable 
            by the server.  Check existence of file and file permissions. 
-           Job not scheduled.")));
+           Job not scheduled.")), 'error');
     }
   }
 }

@@ -235,7 +235,7 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
      drupal_set_message("Database settings updated");
   } 
   else {
-     drupal_set_message("Failure updated database settings");
+     drupal_set_message("Failure updated database settings", 'error');
   }
 }
 /**
