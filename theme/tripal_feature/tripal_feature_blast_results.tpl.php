@@ -35,7 +35,7 @@ if(count($blast_results_list) > 0){
     // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
     $rows = array(); 
         
-    for ($j = $offset ; $j < $offset + $num_results_per_page; $j++) {
+    for ($j = $offset ; $j < $offset + $num_results_per_page && $j < $total_records; $j++) {
       $hit = $hits_array[$j]; 
       $hit_name = $hit['hit_name'];
       if (array_key_exists('hit_url', $hit)) { 
