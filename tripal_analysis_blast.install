@@ -52,33 +52,33 @@ function tripal_analysis_blast_install() {
    // Add trembl parser   
    $results = chado_query($sql_db,  array(':name' => "%trembl%"));  
    foreach ($results AS $db) {
-   	db_query(
-   	$sql_parser,
-   	array(
-   	':db_id' => $db->db_id,
-   	':displayname' => 'ExPASy TrEMBL',
-   	':regex_hit_id' => '^.*?\|(.*?)\s.*?$',
-   	':regex_hit_def' => '^.*?\|.*?\s(.*)$',
-   	':regex_hit_accession' => '^(.*?)\|.*?\s.*?$',
-   	':genbank_style' => 0,
-   	':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
-   	);
+     db_query(
+     $sql_parser,
+     array(
+     ':db_id' => $db->db_id,
+     ':displayname' => 'ExPASy TrEMBL',
+     ':regex_hit_id' => '^.*?\|(.*?)\s.*?$',
+     ':regex_hit_def' => '^.*?\|.*?\s(.*)$',
+     ':regex_hit_accession' => '^(.*?)\|.*?\s.*?$',
+     ':genbank_style' => 0,
+     ':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
+     );
    }
    
    // Add NCBI genbank parser
    $results = chado_query($sql_db, array(':name' => "%genbank%"));
    foreach ($results AS $db) {
-   	db_query(
-   	$sql_parser,
-   	array(
-   	':db_id' => $db->db_id,
-   	':displayname' => 'Genbank',
-   	':regex_hit_id' => '',
-   	':regex_hit_def' => '',
-   	':regex_hit_accession' => '',
-   	':genbank_style' => 1,
-   	':regex_hit_organism' => '')
-   	);
+     db_query(
+     $sql_parser,
+     array(
+     ':db_id' => $db->db_id,
+     ':displayname' => 'Genbank',
+     ':regex_hit_id' => '',
+     ':regex_hit_def' => '',
+     ':regex_hit_accession' => '',
+     ':genbank_style' => 1,
+     ':regex_hit_organism' => '')
+     );
    }
 }
 

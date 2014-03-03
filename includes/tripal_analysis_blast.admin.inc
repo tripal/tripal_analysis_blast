@@ -80,17 +80,17 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
       $displayname = $form_state['values']['displayname'];
       $gb_style_parser = $form_state['values']['gb_style_parser'];
       if ($triggered_by == 'gb_style_parser' && $gb_style_parser) {
-      	unset($form_state['values']['hit_id']);
-      	unset($form_state['values']['hit_def']);
-      	unset($form_state['values']['hit_accession']);
-      	unset($form_state['values']['hit_organism_re']);
-      	unset($form_state['values']['hit_organism']);
-      	unset($form_state['input']['hit_id']);
-      	unset($form_state['input']['hit_def']);
-      	unset($form_state['input']['hit_accession']);
-      	unset($form_state['input']['hit_organism_re']);
-      	unset($form_state['input']['hit_organism']);
-      	$read_only = 1;
+        unset($form_state['values']['hit_id']);
+        unset($form_state['values']['hit_def']);
+        unset($form_state['values']['hit_accession']);
+        unset($form_state['values']['hit_organism_re']);
+        unset($form_state['values']['hit_organism']);
+        unset($form_state['input']['hit_id']);
+        unset($form_state['input']['hit_def']);
+        unset($form_state['input']['hit_accession']);
+        unset($form_state['input']['hit_organism_re']);
+        unset($form_state['input']['hit_organism']);
+        $read_only = 1;
       }
 
       $hit_id = $form_state['values']['hit_id'];
@@ -235,7 +235,7 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
      drupal_set_message("Database settings updated");
   } 
   else {
-     drupal_set_message("Failure updated database settings");
+     drupal_set_message("Failure updated database settings", 'error');
   }
 }
 /**

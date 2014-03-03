@@ -88,52 +88,50 @@ function chado_analysis_blast_form($node, $form_state) {
   // if we are editing an existing node then the library is already part of the node
   if (property_exists($node, 'analysis')) {
     $blast = $node->analysis->tripal_analysis_blast;
-
-    $blastdb = $blast->blastdb;
-    $blastfile    = $blast->blastfile;
+    $blastdb          = $blast->blastdb;
+    $blastfile        = $blast->blastfile;
     $blastfile_ext    = $blast->blastfile_ext;
-    $blastparameters = $blast->blastparameters;
-
-    $query_re = $blast->query_re;
-    $query_type = $blast->query_type;
+    $blastparameters  = $blast->blastparameters;
+    $query_re         = $blast->query_re;
+    $query_type       = $blast->query_type;
     $query_uniquename = $blast->query_uniquename;
-    $is_concat = $blast->is_concat;
-    $search_keywords = $blast->search_keywords;
+    $is_concat        = $blast->is_concat;
+    $search_keywords  = $blast->search_keywords;
   }
   // if we are re constructing the form from a failed validation or ajax callback
   // then use the $form_state['values'] values
   if (array_key_exists('values', $form_state)) {
-    $blastdb  = $form_state['values']['blastdb'];
-    $blastfile   = $form_state['values']['blastfile'];
-    $blastfile_ext = $form_state['values']['blastfile_ext'];
+    $blastdb          = $form_state['values']['blastdb'];
+    $blastfile        = $form_state['values']['blastfile'];
+    $blastfile_ext    = $form_state['values']['blastfile_ext'];
     $blastparameters  = $form_state['values']['blastparameters'];
-    $query_re  = $form_state['values']['query_re'];
-    $query_type  = $form_state['values']['query_type'];
-    $query_uniquename  = $form_state['values']['query_uniquename'];
-    $is_concat  = $form_state['values']['is_concat'];
+    $query_re         = $form_state['values']['query_re'];
+    $query_type       = $form_state['values']['query_type'];
+    $query_uniquename = $form_state['values']['query_uniquename'];
+    $is_concat        = $form_state['values']['is_concat'];
     $search_keywords  = $form_state['values']['search_keywords'];
   }
   // if we are re building the form from after submission (from ajax call) then
   // the values are in the $form_state['input'] array
   if (array_key_exists('input', $form_state) and !empty($form_state['input'])) {
-    $blastdb  = $form_state['input']['blastdb'];
-    $blastfile   = $form_state['input']['blastfile'];
-    $blastfile_ext = $form_state['input']['blastfile_ext'];
+    $blastdb          = $form_state['input']['blastdb'];
+    $blastfile        = $form_state['input']['blastfile'];
+    $blastfile_ext    = $form_state['input']['blastfile_ext'];
     $blastparameters  = $form_state['input']['blastparameters'];
-    $query_re  = $form_state['input']['query_re'];
-    $query_type  = $form_state['input']['query_type'];
-    $query_uniquename  = $form_state['input']['query_uniquename'];
-    $is_concat  = $form_state['input']['is_concat'];
+    $query_re         = $form_state['input']['query_re'];
+    $query_type       = $form_state['input']['query_type'];
+    $query_uniquename = $form_state['input']['query_uniquename'];
+    $is_concat        = $form_state['input']['is_concat'];
     $search_keywords  = $form_state['input']['search_keywords'];
   }
     
   $form['blast'] = array(
-      '#title' => t('Blast Settings'),  
-      '#type' => 'fieldset',  
-      '#description' => t('Specific Settings for Blast Analysis.'),  
-      '#collapsible' => TRUE,
-      '#attributes' => array('id' => 'blast-extra-settings'),  
-      '#weight' => 11
+    '#title' => t('Blast Settings'),  
+    '#type' => 'fieldset',  
+    '#description' => t('Specific Settings for Blast Analysis.'),  
+    '#collapsible' => TRUE,
+    '#attributes' => array('id' => 'blast-extra-settings'),  
+    '#weight' => 11
   );
   
   // get a list of db from chado for user to choose
@@ -281,7 +279,7 @@ function chado_analysis_blast_load($nodes) {
     // create some variables for easier lookup
     $analysis = $node->analysis;
     $analysis_id = $analysis->analysis_id;
-
+    
     $blast_settings  = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_settings');
     $blastdb         = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastdb');
     $blastfile       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastfile');
@@ -327,35 +325,23 @@ function chado_analysis_blast_load($nodes) {
  */
 function chado_analysis_blast_insert($node) {
 
-  // get the analysis_id from the node before the call below
-  $analysis_id = $node->analysis_id;
-
-  // insert the analysis. If the analysis already exist then this
-  // call will link it to a new Drupal node. It will also add the
-  // analysis_id field to the $node object.
+  // insert the analysis using the hook_insert() from the Tripal analysis module
   chado_analysis_insert($node);
+  
+  // now add in the remaining settings as a single property but separated by bars
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastdb',          trim($node->blastdb));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile',        trim($node->blastfile));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastparameters',  trim($node->blastparameters));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_no_parsed',        trim($node->no_parsed));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_re',         trim($node->query_re));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_type',       trim($node->query_type));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_uniquename', trim($node->query_uniquename));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile_ext',    trim($node->blastfile_ext));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_is_concat',        trim($node->is_concat));
+  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_search_keywords',  trim($node->search_keywords));
 
-
-  // If this analysis already exists then don't recreate it in chado. This can happen
-  // when nodes are synced.  They already exist but Drupal doesn't know it and calls
-  // this function.
-  if (!$analysis_id) {
-
-    // now add in the remaining settings as a single property but separated by bars
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastdb',          trim($node->blastdb));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile',        trim($node->blastfile));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastparameters',  trim($node->blastparameters));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_no_parsed',        trim($node->no_parsed));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_re',         trim($node->query_re));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_type',       trim($node->query_type));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_uniquename', trim($node->query_uniquename));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile_ext',    trim($node->blastfile_ext));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_is_concat',        trim($node->is_concat));
-    tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_search_keywords',  trim($node->search_keywords));
-
-    // submit the parsing jobs
-    chado_analysis_blast_submit_jobs($node);
-  }
+  // submit the parsing jobs
+  chado_analysis_blast_submit_jobs($node);
 }
 
 /**
