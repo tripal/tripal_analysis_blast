@@ -140,7 +140,7 @@ function chado_analysis_blast_submit_jobs($node) {
  * want permissionis that protect creation,  editing and deleting of chado
  * data objects
  */
-function tripal_analysis_blast_permissions() {
+function tripal_analysis_blast_permission() {
   return array(
     'access chado_analysis_blast content' => array(
       'title' => t('View Chado Analysis Kegg'),
