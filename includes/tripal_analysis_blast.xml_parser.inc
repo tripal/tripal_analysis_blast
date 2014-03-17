@@ -55,35 +55,48 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
    $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
    $is_concat, $search_keywords, $job_id) {
 
-  // If user input a file (e.g. blast.xml)
-  if (is_file($blastfile)) {
-      tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
-         $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-         $job_id, $is_concat, $search_keywords);
-  } 
-   // Otherwise, $blastfile is a directory. Iterate through all xml files in it
-   else {
+     
+  $transaction = db_transaction();
+  print "\nNOTE: Loading of this NCBI BLAST XML file is performed using a database transaction. \n" .
+     "If the load fails or is terminated prematurely then the entire set of \n" .
+     "insertions/updates is rolled back and will not be found in the database\n\n";
+  try {
+    
+    // If user input a file (e.g. blast.xml)
+    if (is_file($blastfile)) {
+        tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile, 
+           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
+           $job_id, $is_concat, $search_keywords);
+    } 
+    // Otherwise, $blastfile is a directory. Iterate through all xml files in it
+    else {
       if (!$blastfile_ext) {
          $blastfile_ext = 'xml';
       }
 
-    $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
-    $pattern = sql_regcase($blastfile . "/*.$blastfile_ext");
-    $total_files = count(glob($pattern));
-    $no_file = 0;
-      
-    // Parsing all files in the directory
-    while ($file = readdir($dir_handle)) {
-      if (preg_match("/^.*\.$blastfile_ext/i", $file)) {
-        print "File $no_file of $total_files: $file                       \n";
-        tripal_analysis_blast_parseXML($analysis_id, $blastdb, "$blastfile/$file", 
-          $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-          $job_id, $is_concat, $search_keywords);
-        $no_file ++;
+      $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
+      $pattern = sql_regcase($blastfile . "/*.$blastfile_ext");
+      $total_files = count(glob($pattern));
+      $no_file = 0;
+        
+      // Parsing all files in the directory
+      while ($file = readdir($dir_handle)) {
+        if (preg_match("/^.*\.$blastfile_ext/i", $file)) {
+          print "File $no_file of $total_files: $file                       \n";
+          tripal_analysis_blast_parseXML($analysis_id, $blastdb, "$blastfile/$file", 
+            $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
+            $job_id, $is_concat, $search_keywords);
+          $no_file ++;
+        }
       }
     }
   }
-
+  catch (Exception $e) {
+    print "\n"; // make sure we start errors on new line
+    watchdog_exception('T_blastXML_load', $e);
+    $transaction->rollback();
+    print "FAILED: Rolling back database changes...\n";
+  }
   print "\nDone.\n";
 
   return;
@@ -573,14 +586,26 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $feature_id, 
 
   // Get the parser using db_id
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = :db_id";
-  $parser = db_query($sql, array(':db_id' => $db->db_id))->fetchObject();
-  $db_name = $parser->displayname;
-  $is_genbank = $parser->genbank_style;
-  $regex_hit_id = $parser->regex_hit_id;
-  $regex_hit_def = $parser->regex_hit_def;
-  $regex_hit_organism = $parser->regex_hit_organism;
-  $regex_hit_accession = $parser->regex_hit_accession;  
-  $db_organism = $parser->hit_organism;
+  $parser  = db_query($sql, array(':db_id' => $db->db_id))->fetchObject();
+  
+  $db_name             = '';
+  $is_genbank          = '';
+  $regex_hit_id        = '';
+  $regex_hit_def       = '';
+  $regex_hit_organism  = '';
+  $regex_hit_accession = '';
+  $db_organism         = '';
+  
+  // set defaults 
+  if ($parser) {
+    $db_name             = $parser->displayname;
+    $is_genbank          = $parser->genbank_style;
+    $regex_hit_id        = $parser->regex_hit_id;
+    $regex_hit_def       = $parser->regex_hit_def;
+    $regex_hit_organism  = $parser->regex_hit_organism;
+    $regex_hit_accession = $parser->regex_hit_accession;
+    $db_organism         = $parser->hit_organism;
+  } 
 
   // set default if regular expressions have not been specified
   if (!$regex_hit_id) {

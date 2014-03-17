@@ -84,7 +84,7 @@ $rows[] = array(
     'data' => 'Database',
     'header' => TRUE
   ),
-  $blast->db->name
+  property_exists($blast, 'db') ? $blast->db->name : '',
 );
 
 // Database row

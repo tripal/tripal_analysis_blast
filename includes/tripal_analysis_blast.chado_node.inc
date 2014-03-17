@@ -265,8 +265,19 @@ function chado_analysis_blast_form($node, $form_state) {
 *
 */
 function chado_analysis_blast_validate($node,  &$form, &$form_state) {
-   // use the analysis parent to validate the node
-   tripal_analysis_validate($node,  $form, $form_state); 
+  
+  // use the analysis parent to validate the node
+  tripal_analysis_validate($node,  $form, $form_state);
+
+  // trim character fields
+  $node->blastfile         = trim($node->blastfile);
+  $node->blastfile_ext     = trim($node->blastfile_ext);
+  $node->query_type        = trim($node->query_type);
+  $node->query_uniquename  = trim($node->query_uniquename);
+  
+  if($node->blastfile and !is_readable($node->blastfile)) {
+    form_set_error('interprofile', "Can not read BLAST XML output file: '$node->blastfile'. Please check file permissions or typos in the file path.");
+  }
 }
 
 function chado_analysis_blast_load($nodes) {
@@ -306,8 +317,10 @@ function chado_analysis_blast_load($nodes) {
 
     // get the database information so that we don't have to require callers
     // to do the lookup
-    $select = array('db_id' => $blastdb->value);
-    $analysis->tripal_analysis_blast->db = tripal_core_generate_chado_var('db',  $select);
+    if ($blastdb->value) {
+      $select = array('db_id' => $blastdb->value);
+      $analysis->tripal_analysis_blast->db = tripal_core_generate_chado_var('db',  $select);
+    }
 
     // if there is an old style 'blast_settings' array,  then break these out for
     // use in the new format
@@ -327,6 +340,12 @@ function chado_analysis_blast_insert($node) {
 
   // insert the analysis using the hook_insert() from the Tripal analysis module
   chado_analysis_insert($node);
+  
+  // trim character fields
+  $node->blastfile         = trim($node->blastfile);
+  $node->blastfile_ext     = trim($node->blastfile_ext);
+  $node->query_type        = trim($node->query_type);
+  $node->query_uniquename  = trim($node->query_uniquename);
   
   // now add in the remaining settings as a single property but separated by bars
   tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastdb',          trim($node->blastdb));
@@ -351,6 +370,12 @@ function chado_analysis_blast_update($node) {
 
   // update the anlaysis
   chado_analysis_update($node);
+  
+  // trim character fields
+  $node->blastfile         = trim($node->blastfile);
+  $node->blastfile_ext     = trim($node->blastfile_ext);
+  $node->query_type        = trim($node->query_type);
+  $node->query_uniquename  = trim($node->query_uniquename);
 
   // add the blast settings
   tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastdb',          trim($node->blastdb), 1);

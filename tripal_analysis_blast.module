@@ -34,11 +34,9 @@ function tripal_analysis_blast_block($op = 'list',   $delta = 0, $edit=array()) 
          $blocks['blast_base']['info'] = t('Analysis: Blast Details');
          $blocks['blast_base']['cache'] = BLOCK_NO_CACHE;
 
-
          $blocks['featureblast']['info'] = t('Tripal Feature Blast Results');
          $blocks['featureblast']['cache'] = BLOCK_NO_CACHE;
 
-         
          return $blocks;
 
 
@@ -105,32 +103,24 @@ function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
 *
 */
 function chado_analysis_blast_submit_jobs($node) {
-   global $user;
+  global $user;
 
    // add a job if the user wants to parse the XML        
   if ($node->blastjob) {
-      $job_args = array(
-        $node->analysis_id,
-        $node->blastdb,
-        $node->blastfile,
-        $node->no_parsed,
-        $node->blastfile_ext,
-        $node->query_re,
-        $node->query_type,  
-        $node->query_uniquename,
-        $node->is_concat,
-        $node->search_keywords,
-      );
-
-    if (is_readable($node->blastfile)) {
-      tripal_add_job("Parse blast: $node->blastfile",  'tripal_analysis_blast',
-                          'tripal_analysis_blast_parseXMLFile',   $job_args, $user->uid);
-    } 
-    else {
-      drupal_set_message(filter_xss(t("Blast output file,  $node->blastfile, is not readable 
-           by the server.  Check existence of file and file permissions. 
-           Job not scheduled.")), 'error');
-    }
+    $job_args = array(
+      $node->analysis_id,
+      $node->blastdb,
+      $node->blastfile,
+      $node->no_parsed,
+      $node->blastfile_ext,
+      $node->query_re,
+      $node->query_type,  
+      $node->query_uniquename,
+      $node->is_concat,
+      $node->search_keywords,
+    );
+    tripal_add_job("Parse blast: $node->blastfile", 'tripal_analysis_blast',
+      'tripal_analysis_blast_parseXMLFile', $job_args, $user->uid);
   }
 }
 
