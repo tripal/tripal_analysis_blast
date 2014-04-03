@@ -20,6 +20,7 @@
   overflow: auto;
   width: 630px;
   padding: 0 0 10px 0;
+  white-space: nowrap;
 }
 .hsp-desc-close {
   float: right;
