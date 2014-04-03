@@ -3,9 +3,9 @@
   margin-top: 20px;
 }
 .tripal-analysis-blast-info-hsp-desc {
-  position: absolute; 
+  position: fixed; 
   background-color: #FFFFFF;
-  border: 1px solid #CCC5AE;
+  border: 2px solid #CCC5AE;
   padding: 20px;
   width: 650px;
   max-height: 250px;
@@ -18,4 +18,7 @@
   overflow: auto;
   width: 630px;
   padding: 0 0 10px 0;
+}
+.hsp-desc-close {
+  float: right;
 }

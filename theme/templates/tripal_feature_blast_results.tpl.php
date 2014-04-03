@@ -13,10 +13,10 @@ if(count($blast_results_list) > 0){
   $i = 0; 
   
   foreach ($blast_results_list as $blast_result) {
-    $hits_array = $blast_result->hits_array;
-    $db = $blast_result->db;
-    $analysis = $blast_result->analysis; 
-    $pager_id = $feature_pager_id + $i;
+    $hits_array    = $blast_result->hits_array;
+    $db            = $blast_result->db;
+    $analysis      = $blast_result->analysis; 
+    $pager_id      = $feature_pager_id + $i;
     $total_records = count($hits_array);
     
     $current_page_num = pager_default_initialize($total_records, $num_results_per_page, $pager_id);
@@ -25,8 +25,7 @@ if(count($blast_results_list) > 0){
     // add this blast report to the list of available reports
     $result_name = "BLAST of " . $feature->name . " vs. " . $db->name;
     $list_items[] = "<a href=\"#" . $analysis->analysis_id . "\">$result_name</a>";
-     
-    
+
     // add the div box for each blast results
     $results_html .= "
       <div class=\"tripal-info-box-desc tripal_analysis_blast-info-box-desc\" id=\"" . $analysis->analysis_id . "\">
@@ -45,18 +44,29 @@ if(count($blast_results_list) > 0){
     // can be found here:
     // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
     $rows = array(); 
-        
+    
+    // iterate through the records to display on this page. We have access to all of them
+    // but we use a pager to display just a subset.
     for ($j = $offset ; $j < $offset + $num_results_per_page && $j < $total_records; $j++) {
       $hit = $hits_array[$j]; 
       $hit_name = $hit['hit_name'];
       if (array_key_exists('hit_url', $hit)) { 
         $hit_name = l($hit_name, $hit['hit_url'], array('attributes' => array('target' => '_blank')));
       }
+      
+      $description = substr($hit['description'], 0, 50);
+      if (strlen($hit['description']) > 50) {
+        $description = $description . "... ";
+      }
+      
       $rows[] = array(
         $hit_name,
-        $hit['best_evalue'],
+        sprintf("%e", $hit['best_evalue']),
         array_key_exists('percent_identity', $hit) ? $hit['percent_identity'] : '',
-        $hit['description'],
+        // we want a tooltip if the user mouses-over a description to show the entire thing 
+        '<span title="' . $hit['description'] . '">' . $description . '</span>',
+        // add the [more] link at the end of the row.  Javascript is used
+        // to display this record
         "<a href=\"javascript:void(0);\"
           id=\"hsp-link-" . $analysis->analysis_id . "-" .  $j ."\"
           class=\"tripal-analysis-blast-info-hsp-link\"
@@ -66,15 +76,15 @@ if(count($blast_results_list) > 0){
       // add a div box for each HSP details.  This box will be invisible by default
       // and made visible when the '[more]' link is clicked
       $hsps_array = $hit['hsp']; ?>
-      <div class="tripal-analysis-blast-info-hsp-desc" id="hsp-desc-<?php print $analysis->analysis_id ?>-<?php print $j?>"> 
+      <div class="tripal-analysis-blast-info-hsp-desc" id="hsp-desc-<?php print $analysis->analysis_id ?>-<?php print $j?>">
+        <div class="hsp-desc-close"><a href="javascript:void(0)" onclick="this.hide()">[Close]</a></div> 
         <strong>BLAST of <?php print $feature->name ?> vs. <?php print $db->name?></strong>
-        <br>Match: <?php print $hit_name . " (" . $hit['description'] . ")"; 
+        <br>Match: <?php print $hit_name . " (" . $hit['description'] . ")<br>"; 
         foreach ($hsps_array AS $hsp) { ?>
-          <br>HSP <?php  print $hsp['hsp_num'] ?> Score: <?php print $hsp['bit_score'] ?> bits (<?php print $hsp['score'] ?>), Expect = <?php print $hsp['evalue'] ?><br>Identity = <?php print sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100) ?>, Postives = <?php print sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100)?>, Query Frame = <?php print $hsp['query_frame']?>
+          <br><b>HSP <?php  print $hsp['hsp_num'] ?></b> Score: <?php print $hsp['bit_score'] ?> bits (<?php print $hsp['score'] ?>), Expect = <?php print $hsp['evalue'] ?><br>Identity = <?php print sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100) ?>, Postives = <?php print sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100)?>, Query Frame = <?php print $hsp['query_frame']?>
           <pre>Query: <?php print sprintf("%4d", $hsp['query_from'])?> <?php print $hsp['qseq'] ?> <?php print sprintf("%d", $hsp['query_to']); ?><br>            <?php print $hsp['midline'] ?><br>Sbjct: <?php print sprintf("%4d", $hsp['hit_from']) ?> <?php print $hsp['hseq']?> <?php print sprintf("%d",$hsp['hit_to']) ?>
           </pre><?php 
-        } ?>
-        <div class="hsp-desc-close"><a href="javascript:void(0)" onclick="this.hide()">[Close]</a></div>
+        } ?>        
       </div> <?php 
     }
     
@@ -118,7 +128,7 @@ if(count($blast_results_list) > 0){
       'tags' => array(),
       'element' => $pager_id,
       'parameters' => array(
-        'block' => 'homology'
+        'block' => 'homology',
       ),
       'quantity' => $num_results_per_page,
     );
