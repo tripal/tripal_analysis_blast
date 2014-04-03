@@ -11,6 +11,8 @@
   max-height: 250px;
   overflow: auto;
   display: none;
+  top: 150px;
+  z-index: 10;
 }
 .tripal-analysis-blast-info-hsp-desc pre{
   background-color: #FFFFFF;

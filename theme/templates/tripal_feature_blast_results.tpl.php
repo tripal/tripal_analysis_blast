@@ -134,7 +134,7 @@ if(count($blast_results_list) > 0){
     );
     $results_html .= theme_pager($pager);
     $results_html .= '<a href="#blast-results-top">back to top</a>';
-    $results_html .= '<div>';
+    $results_html .= '</div>';
     
     $i++;
   }
