@@ -133,19 +133,19 @@ function chado_analysis_blast_submit_jobs($node) {
 function tripal_analysis_blast_permission() {
   return array(
     'access chado_analysis_blast content' => array(
-      'title' => t('View Chado Analysis Kegg'),
+      'title' => t('View Chado Analysis Blast'),
       'description' => t('Allow users to view chado analysis blast pages.'),
     ),  
     'create chado_analysis_blast content' => array(
-      'title' => t('Create Chado Analysis Kegg'),
+      'title' => t('Create Chado Analysis Blast'),
       'description' => t('Allow users to create new chado analysis blast pages.'),
     ),  
     'delete chado_analysis_blast content'=> array(
-      'title' => t('Delete Chado Analysis Kegg'),
+      'title' => t('Delete Chado Analysis Blast'),
       'description' => t('Allow users to delete chado analysis blast pages.'),
     ),
     'edit chado_analysis_blast content'=> array(
-      'title' => t('Edit Chado Analysis Kegg'),
+      'title' => t('Edit Chado Analysis Blast'),
       'description' => t('Allow users to edit chado analysis blast pages.'),
     ),
   );
