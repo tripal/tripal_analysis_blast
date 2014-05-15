@@ -8,14 +8,24 @@
 function tripal_analysis_blast_node_info() {
   $nodes = array();
   $nodes['chado_analysis_blast'] = array(
-      'name' => t('Analysis: Blast'),
-      'base' => 'chado_analysis_blast',
-      'description' => t('A blast analysis from the chado database'),
-      'has_title' => FALSE,
-      'title_label' => t('Analysis: Blast'),
-      'has_body' => FALSE,
-      'body_label' => t('Blast Analysis Description'),
-      'locked' => TRUE
+    'name' => t('Analysis: Blast'),
+    'base' => 'chado_analysis_blast',
+    'description' => t('A blast analysis from the chado database'),
+    'has_title' => FALSE,
+    'title_label' => t('Analysis: Blast'),
+    'has_body' => FALSE,
+    'body_label' => t('Blast Analysis Description'),
+    'locked' => TRUE,
+    'chado_node_api' => array(
+      'base_table' => 'analysis',
+      'hook_prefix' => 'chado_analysis_blast',
+      'record_type_title' => array(
+        'singular' => t('BLAST Analysis'),
+        'plural' => t('BLAST Analyses')
+      ),
+      // this module will not sync.  that will be handled by the
+      // analysis module
+    )
   );
   return $nodes;
 }
@@ -330,6 +340,11 @@ function chado_analysis_blast_load($nodes) {
       $analysis->tripal_analysis_blast->blastfile = $prop_values[1];
       $analysis->tripal_analysis_blast->blastparameters = $prop_values[2];
     }
+    
+    
+    // Now get the title
+    $node->title = chado_get_node_title($node);
+    
     $nodes[$nid]->analysis = $analysis;
   }
 }
@@ -440,3 +455,13 @@ function chado_analysis_blast_access($op,  $node, $account) {
 function chado_analysis_blast_delete($node) {
   chado_analysis_delete($node);
 } 
+
+/**
+ * Implements [content_type]_chado_node_default_title_format().
+ *
+ * Defines a default title format for the Chado Node API to set the titles on
+ * Chado Analysis nodes based on chado fields.
+ */
+function chado_analysis_blast_chado_node_default_title_format() {
+  return '[analysis.name]';
+}

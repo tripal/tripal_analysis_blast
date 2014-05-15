@@ -307,3 +307,72 @@ function tripal_analysis_blast_add_cvterms() {
       associated with a feature and a blast analysis '),  'tripal', 0, 1, 'tripal');
    
 }
+
+/**
+ * Adds missing foreign key constraints
+ *
+ */
+function tripal_analysis_blast_update_7201() {
+
+  // there was a bug in the function for creating a custom table that
+  // kept foreign key constraints from being added.  So, we need to add those
+  // to keep from error messages appear, we will drop the FK if it already
+  // exists and then re-add it.
+  try {
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      DROP CONSTRAINT IF EXISTS blast_hit_data_db_id_fkey CASCADE
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      DROP CONSTRAINT IF EXISTS blast_hit_data_analysisfeature_id_fkey CASCADE
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      DROP CONSTRAINT IF EXISTS blast_hit_data_analysis_id_fkey CASCADE
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      DROP CONSTRAINT IF EXISTS blast_hit_data_feature_id_fkey CASCADE
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      DROP CONSTRAINT IF EXISTS blast_hit_data_blast_org_id_fkey CASCADE
+    ');
+
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      ADD CONSTRAINT blast_hit_data_db_id_fkey
+      FOREIGN KEY (db_id) REFERENCES chado.db (db_id)
+      ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      ADD CONSTRAINT blast_hit_data_analysisfeature_id_fkey
+      FOREIGN KEY (analysisfeature_id) REFERENCES chado.analysisfeature (analysisfeature_id)
+      ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      ADD CONSTRAINT blast_hit_data_analysis_id_fkey
+      FOREIGN KEY (analysis_id) REFERENCES chado.analysis (analysis_id)
+      ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      ADD CONSTRAINT blast_hit_data_feature_id_fkey
+      FOREIGN KEY (feature_id) REFERENCES chado.feature (feature_id)
+      ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+    ');
+    db_query('
+      ALTER TABLE chado.blast_hit_data
+      ADD CONSTRAINT blast_hit_data_blast_org_id_fkey
+      FOREIGN KEY (blast_org_id) REFERENCES chado.blast_organisms (blast_org_id)
+      ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+    ');
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Failed to update foriegn key: '. $error);
+  }
+}

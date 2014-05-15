@@ -4,6 +4,7 @@ require_once "api/tripal_analysis_blast.api.inc";
 require_once "includes/tripal_analysis_blast.xml_parser.inc";
 require_once "includes/tripal_analysis_blast.admin.inc";
 require_once "includes/tripal_analysis_blast.chado_node.inc";
+
 require_once "theme/tripal_analysis_blast.theme.inc";
 
 /**
