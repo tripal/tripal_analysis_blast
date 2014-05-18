@@ -449,9 +449,9 @@ function chado_analysis_blast_access($op,  $node, $account) {
     return NODE_ACCESS_IGNORE;
   }
 }
-/*******************************************************************************
+/**
  * Delete blast anlysis
-*/
+ */
 function chado_analysis_blast_delete($node) {
   chado_analysis_delete($node);
 } 
@@ -464,4 +464,52 @@ function chado_analysis_blast_delete($node) {
  */
 function chado_analysis_blast_chado_node_default_title_format() {
   return '[analysis.name]';
+}
+
+/**
+ * Implements hook_node_insert().
+ * Acts on all content types.
+ *
+ * @ingroup tripal_analysis_blast
+ */
+function tripal_analysis_blast_node_insert($node) {
+
+  switch ($node->type) {
+  case 'chado_analysis_blast':
+
+    // build the analysis variable
+    $analysis_id = chado_get_id_from_nid('analysis', $node->nid);
+    $values = array('analysis_id' => $analysis_id);
+    $analysis = chado_generate_var('analysis', $values);
+    $node->analysis = $analysis;
+
+    // Now get the title
+    $node->title = chado_get_node_title($node);
+
+    break;
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ * Acts on all content types.
+ *
+ * @ingroup tripal_analysis_blast
+ */
+function tripal_analysis_blast_node_update($node) {
+
+  switch ($node->type) {
+  case 'chado_analysis_blast':
+
+    // build the analysis variable
+    $analysis_id = chado_get_id_from_nid('analysis', $node->nid);
+    $values = array('analysis_id' => $analysis_id);
+    $analysis = chado_generate_var('analysis', $values);
+    $node->analysis = $analysis;
+
+    // Now get the title
+    $node->title = chado_get_node_title($node);
+
+    break;
+  }
 }
