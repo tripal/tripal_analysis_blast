@@ -24,6 +24,18 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
   $blastdb = 0;
   $db_id = NULL;
   
+  $form['db_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'BLAST Database Settings',
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#description' => t('You may customize how blast results are parsed and 
+        displayed to the end-user.  Select a database from the list to 
+        show the customizable fields.  The fields specify how to extract hit 
+        names, descriptions, database accessions, and organisms from the blast 
+        results.')
+  );
+  
   // if there is form_state values, there has been an ajax callback or validation error,
   // we need to distinguish which one
   if ($form_state && key_exists('values', $form_state)) {
@@ -101,7 +113,7 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
     }
   }
   
-  $form['db_id'] = array(
+  $form['db_settings']['db_id'] = array(
     '#type' => 'value',
     '#value' => $db_id,
   );
@@ -115,15 +127,14 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
   while ($db = $results->fetchObject()) {
     $blastdbs[$db->db_id] = $db->name;
   }
-  $form['db_options'] = array(
+  $form['db_settings']['db_options'] = array(
       '#type' => 'value',  
       '#value' => $blastdbs
   );
-  $form['blastdb'] = array(
+  $form['db_settings']['blastdb'] = array(
     '#title' => t('Database'),  
     '#type' => 'select',  
-    '#description' => t('You may customize how blast results are parsed and displayed to the end-user.  Selecting a database from the list to show the customizable fields.  The fields specify how to extract hit names, descriptions, database accessions, and organisms from the blast results.'), 
-    '#options' => $form['db_options']['#value'],
+    '#options' => $form['db_settings']['db_options']['#value'],
     '#default_value' => $blastdb,  
     '#ajax' => array(
       'callback'    => 'tripal_analysis_blast_settings_form_ajax',
@@ -134,13 +145,13 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
     ),    
   );
   if ($blastdb != 0) {
-  $form['displayname'] = array(
+  $form['db_settings']['displayname'] = array(
       '#title' => t('Title for the blast analysis'),  
       '#type' => 'textfield', 
       '#value' => $displayname, 
   );
-  $form['gb_style_parser'] = array(
-      '#title' => t('Use Genebank style parser. This will clear all regular expression settings for the selected database.'),  
+  $form['db_settings']['gb_style_parser'] = array(
+      '#title' => t('Use Genbank style parser. This will clear all regular expression settings for the selected database.'),  
       '#type' => 'checkbox', 
       '#default_value' => $gb_style_parser, 
       '#ajax' => array(
@@ -151,31 +162,31 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
           'method'  => 'replace',
       ),
   );
-  $form['hit_id'] = array(
+  $form['db_settings']['hit_id'] = array(
       '#title' => t('Regular expression for Hit Name'),  
       '#type' => 'textfield',  
       '#default_value' => $hit_id,
       '#disabled' => $read_only,
   );
-  $form['hit_def'] = array(
+  $form['db_settings']['hit_def'] = array(
       '#title' => t('Regular expression for Hit Description'),  
       '#type' => 'textfield',  
       '#default_value' => $hit_def,
       '#disabled' => $read_only,
   );
-  $form['hit_accession'] = array(
+  $form['db_settings']['hit_accession'] = array(
       '#title' => t('Regular expression for Hit Accession'),  
       '#type' => 'textfield',
       '#default_value' => $hit_accession,  
       '#disabled' => $read_only,
   );
-  $form['hit_organism_re'] = array(
+  $form['db_settings']['hit_organism_re'] = array(
       '#title' => t('Regular expression for Organism.'),  
       '#type' => 'textfield',  
       '#default_value' => $hit_organism_re,
       '#disabled' => $read_only,
   );
-  $form['hit_organism'] = array(
+  $form['db_settings']['hit_organism'] = array(
       '#title' => t('Organism Name.'),  
       '#description' => t('If the organism for the match cannot be determined using
           a regular expression but the database only contains a single organism,  then
@@ -187,13 +198,13 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
       '#default_value' => $hit_organism,
       '#disabled' => $read_only,
   );
-  $form['button'] = array(
+  $form['db_settings']['button'] = array(
       '#type' => 'submit',  
       '#value' => t('Save settings')
   );
   }
-  $form['#prefix'] = '<div id="tripal-analysis-blast-settings-form-wrapper">';
-  $form['#suffix'] = '</div>';
+  $form['db_settings']['#prefix'] = '<div id="tripal-analysis-blast-settings-form-wrapper">';
+  $form['db_settings']['#suffix'] = '</div>';
   
 
   // Add fields for setting the node titles
@@ -206,6 +217,7 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
     ),
     'unique_option' => '[analysis.name] ([analysis.sourcename]) [analysis.program] version [analysis.programversion]'
   );
+  
   chado_add_admin_form_set_title($form, $form_state, $details);
   
   return $form;
