@@ -158,8 +158,7 @@ function tripal_analysis_blast_parseXML($analysis_id, $blastdb, $blastfile,
         'name' => 'tripal'
      ),
   );
-  $options = array('statement_name' => 'sel_cvterm_nacv');
-  $cvterm = tripal_core_chado_select('cvterm', array('cvterm_id'), $values, $options);
+  $cvterm = chado_select_record('cvterm', array('cvterm_id'), $values);
   if (count($cvterm) ==  0) {
     watchdog('T_blastXML_load', "Cannot find term 'analysis_blast_output_iteration_hits' used for ".
       "storing blast records.  Cannot continue.", array(), WATCHDOG_ERROR);
@@ -302,14 +301,11 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
 
           // now find the feature in chado
           $select = array();
-          $options = array('statement_name' => 'sel_feature_');
           if ($query_uniquename) {
             $select['uniquename'] = $feature;
-            $options['statement_name'] .= 'un';
           } 
           else {
             $select['name'] = $feature;
-            $options['statement_name'] .= 'na';
           }
           if ($query_type) {
             $select['type_id'] = array(
@@ -318,12 +314,11 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
                 'name' => 'sequence'
               ),
             );
-            $options['statement_name'] .= 'ty';
           }
 
-          $feature_arr = tripal_core_chado_select('feature', array('feature_id'), $select, $options);
+          $feature_arr = chado_select_record('feature', array('feature_id'), $select);
           if (!$feature_arr) {
-            watchdog('T_blastXML_load', "Database query failed when searching for feature '$value'. Check the Drupal log for additional errors.", 
+            watchdog('T_blastXML_load', "Database query failed when searching for feature '$value'.", 
               array(), WATCHDOG_ERROR);
             exit;  
           }
@@ -390,11 +385,9 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
             'feature_id' => $feature_id,
             'analysis_id' => $analysis_id,
           );
-          $options = array('statement_name' => 'sel_analysisfeature_fean');
-          $result = tripal_core_chado_select('analysisfeature', array('analysisfeature_id'), $values, $options);
+          $result = chado_select_record('analysisfeature', array('analysisfeature_id'), $values);
           if (count($result) == 0) {
-             $options = array('statement_name' => 'ins_analysisfeature_fean');
-             $result = tripal_core_chado_insert('analysisfeature', $values, $options);
+             $result = chado_insert_record('analysisfeature', $values);
              if (!$result) {
                watchdog('T_blastXML_load', "Cannot add analysis feature record for $feature.", array(), 
                  WATCHDOG_ERROR);
@@ -428,8 +421,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
               'value' => $xml_content,
               'rank' => 0,              
             );
-            $options = array('statement_name' => 'ins_analysisfeatureprop_antyvara');
-            $analysisfeatureprop = tripal_core_chado_insert('analysisfeatureprop', $values, $options);
+            $analysisfeatureprop = chado_insert_record('analysisfeatureprop', $values);
             if (!$analysisfeatureprop) {
               watchdog('T_blastXML_load', "Cannot add analysis feature property record.", array(), 
                 WATCHDOG_ERROR);
@@ -441,18 +433,15 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
 
             // remove any existing entries. we'll replace them.
             $match = array('analysisfeature_id' => $analysisfeature_id);
-            $options = array('statement_name' => 'del_analysisfeature_id');
-            tripal_core_chado_delete('blast_hit_data', $match, $options);
+            chado_delete_record('blast_hit_data', $match);
 
             // get the db object
             $values = array('db_id' => $blastdb);
-            $options = array('statement_name' => 'sel_db_id');
-            $db = tripal_core_chado_select('db', array('*'), $values, $options);
+            $db = chado_select_record('db', array('*'), $values);
 
             // get the analysis object
             $values = array('analysis_id' => $analysis_id);
-            $options = array('statement_name' => 'sel_analysis_id');
-            $analysis = tripal_core_chado_select('analysis', array('*'), $values, $options);
+            $analysis = chado_select_record('analysis', array('*'), $values);
 
             // get the blast object
             $blast_obj = tripal_analysis_blast_get_result_object($xml_content, $db[0], $feature_id, $analysis[0]);
@@ -466,12 +455,10 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
               $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
               if ($blast_org_name) {
                 $values = array('blast_org_name' => $blast_org_name);
-                $options = array('statement_name' => 'sel_blastorgname_na');
-                $result = tripal_core_chado_select('blast_organisms', array('*'), $values, $options);
+                $result = chado_select_record('blast_organisms', array('*'), $values);
                 // if this organism doesn't exist then add it
                 if (!$result or count($result) == 0) {
-                  $options = array('statement_name' => 'ins_blastorgname_na');
-                  $result = tripal_core_chado_insert('blast_organisms', $values, $options);
+                  $result = chado_insert_record('blast_organisms', $values);
                   if (!$result) {
                     watchdog('T_blastXML_load', "Failed to add blast organism: '$blast_org_name'", 
                       array(), WATCHDOG_ERROR);   
@@ -500,8 +487,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
                 'hit_best_score' => $blast_obj->hits_array[$i]['best_score'],
                 'hit_pid' => $blast_obj->hits_array[$i]['percent_identity']
               );
-              $options = array('statement_name' => 'ins_blasthitdata_all');
-              $result = tripal_core_chado_insert('blast_hit_data', $values, $options);
+              $result = chado_insert_record('blast_hit_data', $values);
               if (!$result) {
                 $failed = 1;
               }
@@ -1006,7 +992,7 @@ function tripal_analysis_blast_parse_best_hit($analysis_id) {
     
     if ($i !=0 && $i % $interval == 0) {
       $percentage = (int) ($i / $counter * 100);
-      tripal_job_set_progress($job_id, $percentage);  
+      tripal_set_job_progress($job_id, $percentage);  
       print $percentage . "%\r";
     }
 
@@ -1291,7 +1277,7 @@ function tripal_analysis_blast_loader_set_progress($nodes_read, $total = -1, $jo
       number_format($total_nodes) . " (" . $percent . "%). Memory: " . 
       number_format(memory_get_usage()) . " bytes.\r";
     $value = intval(($nodes_read / $total_nodes) * 100);
-    tripal_job_set_progress($job_id, $value);
+    tripal_set_job_progress($job_id, $value);
   }  
   $last_read = $nodes_read;
 }

@@ -26,7 +26,7 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
   
   $form['db_settings'] = array(
     '#type' => 'fieldset',
-    '#title' => 'BLAST Database Settings',
+    '#title' => 'BLAST Parsing',
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
     '#description' => t('You may customize how blast results are parsed and 

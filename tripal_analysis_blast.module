@@ -164,13 +164,13 @@ function tripal_analysis_blast_job_describe_args($callback, $args) {
 
       // add in the analysis 
       if ($args[0]) {
-         $analysis = tripal_core_chado_select('analysis', array('name'), array('analysis_id' => $args[0]));
+         $analysis = chado_select_record('analysis', array('name'), array('analysis_id' => $args[0]));
       }
       $new_args['Analysis'] = $analysis[0]->name;
 
       // add in the database 
       if ($args[1]) {
-         $db = tripal_core_chado_select('db', array('name'), array('db_id' => $args[1]));
+         $db = chado_select_record('db', array('name'), array('db_id' => $args[1]));
       }
       $new_args['Database'] = $db[0]->name;
 

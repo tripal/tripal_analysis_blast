@@ -28,7 +28,7 @@ function tripal_get_feature_blast_results($feature_id, $db_id) {
       ),
     ),
   );
-  $blast_results = tripal_core_chado_select('analysisfeatureprop', array('*'), $select);
+  $blast_results = chado_select_record('analysisfeatureprop', array('*'), $select);
   if (!$blast_results) {
     return;
   }
@@ -41,9 +41,9 @@ function tripal_get_feature_blast_results($feature_id, $db_id) {
     $blast_xml = $analysisfeatureprop->value;
 
     // get the analysis record
-    $analysisfeature_arr = tripal_core_chado_select('analysisfeature', array('analysis_id'),
+    $analysisfeature_arr = chado_select_record('analysisfeature', array('analysis_id'),
         array('analysisfeature_id' => $analysisfeatureprop->analysisfeature_id));
-    $analysis_arr = tripal_core_chado_select('analysis', array('*'),
+    $analysis_arr = chado_select_record('analysis', array('*'),
         array('analysis_id' => $analysisfeature_arr[0]->analysis_id));
     $analysis = $analysis_arr[0];
     $analysis_id = $analysis->analysis_id;
@@ -79,7 +79,7 @@ function tripal_get_feature_blast_results($feature_id, $db_id) {
 
     // get the database
     if ($adb_id) {
-      $db_arr = tripal_core_chado_select('db', array('*'), array('db_id' => $adb_id));
+      $db_arr = chado_select_record('db', array('*'), array('db_id' => $adb_id));
       $db = $db_arr[0];
     }
 
