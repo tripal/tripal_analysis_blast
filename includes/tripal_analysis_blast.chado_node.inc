@@ -301,17 +301,17 @@ function chado_analysis_blast_load($nodes) {
     $analysis = $node->analysis;
     $analysis_id = $analysis->analysis_id;
     
-    $blast_settings  = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_settings');
-    $blastdb         = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastdb');
-    $blastfile       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastfile');
-    $blastparameters = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastparameters');
-    $no_parsed       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_no_parsed');
-    $query_re        = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_query_re');
-    $query_type      = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_query_type');
-    $query_uniquename= tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_query_uniquename');
-    $blastfile_ext   = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_blastfile_ext');
-    $is_concat       = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_is_concat');
-    $search_keywords = tripal_analysis_get_property($analysis->analysis_id, 'analysis_blast_search_keywords');
+    $blast_settings  = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_settings', 'tripal');
+    $blastdb         = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastdb', 'tripal');
+    $blastfile       = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastfile', 'tripal');
+    $blastparameters = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastparameters', 'tripal');
+    $no_parsed       = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_no_parsed', 'tripal');
+    $query_re        = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_query_re', 'tripal');
+    $query_type      = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_query_type', 'tripal');
+    $query_uniquename= chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_query_uniquename', 'tripal');
+    $blastfile_ext   = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastfile_ext', 'tripal');
+    $is_concat       = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_is_concat', 'tripal');
+    $search_keywords = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_search_keywords', 'tripal');
    
     $analysis->tripal_analysis_blast = new stdClass;
     $analysis->tripal_analysis_blast->blastdb         = is_object($blastdb)          ? $blastdb->value          : '';
@@ -363,16 +363,16 @@ function chado_analysis_blast_insert($node) {
   $node->query_uniquename  = trim($node->query_uniquename);
   
   // now add in the remaining settings as a single property but separated by bars
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastdb',          trim($node->blastdb));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile',        trim($node->blastfile));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastparameters',  trim($node->blastparameters));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_no_parsed',        trim($node->no_parsed));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_re',         trim($node->query_re));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_type',       trim($node->query_type));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_query_uniquename', trim($node->query_uniquename));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_blastfile_ext',    trim($node->blastfile_ext));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_is_concat',        trim($node->is_concat));
-  tripal_analysis_insert_property($node->analysis_id, 'analysis_blast_search_keywords',  trim($node->search_keywords));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastdb', 'tripal', trim($node->blastdb));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastfile', 'tripal', trim($node->blastfile));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastparameters', 'tripal', trim($node->blastparameters));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_no_parsed', 'tripal', trim($node->no_parsed));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_query_re', 'tripal', trim($node->query_re));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_query_type', 'tripal', trim($node->query_type));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_query_uniquename', 'tripal', trim($node->query_uniquename));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastfile_ext', 'tripal', trim($node->blastfile_ext));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_is_concat', 'tripal', trim($node->is_concat));
+  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_search_keywords', 'tripal', trim($node->search_keywords));
 
   // submit the parsing jobs
   chado_analysis_blast_submit_jobs($node);
@@ -393,21 +393,21 @@ function chado_analysis_blast_update($node) {
   $node->query_uniquename  = trim($node->query_uniquename);
 
   // add the blast settings
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastdb',          trim($node->blastdb), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastfile',        trim($node->blastfile), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastparameters',  trim($node->blastparameters), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_no_parsed',        trim($node->no_parsed), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_query_re',         trim($node->query_re), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_query_type',       trim($node->query_type), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_query_uniquename', trim($node->query_uniquename), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_blastfile_ext',    trim($node->blastfile_ext), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_is_concat',        trim($node->is_concat), 1);
-  tripal_analysis_update_property($node->analysis_id, 'analysis_blast_search_keywords',  trim($node->search_keywords), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastdb', 'tripal', trim($node->blastdb), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastfile', 'tripal', trim($node->blastfile), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastparameters', 'tripal', trim($node->blastparameters), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_no_parsed', 'tripal', trim($node->no_parsed), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_query_re', 'tripal', trim($node->query_re), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_query_type', 'tripal',  trim($node->query_type), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_query_uniquename', 'tripal', trim($node->query_uniquename), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastfile_ext', 'tripal', trim($node->blastfile_ext), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_is_concat', 'tripal',  trim($node->is_concat), 1);
+  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_search_keywords', 'tripal', trim($node->search_keywords), 1);
 
   // if this analysis uses the old style blast settings cvterm then remove that term
-  $old = tripal_analysis_get_property($node->analysis_id, 'analysis_blast_settings');
+  $old = chado_get_property('analysis', $node->analysis_id, 'analysis_blast_settings', 'tripal');
   if (count($old) > 0) {
-    tripal_analysis_delete_property($node->analysis_id, 'analysis_blast_settings');
+    chado_delete_property('analysis', $node->analysis_id, 'analysis_blast_settings', 'tripal');
   }
 
   // submit the parsing jobs
