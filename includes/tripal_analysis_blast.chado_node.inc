@@ -329,7 +329,7 @@ function chado_analysis_blast_load($nodes) {
     // to do the lookup
     if ($blastdb->value) {
       $select = array('db_id' => $blastdb->value);
-      $analysis->tripal_analysis_blast->db = tripal_core_generate_chado_var('db',  $select);
+      $analysis->tripal_analysis_blast->db = chado_generate_var('db',  $select);
     }
 
     // if there is an old style 'blast_settings' array,  then break these out for
