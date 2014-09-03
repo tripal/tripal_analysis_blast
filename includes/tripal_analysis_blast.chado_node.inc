@@ -300,18 +300,20 @@ function chado_analysis_blast_load($nodes) {
     // create some variables for easier lookup
     $analysis = $node->analysis;
     $analysis_id = $analysis->analysis_id;
+    $record = array('table'=> 'analysis', 'id' => $analysis->analysis_id);
     
-    $blast_settings  = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_settings', 'tripal');
-    $blastdb         = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastdb', 'tripal');
-    $blastfile       = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastfile', 'tripal');
-    $blastparameters = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastparameters', 'tripal');
-    $no_parsed       = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_no_parsed', 'tripal');
-    $query_re        = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_query_re', 'tripal');
-    $query_type      = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_query_type', 'tripal');
-    $query_uniquename= chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_query_uniquename', 'tripal');
-    $blastfile_ext   = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_blastfile_ext', 'tripal');
-    $is_concat       = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_is_concat', 'tripal');
-    $search_keywords = chado_get_property('analysis', $analysis->analysis_id, 'analysis_blast_search_keywords', 'tripal');
+    // Get the blast settings.
+    $blast_settings  = chado_get_property($record, array('type_name' => 'analysis_blast_settings', 'cv_name' => 'tripal'));
+    $blastdb = chado_get_property($record, array('type_name' => 'analysis_blast_blastdb', 'cv_name' => 'tripal'));
+    $blastfile = chado_get_property($record, array('type_name' => 'analysis_blast_blastfile', 'cv_name' => 'tripal'));
+    $blastparameters = chado_get_property($record, array('type_name' => 'analysis_blast_blastparameters', 'cv_name' => 'tripal'));
+    $no_parsed = chado_get_property($record, array('type_name' => 'analysis_blast_no_parsed', 'cv_name' => 'tripal'));
+    $query_re = chado_get_property($record, array('type_name' => 'analysis_blast_query_re', 'cv_name' => 'tripal'));
+    $query_type = chado_get_property($record, array('type_name' => 'analysis_blast_query_type', 'cv_name' => 'tripal'));
+    $query_uniquename = chado_get_property($record, array('type_name' => 'analysis_blast_query_uniquename', 'cv_name' => 'tripal'));
+    $blastfile_ext = chado_get_property($record, array('type_name' => 'analysis_blast_blastfile_ext', 'cv_name' => 'tripal'));
+    $is_concat = chado_get_property($record, array('type_name' => 'analysis_blast_is_concat', 'cv_name' => 'tripal'));
+    $search_keywords = chado_get_property($record, array('type_name' => 'analysis_blast_search_keywords', 'cv_name' => 'tripal'));
    
     $analysis->tripal_analysis_blast = new stdClass;
     $analysis->tripal_analysis_blast->blastdb         = is_object($blastdb)          ? $blastdb->value          : '';
@@ -362,17 +364,19 @@ function chado_analysis_blast_insert($node) {
   $node->query_type        = trim($node->query_type);
   $node->query_uniquename  = trim($node->query_uniquename);
   
+  $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
+  
   // now add in the remaining settings as a single property but separated by bars
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastdb', 'tripal', trim($node->blastdb));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastfile', 'tripal', trim($node->blastfile));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastparameters', 'tripal', trim($node->blastparameters));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_no_parsed', 'tripal', trim($node->no_parsed));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_query_re', 'tripal', trim($node->query_re));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_query_type', 'tripal', trim($node->query_type));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_query_uniquename', 'tripal', trim($node->query_uniquename));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_blastfile_ext', 'tripal', trim($node->blastfile_ext));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_is_concat', 'tripal', trim($node->is_concat));
-  chado_insert_property('analysis', $node->analysis_id, 'analysis_blast_search_keywords', 'tripal', trim($node->search_keywords));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_blastdb', 'cv_name' => 'tripal', 'value' => trim($node->blastdb)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_blastfile', 'cv_name' => 'tripal', 'value' => trim($node->blastfile)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_blastparameters', 'cv_name' => 'tripal', 'value' => trim($node->blastparameters)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_no_parsed', 'cv_name' => 'tripal', 'value' => trim($node->no_parsed)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_query_re', 'cv_name' => 'tripal', 'value' => trim($node->query_re)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_query_type', 'cv_name' => 'tripal', 'value' => trim($node->query_type)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_query_uniquename', 'cv_name' => 'tripal', 'value' => trim($node->query_uniquename)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_blastfile_ext', 'cv_name' => 'tripal', 'value' => trim($node->blastfile_ext)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_is_concat', 'cv_name' => 'tripal', 'value' => trim($node->is_concat)));
+  chado_insert_property($record, array('type_name' =>'analysis_blast_search_keywords', 'cv_name' => 'tripal', 'value' => trim($node->search_keywords)));
 
   // submit the parsing jobs
   chado_analysis_blast_submit_jobs($node);
@@ -391,23 +395,26 @@ function chado_analysis_blast_update($node) {
   $node->blastfile_ext     = trim($node->blastfile_ext);
   $node->query_type        = trim($node->query_type);
   $node->query_uniquename  = trim($node->query_uniquename);
+  
+  $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
+  $options = array('insert_if_missing' => TRUE);
 
   // add the blast settings
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastdb', 'tripal', trim($node->blastdb), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastfile', 'tripal', trim($node->blastfile), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastparameters', 'tripal', trim($node->blastparameters), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_no_parsed', 'tripal', trim($node->no_parsed), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_query_re', 'tripal', trim($node->query_re), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_query_type', 'tripal',  trim($node->query_type), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_query_uniquename', 'tripal', trim($node->query_uniquename), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_blastfile_ext', 'tripal', trim($node->blastfile_ext), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_is_concat', 'tripal',  trim($node->is_concat), 1);
-  chado_update_property('analysis', $node->analysis_id, 'analysis_blast_search_keywords', 'tripal', trim($node->search_keywords), 1);
+  chado_update_property($record, array('type_name' =>'analysis_blast_blastdb', 'cv_name' => 'tripal', 'value' => trim($node->blastdb)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_blastfile', 'cv_name' => 'tripal', 'value' => trim($node->blastfile)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_blastparameters', 'cv_name' => 'tripal', 'value' => trim($node->blastparameters)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_no_parsed', 'cv_name' => 'tripal', 'value' => trim($node->no_parsed)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_query_re', 'cv_name' => 'tripal', 'value' => trim($node->query_re)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_query_type', 'cv_name' => 'tripal', 'value' =>  trim($node->query_type)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_query_uniquename', 'cv_name' => 'tripal', 'value' => trim($node->query_uniquename)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_blastfile_ext', 'cv_name' => 'tripal', 'value' => trim($node->blastfile_ext)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_is_concat', 'cv_name' => 'tripal', 'value' =>  trim($node->is_concat)), $options);
+  chado_update_property($record, array('type_name' =>'analysis_blast_search_keywords', 'cv_name' => 'tripal', 'value' => trim($node->search_keywords)), $options);
 
   // if this analysis uses the old style blast settings cvterm then remove that term
-  $old = chado_get_property('analysis', $node->analysis_id, 'analysis_blast_settings', 'tripal');
+  $old = chado_get_property($record, array('type_name' =>'analysis_blast_settings', 'cv_name' => 'tripal'));
   if (count($old) > 0) {
-    chado_delete_property('analysis', $node->analysis_id, 'analysis_blast_settings', 'tripal');
+    chado_delete_property($record, array('type_name' =>'analysis_blast_settings', 'cv_name' => 'tripal'));
   }
 
   // submit the parsing jobs
