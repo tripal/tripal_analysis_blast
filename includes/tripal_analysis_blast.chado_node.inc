@@ -482,18 +482,21 @@ function chado_analysis_blast_chado_node_default_title_format() {
 function tripal_analysis_blast_node_insert($node) {
 
   switch ($node->type) {
-  case 'chado_analysis_blast':
-
-    // build the analysis variable
-    $analysis_id = chado_get_id_from_nid('analysis', $node->nid);
-    $values = array('analysis_id' => $analysis_id);
-    $analysis = chado_generate_var('analysis', $values);
-    $node->analysis = $analysis;
-
-    // Now get the title
-    $node->title = chado_get_node_title($node);
-
-    break;
+    case 'chado_analysis_blast':
+  
+      // build the analysis variable
+      $analysis_id = chado_get_id_from_nid('analysis', $node->nid);
+      $values = array('analysis_id' => $analysis_id);
+      $analysis = chado_generate_var('analysis', $values);
+      $node->analysis = $analysis;
+  
+      // Now get the title
+      $node->title = chado_get_node_title($node);
+      
+      // Now use the API to set the path.
+      chado_set_node_url($node);
+  
+      break;
   }
 }
 

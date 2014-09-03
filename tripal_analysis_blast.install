@@ -9,31 +9,26 @@
  * Implementation of hook_install().
  */
 function tripal_analysis_blast_install() {
-   // create the module's data directory
+   // Create the module's data directory.
    tripal_create_files_dir('tripal_analysis_blast');
 
-   // We need to register to tripal_analysis module so it can provide a control
-   // for our blast result. Basically the registration is done by inserting
-   // modulename into the drupal {tripal_analysis} table AND inserting required
-   // information to the chado Analysis table. Also in tripal_analysis_blast.module,
-   // we need to define HOOK_get_settings() for the module to work properly.   
-   // Register the analysis type
+   // Register this analysis.
    tripal_register_analysis_child('tripal_analysis_blast');
    
-   // Add cvterms
+   // Add cvterms.
    tripal_analysis_blast_add_cvterms();
    
-   // add custom tables
+   // add custom tables.
    tripal_analysis_blast_add_custom_tables();
     
-   // Create default parser for swissprot,  DB:genbank, and go-seqdb
+   // Create default parser for swissprot,  DB:genbank, and go-seqdb.
    $sql_db = "SELECT db_id,  name FROM {db} WHERE lower(name) like :name";
    $sql_parser = "INSERT INTO {tripal_analysis_blast} ".
                  "  (db_id,  displayname, regex_hit_id, regex_hit_def, ".
                  "   regex_hit_accession,  genbank_style, regex_hit_organism) ".
                  "VALUES (:db_id,  :displayname,  :regex_hit_id, :regex_hit_def, :regex_hit_accession, :genbank_style, :regex_hit_organism)";
    
-   // Add swissprot parser   
+   // Add swissprot parser.
    $results = chado_query($sql_db,  array(':name' => "%swissprot%"));
    foreach ($results AS $db) {
     db_query(
@@ -49,7 +44,7 @@ function tripal_analysis_blast_install() {
       );
     }
    
-   // Add trembl parser   
+   // Add trembl parser.
    $results = chado_query($sql_db,  array(':name' => "%trembl%"));  
    foreach ($results AS $db) {
      db_query(
@@ -65,7 +60,7 @@ function tripal_analysis_blast_install() {
      );
    }
    
-   // Add NCBI genbank parser
+   // Add NCBI genbank parser.
    $results = chado_query($sql_db, array(':name' => "%genbank%"));
    foreach ($results AS $db) {
      db_query(
