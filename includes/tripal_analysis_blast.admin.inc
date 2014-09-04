@@ -281,3 +281,10 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
 function tripal_analysis_blast_settings_form_ajax($form, $form_state) {
   return $form;
 }
+
+/**
+ * Implements hook_chado_node_default_url_format()
+ */
+function chado_analysis_blast_chado_node_default_url_format() {
+  return '/analysis/[analysis.analysis_id]';
+}
