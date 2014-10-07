@@ -377,7 +377,7 @@ function tripal_analysis_blast_add_cvterms() {
    
    // Add cvterm 'analysis_blast_output_iteration_hits' for inserting into featureprop table
    tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_output_iteration_hits',   
+    'name' => 'analysis_blast_output_iteration_hits',
     'def' => 'Hits of a blast '.
       'output iteration. Each iteration corresponds to a chado feature,  and is '.
       'the content between <iteration> and </iteration> tags in the blast xml '.
@@ -388,19 +388,19 @@ function tripal_analysis_blast_add_cvterms() {
    
    // Add cvterms for the best hits report
    tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_besthit_query',   
+    'name' => 'analysis_blast_besthit_query',
     'def' => 'query name of the best hit associated with a feature and a blast analysis ',
      'cv_name' => 'tripal',
      'db_name' => 'tripal',
    ));
    tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_besthit_match',   
+    'name' => 'analysis_blast_besthit_match',
     'def' => 'match name of the best hit associated with a feature and a blast analysis ',
      'cv_name' => 'tripal',
      'db_name' => 'tripal',
    ));
    tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_besthit_description',   
+    'name' => 'analysis_blast_besthit_description',
     'def' => 'description of the best hit associated with a feature and a blast analysis ',
      'cv_name' => 'tripal',
      'db_name' => 'tripal',
@@ -491,5 +491,33 @@ function tripal_analysis_blast_update_7201() {
   catch (\PDOException $e) {
     $error = $e->getMessage();
     throw new DrupalUpdateException('Failed to update foriegn key: '. $error);
+  }
+}
+
+/**
+ * Adds the blast property terms to the correct vocabulary.
+ *
+ */
+function tripal_analysis_blast_update_7202() {
+  try {
+    module_load_include('inc', 'tripal_cv', 'api/tripal_cv.api');
+    
+    tripal_insert_cvterm(array(
+      'name' => 'analysis_blast_blastdb',
+      'def' => 'The database used for blasting',
+      'cv_name' => 'tripal',
+      'db_name' => 'tripal',
+    ));
+    
+    tripal_insert_cvterm(array(
+      'name' => 'analysis_blast_blastfile',
+      'def' => 'The input file or directory that contains the XML blast output',
+      'cv_name' => 'tripal',
+      'db_name' => 'tripal',
+    ));
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Failed to update terms: '. $error);
   }
 }
