@@ -520,4 +520,5 @@ function tripal_analysis_blast_update_7202() {
     $error = $e->getMessage();
     throw new DrupalUpdateException('Failed to update terms: '. $error);
   }
+
 }
