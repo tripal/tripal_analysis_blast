@@ -50,13 +50,13 @@ function tripal_analysis_blast_install() {
      db_query(
      $sql_parser,
      array(
-     ':db_id' => $db->db_id,
-     ':displayname' => 'ExPASy TrEMBL',
-     ':regex_hit_id' => '^.*?\|(.*?)\s.*?$',
-     ':regex_hit_def' => '^.*?\|.*?\s(.*)$',
-     ':regex_hit_accession' => '^(.*?)\|.*?\s.*?$',
-     ':genbank_style' => 0,
-     ':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
+       ':db_id' => $db->db_id,
+       ':displayname' => 'ExPASy TrEMBL',
+       ':regex_hit_id' => '^.*?\|(.*?)\s.*?$',
+       ':regex_hit_def' => '^.*?\|.*?\s(.*)$',
+       ':regex_hit_accession' => '^(.*?)\|.*?\s.*?$',
+       ':genbank_style' => 0,
+       ':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
      );
    }
    
@@ -66,13 +66,13 @@ function tripal_analysis_blast_install() {
      db_query(
      $sql_parser,
      array(
-     ':db_id' => $db->db_id,
-     ':displayname' => 'Genbank',
-     ':regex_hit_id' => '',
-     ':regex_hit_def' => '',
-     ':regex_hit_accession' => '',
-     ':genbank_style' => 1,
-     ':regex_hit_organism' => '')
+       ':db_id' => $db->db_id,
+       ':displayname' => 'Genbank',
+       ':regex_hit_id' => '',
+       ':regex_hit_def' => '',
+       ':regex_hit_accession' => '',
+       ':genbank_style' => 1,
+       ':regex_hit_organism' => '')
      );
    }
 }
@@ -258,18 +258,22 @@ function tripal_analysis_blast_add_cvterms() {
 
    // Add the cvterms for the anlysisprop table
   tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_settings',   
+    'name' => 'analysis_blast_settings',
     'definition' => 'Settings of a blast analysis, including db_id, output file, and run parameters separated by a bar |',
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_blastdb',  
+    'name' => 'analysis_blast_blastdb',
     'def' => 'The database used for blasting',
+    'cv_name' => 'tripal',
+    'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_blastfile',  
+    'name' => 'analysis_blast_blastfile',
     'def' => 'The input file or directory that contains the XML blast output',
+    'cv_name' => 'tripal',
+    'db_name' => 'tripal',
   ));
   tripal_insert_cvterm(array(
     'name' => 'analysis_blast_blastparameters',
@@ -419,7 +423,6 @@ function tripal_analysis_blast_add_cvterms() {
      'cv_name' => 'tripal',
      'db_name' => 'tripal',
    ));
-   
 }
 
 /**
