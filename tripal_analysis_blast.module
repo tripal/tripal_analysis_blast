@@ -8,20 +8,36 @@ require_once "includes/tripal_analysis_blast.chado_node.inc";
 require_once "theme/tripal_analysis_blast.theme.inc";
 
 /**
- * tripal_analysis_blast_menu()
- * HOOK: Implementation of hook_menu()
- * Entry points and paths of the module
+ * Implements hook_menu().
  */
 function tripal_analysis_blast_menu() {
+
   $items['admin/tripal/extension/tripal_blast_analysis'] = array(
-      'title' => 'Tripal Blast Analyses',  
-      'description' => 'Settings for the displays of blast analysis results.',  
-      'page callback' => 'drupal_get_form',  
-      'page arguments' => array('tripal_analysis_blast_settings_form'),  
-      'access arguments' => array('administer site configuration'),  
-      'type' => MENU_NORMAL_ITEM,
+    'title' => 'BLAST Analyses',
+    'description' => 'Administrative pages for the Tripal Blast Analysis module.',
+    'page callback' => 'tripal_analysis_blast_admin_view',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
   );
-  
+
+  $items['admin/tripal/extension/tripal_blast_analysis/configuration'] = array(
+    'title' => 'Settings',
+    'description' => 'Settings for the displays of BLAST analysis results.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('tripal_analysis_blast_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1
+  );
+  $items['admin/tripal/extension/tripal_blast_analysis/sync'] = array(
+    'title' => ' Sync',
+    'description' => 'Create pages on this site for BLAST analyses',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('chado_node_sync_form', 'tripal_analysis_blast', 'chado_analysis_blast'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2
+  );
   return $items;
 }
 /**
@@ -45,7 +61,7 @@ function tripal_analysis_blast_block($op = 'list',   $delta = 0, $edit=array()) 
          if (user_access('access chado_analysis_blast content') and arg(0) == 'node' and is_numeric(arg(1))) {
             $nid = arg(1);
             $node = node_load($nid);
- 
+
             $block = array();
             switch ($delta) {
                case 'blast_base':
@@ -55,7 +71,7 @@ function tripal_analysis_blast_block($op = 'list',   $delta = 0, $edit=array()) 
                case 'featureblast':
                   $block['subject'] = t('Homology');
                   $block['content'] = theme('tripal_feature_blast_results',  $node);
-                  break;  
+                  break;
                default :
             }
 
@@ -76,7 +92,7 @@ function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
       'template' => 'node--chado-generic',
       'render element' => 'node',
       'base hook' => 'node',
-      'path' => "$core_path/theme/templates" 
+      'path' => "$core_path/theme/templates"
     ),
     'tripal_analysis_blast_base' => array(
       'variables' => array('node' => NULL),
@@ -88,7 +104,7 @@ function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
       'template' => 'tripal_analysis_blast_teaser',
       'path' => "$path/theme/templates",
     ),
-    
+
     // tripal_feature theme
     'tripal_feature_blast_results' => array (
         'template' => 'tripal_feature_blast_results',
@@ -96,7 +112,7 @@ function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
         'path' => "$path/theme/templates"
     ),
   );
- 
+
   return $items;
 }
 
@@ -106,7 +122,7 @@ function tripal_analysis_blast_theme($existing, $type, $theme, $path) {
 function chado_analysis_blast_submit_jobs($node) {
   global $user;
 
-   // add a job if the user wants to parse the XML        
+   // add a job if the user wants to parse the XML
   if ($node->blastjob) {
     $job_args = array(
       $node->analysis_id,
@@ -115,7 +131,7 @@ function chado_analysis_blast_submit_jobs($node) {
       $node->no_parsed,
       $node->blastfile_ext,
       $node->query_re,
-      $node->query_type,  
+      $node->query_type,
       $node->query_uniquename,
       $node->is_concat,
       $node->search_keywords,
@@ -136,11 +152,11 @@ function tripal_analysis_blast_permission() {
     'access chado_analysis_blast content' => array(
       'title' => t('View Chado Analysis Blast'),
       'description' => t('Allow users to view chado analysis blast pages.'),
-    ),  
+    ),
     'create chado_analysis_blast content' => array(
       'title' => t('Create Chado Analysis Blast'),
       'description' => t('Allow users to create new chado analysis blast pages.'),
-    ),  
+    ),
     'delete chado_analysis_blast content'=> array(
       'title' => t('Delete Chado Analysis Blast'),
       'description' => t('Allow users to delete chado analysis blast pages.'),
@@ -162,13 +178,13 @@ function tripal_analysis_blast_job_describe_args($callback, $args) {
    $new_args = array();
    if ($callback == 'tripal_analysis_blast_parseXMLFile') {
 
-      // add in the analysis 
+      // add in the analysis
       if ($args[0]) {
          $analysis = chado_select_record('analysis', array('name'), array('analysis_id' => $args[0]));
       }
       $new_args['Analysis'] = $analysis[0]->name;
 
-      // add in the database 
+      // add in the database
       if ($args[1]) {
          $db = chado_select_record('db', array('name'), array('db_id' => $args[1]));
       }
@@ -177,7 +193,7 @@ function tripal_analysis_blast_job_describe_args($callback, $args) {
       $new_args['File or Directory Name'] = $args[2];
       if ($args[8] == 1) {
         $new_args['Is XML file concatenated'] = 'Yes';
-      } 
+      }
       else {
         $new_args['Is XML file concatenated'] = 'No';
       }
@@ -187,30 +203,30 @@ function tripal_analysis_blast_job_describe_args($callback, $args) {
       $new_args['Query type'] = $args[6];
       if ($args[7] == 1) {
         $new_args['Feature identifier'] = 'feature unique name';
-      } 
+      }
       else {
         $new_args['Feature identifier'] = 'feature name';
       }
       if ($args[9]) {
          $new_args['Tripal Views Integration'] = 'Yes';
-      } 
+      }
       else {
-         $new_args['Tripal Views Integration'] = 'No';      
+         $new_args['Tripal Views Integration'] = 'No';
       }
    }
    return $new_args;
 }
 /**
  * Implementation of hook_form_alter()
- * 
+ *
  * @param $form
  * @param $form_state
  * @param $form_id
- * 
- * 
+ *
+ *
  */
 function tripal_analysis_blast_form_alter(&$form, &$form_state, $form_id) {
-  
+
   if ($form_id == "chado_analysis_blast_node_form") {
     // turn of preview button for insert/updates
     $form['actions']['preview']['#access'] = FALSE;

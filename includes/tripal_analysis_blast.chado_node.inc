@@ -1,10 +1,8 @@
 <?php
 
-
-/*******************************************************************************
- *  Provide information to drupal about the node types that we're creating
-*  in this module
-*/
+/**
+ * Implements hook_node_info();
+ */
 function tripal_analysis_blast_node_info() {
   $nodes = array();
   $nodes['chado_analysis_blast'] = array(
@@ -19,18 +17,34 @@ function tripal_analysis_blast_node_info() {
     'chado_node_api' => array(
       'base_table' => 'analysis',
       'hook_prefix' => 'chado_analysis_blast',
+      'linking_table' => 'chado_analysis',
       'record_type_title' => array(
         'singular' => t('BLAST Analysis'),
         'plural' => t('BLAST Analyses')
       ),
-      // this module will not sync.  that will be handled by the
-      // analysis module
+      'sync_filters' => array(
+        'type_id' => FALSE,
+        'organism_id' => FALSE,
+        'checkboxes' => array('name'),
+      ),
     )
   );
   return $nodes;
 }
 
+/**
+ * Implements hook_chado_node_sync_select_query().
+ */
+function chado_analysis_blast_chado_node_sync_select_query($query) {
+  $query['joins'][] = 'INNER JOIN {analysisprop} PROP ON PROP.analysis_id = ANALYSIS.analysis_id';
+  $query['joins'][] = 'INNER JOIN {cvterm} CVTP ON CVTP.cvterm_id = PROP.type_id';
+  $query['where_clauses']['analysis_type'][] = 'CVTP.name = :type_name';
+  $query['where_clauses']['property_value'][] = 'PROP.value = :prop_value';
+  $query['where_args']['analysis_type'][':type_name'] = 'Analysis Type';
+  $query['where_args']['property_value'][':prop_value'] = 'blast_analysis';
 
+  return $query;
+}
 /*******************************************************************************
  * tripal_analysis_blast_nodeapi()
 * HOOK: Implementation of hook_nodeapi()
@@ -73,7 +87,7 @@ function chado_analysis_blast_form($node, $form_state) {
 
   // add in the default fields
   $form = chado_analysis_form($node, $form_state);
-  
+
   // Default values can come in the following ways:
   //
   // 1) as elements of the $node object.  This occurs when editing an existing library
@@ -94,7 +108,7 @@ function chado_analysis_blast_form($node, $form_state) {
   $is_concat = '';
   $search_keywords = '';
   $blastjob = FALSE;
-  
+
   // if we are editing an existing node then the library is already part of the node
   if (property_exists($node, 'analysis')) {
     $blast = $node->analysis->tripal_analysis_blast;
@@ -134,148 +148,148 @@ function chado_analysis_blast_form($node, $form_state) {
     $is_concat        = $form_state['input']['is_concat'];
     $search_keywords  = $form_state['input']['search_keywords'];
   }
-    
+
   $form['blast'] = array(
-    '#title' => t('Blast Settings'),  
-    '#type' => 'fieldset',  
-    '#description' => t('Specific Settings for Blast Analysis.'),  
+    '#title' => t('Blast Settings'),
+    '#type' => 'fieldset',
+    '#description' => t('Specific Settings for Blast Analysis.'),
     '#collapsible' => TRUE,
-    '#attributes' => array('id' => 'blast-extra-settings'),  
+    '#attributes' => array('id' => 'blast-extra-settings'),
     '#weight' => 11
   );
-  
+
   // get a list of db from chado for user to choose
   $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
   $results = chado_query($sql);
-  
+
   $blastdbs = array();
   while ($db = $results->fetchObject()) {
     $blastdbs[$db->db_id] = $db->name;
   }
   $form['db_options'] = array(
-      '#type' => 'value',  
+      '#type' => 'value',
       '#value' => $blastdbs
   );
   $form['blast']['blastdb'] = array(
-      '#title' => t('Database'),  
-      '#type' => 'select',  
-      '#description' => t('The database used for the blast analysis. If the database does not appear in this list, please ') . 
-        l(t('add a new database.  '), 'admin/tripal/tripal_db/add_db', array('attributes' => array('target' => '_blank')) ) . 
+      '#title' => t('Database'),
+      '#type' => 'select',
+      '#description' => t('The database used for the blast analysis. If the database does not appear in this list, please ') .
+        l(t('add a new database.  '), 'admin/tripal/tripal_db/add_db', array('attributes' => array('target' => '_blank')) ) .
         t('Each database may have a different format for each match. This blast module will attempt to extract the match name,
          match accession, and organism from each match.  To ensure the parser is able to properly extract
-         this information. Please set the proper regular expression values on the ') . 
+         this information. Please set the proper regular expression values on the ') .
          l(t('Blast Settings page. '), 'admin/tripal/tripal_analysis/tripal_blast_analysis',array('attributes' => array('target' => '_blank'))  ) .
-         t('Databases from NCBI have a built-in parser. On the Blast Settings page, simply click the box "Use Genebank style parser"'), 
-      '#options' => $form['db_options']['#value'],  
+         t('Databases from NCBI have a built-in parser. On the Blast Settings page, simply click the box "Use Genebank style parser"'),
+      '#options' => $form['db_options']['#value'],
       '#default_value' => $blastdb,
   );
 
   $form['blast']['blastfile'] = array(
-      '#title' => t('Blast XML File/Directory: (if you input a directory without the tailing slash,  all xml files in the directory will be loaded)'), 
-      '#type' => 'textfield',  
-      '#description' => t('The xml output file generated by blast in full path.'),  
+      '#title' => t('Blast XML File/Directory: (if you input a directory without the tailing slash,  all xml files in the directory will be loaded)'),
+      '#type' => 'textfield',
+      '#description' => t('The xml output file generated by blast in full path.'),
       '#default_value' => $blastfile,
-  ); 
+  );
    $form['blast']['blastfile_ext'] = array(
-      '#title' => t('Blast XML file extension'),  
-      '#type' => 'textfield',  
-      '#description' => t('If a directory is provide for the blast file setting above,  then a file extension can be provided here. Files with this extension in the directory will be parsed.  If no extension is provided then files with a .xml extension will be parsed within the directory. Please provide the extension without the preceeding period (e.g. "out" rather than ".out"'), 
+      '#title' => t('Blast XML file extension'),
+      '#type' => 'textfield',
+      '#description' => t('If a directory is provide for the blast file setting above,  then a file extension can be provided here. Files with this extension in the directory will be parsed.  If no extension is provided then files with a .xml extension will be parsed within the directory. Please provide the extension without the preceeding period (e.g. "out" rather than ".out"'),
       '#default_value' => $blastfile_ext,
   );
   $form['blast']['is_concat'] = array(
-      '#title' => t('Is the XML file concatenated?'),  
-      '#type' => 'checkbox',  
+      '#title' => t('Is the XML file concatenated?'),
+      '#type' => 'checkbox',
       '#description' => t('Is the XML file a set of concatenated XML results?  Such is the case,  for instance, if <a href="http://www.blast2go.org/">Blast2GO</a> was used to generate the blast results. If
-      NCBI BLAST was used with output in XML then this options should not be checked.'),  
+      NCBI BLAST was used with output in XML then this options should not be checked.'),
       '#default_value' => $is_concat,
   );
   $form['blast']['no_parsed'] = array(
-    '#title' => t('Number of hits to be parsed'),  
-      '#type' => 'textfield',  
-      '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10'' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),  
-      '#default_value' => '25',  
+    '#title' => t('Number of hits to be parsed'),
+      '#type' => 'textfield',
+      '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10'' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),
+      '#default_value' => '25',
   );
 
   $form['blast']['query_re'] = array(
-      '#title' => t('Query Name RE'),  
-      '#type' => 'textfield',  
+      '#title' => t('Query Name RE'),
+      '#type' => 'textfield',
       '#description' => t('Enter the regular expression that will extract the '.
          'feature name from the query line in the blast results. This should be '.
          'the same as the definition line in the query FASTA file.  This option is '.
          'is only required when the query does not identically match a feature '.
-         'in the database.'),  
+         'in the database.'),
       '#default_value' => $query_re,
   );
 
   $form['blast']['query_type'] = array(
-      '#title' => t('Query Type'),  
-      '#type' => 'textfield',  
+      '#title' => t('Query Type'),
+      '#type' => 'textfield',
       '#description' => t('Please enter the Sequence Ontology term that describes '.
          'the query sequences used for blasting.  This is only necessary if two '.
-         'or more sequences have the same name.'),  
+         'or more sequences have the same name.'),
       '#default_value' => $query_type,
   );
 
   $form['blast']['query_uniquename'] = array(
-      '#title' => t('Use Unique Name'),  
-      '#type' => 'checkbox',  
+      '#title' => t('Use Unique Name'),
+      '#type' => 'checkbox',
       '#description' => t('Select this checboxk if the query name in the blast file '.
         'matches the uniquename of the feature.  By default,  the blast results will '.
-        'mapped to the "name" of the feature.'),  
+        'mapped to the "name" of the feature.'),
       '#default_value' => $query_uniquename,
   );
 
   $form['blast']['blastparameters'] = array(
-      '#title' => t('Parameters'),  
-      '#type' => 'textfield',  
-      '#description' => t('The parameters for running the blast analysis.'),  
+      '#title' => t('Parameters'),
+      '#type' => 'textfield',
+      '#description' => t('The parameters for running the blast analysis.'),
       '#default_value' => $blastparameters,
   );
-  
+
   $form['blast']['blastjob'] = array(
-      '#type' => 'checkbox',  
-      '#title' => t('Submit a job to parse the xml output into Chado'),  
+      '#type' => 'checkbox',
+      '#title' => t('Submit a job to parse the xml output into Chado'),
       '#description' => t('Note: features associated with the blast results must '.
                           'exist in chado before parsing the file. Otherwise,  blast '.
                           'results that cannot be linked to a feature will be '.
-                          'discarded. '),  
+                          'discarded. '),
       '#default_value' => $blastjob
   );
-   
+
   $search_keywords_options = array(
-     'blast_match_name' => '*The match name (property name: blast_match_name)',  
-     'blast_match_description' => '*The match description (property name: blast_match_description)',       
-     'blast_match_organism' => '*The organism the match belongs to. (property name: blast_match_organism)',  
-      'blast_match_accession' => '*The accession of the match. (property name: blast_match_accession)',  
-     'blast_database' => 'The name of the database blasted against (property name: blast_database)',       
-//     'blast_evalue' => 'The match e-value score (property name: blast_evalue)',  
-//     'blast_score' => 'The match bit score (property name: blast_score)',  
-//     'blast_pid' => 'The match percent identity (property name: blast_pid)',       
+     'blast_match_name' => '*The match name (property name: blast_match_name)',
+     'blast_match_description' => '*The match description (property name: blast_match_description)',
+     'blast_match_organism' => '*The organism the match belongs to. (property name: blast_match_organism)',
+      'blast_match_accession' => '*The accession of the match. (property name: blast_match_accession)',
+     'blast_database' => 'The name of the database blasted against (property name: blast_database)',
+//     'blast_evalue' => 'The match e-value score (property name: blast_evalue)',
+//     'blast_score' => 'The match bit score (property name: blast_score)',
+//     'blast_pid' => 'The match percent identity (property name: blast_pid)',
   );
   $form['blast']['search_keywords'] = array(
-      '#type' => 'checkbox',  
-      '#description' => t('By default the blast results will be available for Drupal-style 
-         search indexing. However,  custom searching can be made available to site visitors using 
-         the Tripal Views module.  Some fields can only be identified in the blast results if the 
-         database record in Tripal is properly configured. Navigate to Administer -> 
-         Tripal Management -> Analysis and look for the \'Tripal Blast\' section. Select 
+      '#type' => 'checkbox',
+      '#description' => t('By default the blast results will be available for Drupal-style
+         search indexing. However,  custom searching can be made available to site visitors using
+         the Tripal Views module.  Some fields can only be identified in the blast results if the
+         database record in Tripal is properly configured. Navigate to Administer ->
+         Tripal Management -> Analysis and look for the \'Tripal Blast\' section. Select
          the database that these blast results belong to. Be sure
-         to set the regular expressions for identifying the match name,  accession, description and 
-         organism.  When constructing a materialized view for these data,  or for setting a 
+         to set the regular expressions for identifying the match name,  accession, description and
+         organism.  When constructing a materialized view for these data,  or for setting a
          search filter in Drupal Views,  use the property names indicated in parentheses above. These
-         results will be housed in the analysisfeatureprop table of Chado.'),  
-      '#title' => t('Keywords For Custom Search'),  
+         results will be housed in the analysisfeatureprop table of Chado.'),
+      '#title' => t('Keywords For Custom Search'),
       '#default_value' => $search_keywords,
-      '#description' => t('Parse blast results for integration with Tripal Views'),  
+      '#description' => t('Parse blast results for integration with Tripal Views'),
   );
-  
+
   return $form;
 }
 /**
 *
 */
 function chado_analysis_blast_validate($node,  &$form, &$form_state) {
-  
+
   // use the analysis parent to validate the node
   tripal_analysis_validate($node,  $form, $form_state);
 
@@ -284,7 +298,7 @@ function chado_analysis_blast_validate($node,  &$form, &$form_state) {
   $node->blastfile_ext     = trim($node->blastfile_ext);
   $node->query_type        = trim($node->query_type);
   $node->query_uniquename  = trim($node->query_uniquename);
-  
+
   if($node->blastfile and !is_readable($node->blastfile)) {
     form_set_error('interprofile', "Can not read BLAST XML output file: '$node->blastfile'. Please check file permissions or typos in the file path.");
   }
@@ -294,14 +308,17 @@ function chado_analysis_blast_load($nodes) {
 
   // load the default set of analysis fields
   chado_analysis_load($nodes);
-  
+
   foreach ($nodes as $nid => $node) {
 
-    // create some variables for easier lookup
+    // Get the analysis.  If it doesn't exist this may be an orphaned node.
     $analysis = $node->analysis;
+    if (!$analysis) {
+      continue;
+    }
     $analysis_id = $analysis->analysis_id;
     $record = array('table'=> 'analysis', 'id' => $analysis->analysis_id);
-    
+
     // Get the blast settings.
     $blast_settings  = chado_get_property($record, array('type_name' => 'analysis_blast_settings', 'cv_name' => 'tripal'));
     $blastdb = chado_get_property($record, array('type_name' => 'analysis_blast_blastdb', 'cv_name' => 'tripal'));
@@ -314,8 +331,8 @@ function chado_analysis_blast_load($nodes) {
     $blastfile_ext = chado_get_property($record, array('type_name' => 'analysis_blast_blastfile_ext', 'cv_name' => 'tripal'));
     $is_concat = chado_get_property($record, array('type_name' => 'analysis_blast_is_concat', 'cv_name' => 'tripal'));
     $search_keywords = chado_get_property($record, array('type_name' => 'analysis_blast_search_keywords', 'cv_name' => 'tripal'));
-   
-    $analysis->tripal_analysis_blast = new stdClass;
+
+    $analysis->tripal_analysis_blast = new stdClass();
     $analysis->tripal_analysis_blast->blastdb         = is_object($blastdb)          ? $blastdb->value          : '';
     $analysis->tripal_analysis_blast->blastfile       = is_object($blastfile)        ? $blastfile->value        : '';
     $analysis->tripal_analysis_blast->blastparameters = is_object($blastparameters)  ? $blastparameters->value  : '';
@@ -342,11 +359,11 @@ function chado_analysis_blast_load($nodes) {
       $analysis->tripal_analysis_blast->blastfile = $prop_values[1];
       $analysis->tripal_analysis_blast->blastparameters = $prop_values[2];
     }
-    
-    
+
+
     // Now get the title
     $node->title = chado_get_node_title($node);
-    
+
     $nodes[$nid]->analysis = $analysis;
   }
 }
@@ -357,16 +374,19 @@ function chado_analysis_blast_insert($node) {
 
   // insert the analysis using the hook_insert() from the Tripal analysis module
   chado_analysis_insert($node);
-  
+
   // trim character fields
   $node->blastfile         = trim($node->blastfile);
   $node->blastfile_ext     = trim($node->blastfile_ext);
   $node->query_type        = trim($node->query_type);
   $node->query_uniquename  = trim($node->query_uniquename);
-  
+
   $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
-  
-  // now add in the remaining settings as a single property but separated by bars
+
+  // Add the analysis type.
+  chado_insert_property($record, array('type_name' =>'Analysis Type', 'cv_name' => 'analysis_property', 'value' => 'blast_analysis'));
+
+  // Now add in the remaining settings as a single property but separated by bars
   chado_insert_property($record, array('type_name' =>'analysis_blast_blastdb', 'cv_name' => 'tripal', 'value' => trim($node->blastdb)));
   chado_insert_property($record, array('type_name' =>'analysis_blast_blastfile', 'cv_name' => 'tripal', 'value' => trim($node->blastfile)));
   chado_insert_property($record, array('type_name' =>'analysis_blast_blastparameters', 'cv_name' => 'tripal', 'value' => trim($node->blastparameters)));
@@ -378,7 +398,7 @@ function chado_analysis_blast_insert($node) {
   chado_insert_property($record, array('type_name' =>'analysis_blast_is_concat', 'cv_name' => 'tripal', 'value' => trim($node->is_concat)));
   chado_insert_property($record, array('type_name' =>'analysis_blast_search_keywords', 'cv_name' => 'tripal', 'value' => trim($node->search_keywords)));
 
-  // submit the parsing jobs
+  // Submit the parsing jobs
   chado_analysis_blast_submit_jobs($node);
 }
 
@@ -389,17 +409,20 @@ function chado_analysis_blast_update($node) {
 
   // update the anlaysis
   chado_analysis_update($node);
-  
+
   // trim character fields
   $node->blastfile         = trim($node->blastfile);
   $node->blastfile_ext     = trim($node->blastfile_ext);
   $node->query_type        = trim($node->query_type);
   $node->query_uniquename  = trim($node->query_uniquename);
-  
+
   $record = array('table'=> 'analysis', 'id' => $node->analysis_id);
   $options = array('insert_if_missing' => TRUE);
 
-  // add the blast settings
+  // Update the analysis type.
+  chado_update_property($record, array('type_name' =>'Analysis Type', 'cv_name' => 'analysis_property', 'value' => 'blast_analysis'), $options);
+
+  // Update the blast settings.
   chado_update_property($record, array('type_name' =>'analysis_blast_blastdb', 'cv_name' => 'tripal', 'value' => trim($node->blastdb)), $options);
   chado_update_property($record, array('type_name' =>'analysis_blast_blastfile', 'cv_name' => 'tripal', 'value' => trim($node->blastfile)), $options);
   chado_update_property($record, array('type_name' =>'analysis_blast_blastparameters', 'cv_name' => 'tripal', 'value' => trim($node->blastparameters)), $options);
@@ -430,7 +453,7 @@ function chado_analysis_blast_access($op,  $node, $account) {
   if (is_object($node)) {
     $node_type = $node->type;
   }
-  
+
   if($node_type == 'chado_analysis_blast') {
     if ($op == 'create') {
       if (!user_access('create chado_analysis_blast content',   $account)) {
@@ -461,7 +484,7 @@ function chado_analysis_blast_access($op,  $node, $account) {
  */
 function chado_analysis_blast_delete($node) {
   chado_analysis_delete($node);
-} 
+}
 
 /**
  * Implements [content_type]_chado_node_default_title_format().
@@ -483,19 +506,19 @@ function tripal_analysis_blast_node_insert($node) {
 
   switch ($node->type) {
     case 'chado_analysis_blast':
-  
+
       // build the analysis variable
       $analysis_id = chado_get_id_from_nid('analysis', $node->nid);
       $values = array('analysis_id' => $analysis_id);
       $analysis = chado_generate_var('analysis', $values);
       $node->analysis = $analysis;
-  
+
       // Now get the title
       $node->title = chado_get_node_title($node);
-      
+
       // Now use the API to set the path.
       chado_set_node_url($node);
-  
+
       break;
   }
 }
