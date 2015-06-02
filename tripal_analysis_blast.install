@@ -9,43 +9,41 @@
  * Implementation of hook_install().
  */
 function tripal_analysis_blast_install() {
-   // Create the module's data directory.
-   tripal_create_files_dir('tripal_analysis_blast');
 
    // Register this analysis.
    tripal_register_analysis_child('tripal_analysis_blast');
-   
+
    // Add cvterms.
    tripal_analysis_blast_add_cvterms();
-   
+
    // add custom tables.
    tripal_analysis_blast_add_custom_tables();
-    
+
    // Create default parser for swissprot,  DB:genbank, and go-seqdb.
    $sql_db = "SELECT db_id,  name FROM {db} WHERE lower(name) like :name";
    $sql_parser = "INSERT INTO {tripal_analysis_blast} ".
                  "  (db_id,  displayname, regex_hit_id, regex_hit_def, ".
                  "   regex_hit_accession,  genbank_style, regex_hit_organism) ".
                  "VALUES (:db_id,  :displayname,  :regex_hit_id, :regex_hit_def, :regex_hit_accession, :genbank_style, :regex_hit_organism)";
-   
+
    // Add swissprot parser.
    $results = chado_query($sql_db,  array(':name' => "%swissprot%"));
    foreach ($results AS $db) {
     db_query(
-      $sql_parser,  
+      $sql_parser,
       array(
         ':db_id' => $db->db_id,
         ':displayname' => 'ExPASy Swissprot',
-        ':regex_hit_id' => '^sp\|.*?\|(.*?)\s.*?$', 
-        ':regex_hit_def' => '^sp\|.*?\|.*?\s(.*)$', 
-        ':regex_hit_accession' => 'sp\|(.*?)\|.*?\s.*?$', 
-        ':genbank_style' => 0, 
+        ':regex_hit_id' => '^sp\|.*?\|(.*?)\s.*?$',
+        ':regex_hit_def' => '^sp\|.*?\|.*?\s(.*)$',
+        ':regex_hit_accession' => 'sp\|(.*?)\|.*?\s.*?$',
+        ':genbank_style' => 0,
         ':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
       );
     }
-   
+
    // Add trembl parser.
-   $results = chado_query($sql_db,  array(':name' => "%trembl%"));  
+   $results = chado_query($sql_db,  array(':name' => "%trembl%"));
    foreach ($results AS $db) {
      db_query(
      $sql_parser,
@@ -59,7 +57,7 @@ function tripal_analysis_blast_install() {
        ':regex_hit_organism' => '^.*?OS=(.*?)\s\w\w=.*$')
      );
    }
-   
+
    // Add NCBI genbank parser.
    $results = chado_query($sql_db, array(':name' => "%genbank%"));
    foreach ($results AS $db) {
@@ -81,18 +79,18 @@ function tripal_analysis_blast_install() {
  * Implementation of hook_uninstall().
  */
 function tripal_analysis_blast_uninstall() {
-   
+
    // Delete all information associate with the module
-   // Drupal complains when the user tries to uninstall tripal_analysis 
+   // Drupal complains when the user tries to uninstall tripal_analysis
    // and tripal_analysis_blast at the same time. This is because Drupal drops
    // the {tripal_analysis} table before we can delete anything from it. Thus,
    // we perform a db_table_exists() check before the deletion
-   
+
    //Delete the settings from {tripal_analysis} table
    tripal_unregister_analysis_child('tripal_analysis_blast');
 
    // Delete module's variables from variables table.
-   db_query("DELETE FROM {variable} WHERE name = :name",  
+   db_query("DELETE FROM {variable} WHERE name = :name",
      array('name' => 'tripal_analysis_blast_setting'));
 
 }
@@ -103,32 +101,32 @@ function tripal_analysis_blast_uninstall() {
 *  the Tripal core API,  for specifying the details for this table.
 */
 function tripal_analysis_blast_add_custom_tables() {
-   // the blast_organisms table is used to help when integrating with 
-   // Drupal Views.  Trying to get a list of organisms for a drop down 
+   // the blast_organisms table is used to help when integrating with
+   // Drupal Views.  Trying to get a list of organisms for a drop down
    // in Views would require querying the blast_hit_data table which has
    // a lot of redunancy and takes too long.  This table was created
    // to speed up the query the popluates a drop down list
    $schema = array(
-      'table' => 'blast_organisms',  
+      'table' => 'blast_organisms',
       'fields' => array(
          'blast_org_id'     => array('type' => 'serial',   'not null' => TRUE),
          'blast_org_name'   => array('type' => 'varchar',   'length' => 1025, 'not null' => FALSE),
-      ),  
-      'primary key' => array('blast_org_id'),   
+      ),
+      'primary key' => array('blast_org_id'),
       'indexes' => array(
-         'blast_org_name_idx' => array('blast_org_name'),                
-      ),   
+         'blast_org_name_idx' => array('blast_org_name'),
+      ),
       'unique keys' => array(
-         'blast_org_name_uq' => array('blast_org_name'),  
+         'blast_org_name_uq' => array('blast_org_name'),
       )
    );
    chado_create_custom_table('blast_organisms', $schema);
-  
+
    // the schema for our custom Chado tables are in the .module file
    // so that they integrate properly with everything else Chado.
    $ret = array();
    $schema = array(
-      'table' => 'blast_hit_data',  
+      'table' => 'blast_hit_data',
       'fields' => array(
          'analysisfeature_id'  => array('type' => 'int',   'not null' => TRUE),
          'analysis_id'         => array('type' => 'int',   'not null' => TRUE),
@@ -144,51 +142,51 @@ function tripal_analysis_blast_add_custom_tables() {
          'hit_best_eval'       => array('type' => 'float',   'size' => 'big', 'not null' => FALSE),
          'hit_best_score'      => array('type' => 'float',   'size' => 'big', 'not null' => FALSE),
          'hit_pid'             => array('type' => 'float',   'size' => 'big', 'not null' => FALSE),
-      ),  
+      ),
       'indexes' => array(
-         'analysisfeature_id' => array('analysisfeature_id'),  
-         'feature_id' => array('feature_id'),  
-         'analysis_id' => array('analysis_id'),  
-         'blast_org_id' => array('blast_org_id'),  
-         'db_id' => array('db_id'),  
-         'hit_organism' => array('hit_organism'),  
-         'hit_name' => array('hit_organism'),  
-         'hit_accession' => array('hit_accession'),     
-         'hit_best_eval' => array('hit_best_eval'),                 
-      ),  
+         'analysisfeature_id' => array('analysisfeature_id'),
+         'feature_id' => array('feature_id'),
+         'analysis_id' => array('analysis_id'),
+         'blast_org_id' => array('blast_org_id'),
+         'db_id' => array('db_id'),
+         'hit_organism' => array('hit_organism'),
+         'hit_name' => array('hit_organism'),
+         'hit_accession' => array('hit_accession'),
+         'hit_best_eval' => array('hit_best_eval'),
+      ),
      'foreign keys' => array(
         'db' => array(
-           'table' => 'db',  
+           'table' => 'db',
            'columns' => array(
-              'db_id' => 'db_id',  
-           ),  
-        ),  
+              'db_id' => 'db_id',
+           ),
+        ),
         'analysisfeature' => array(
-           'table' => 'analysisfeature',  
+           'table' => 'analysisfeature',
            'columns' => array(
-              'analysisfeature_id' => 'analysisfeature_id',  
-           ),  
-        ),  
+              'analysisfeature_id' => 'analysisfeature_id',
+           ),
+        ),
         'analysis' => array(
-           'table' => 'analysis',  
+           'table' => 'analysis',
            'columns' => array(
-              'analysis_id' => 'analysis_id',  
-           ),  
-        ),    
+              'analysis_id' => 'analysis_id',
+           ),
+        ),
        'feature' => array(
-          'table' => 'feature',  
+          'table' => 'feature',
           'columns' => array(
-             'feature_id' => 'feature_id',  
-          ),  
-        ),  
+             'feature_id' => 'feature_id',
+          ),
+        ),
         'blast_organisms' => array(
-           'table' => 'blast_organisms',  
+           'table' => 'blast_organisms',
            'columns' => array(
-              'blast_org_id' => 'blast_org_id',  
-           ),  
-        ),  
+              'blast_org_id' => 'blast_org_id',
+           ),
+        ),
      )
-  );    
+  );
   chado_create_custom_table('blast_hit_data', $schema);
 }
 /*******************************************************************************
@@ -204,16 +202,16 @@ function tripal_analysis_blast_schema() {
          'regex_hit_id'        => array('type' => 'varchar',  'length' => 255, ),
          'regex_hit_def'       => array('type' => 'varchar',  'length' => 255, ),
          'regex_hit_accession' => array('type' => 'varchar',  'length' => 255, ),
-         'regex_hit_organism'  => array('type' => 'varchar',  'length' => 255, ),               
-         'hit_organism'        => array('type' => 'varchar',  'length' => 255, ),               
+         'regex_hit_organism'  => array('type' => 'varchar',  'length' => 255, ),
+         'hit_organism'        => array('type' => 'varchar',  'length' => 255, ),
          'genbank_style'       => array('type' => 'int',  'unsigned' => TRUE, 'default' => 0),
-      ),  
+      ),
       'indexes' => array(
          'db_id' => array('db_id')
-      ),  
-      'primary key' => array('db_id'),  
+      ),
+      'primary key' => array('db_id'),
   );
-   
+
   return $schema;
 }
 
@@ -224,10 +222,10 @@ function tripal_analysis_blast_schema() {
 function tripal_analysis_blast_requirements($phase) {
    $requirements = array();
    if ($phase == 'install') {
-      if (!function_exists('tripal_create_files_dir') || !function_exists('tripal_register_analysis_child')) {
+      if (!function_exists('tripal_register_analysis_child')) {
          $requirements ['tripal_analysis_blast'] = array(
-            'title' => "tripal_analysis_blast",  
-            'value' => "error. Some required modules are just being installed. Please try again.",  
+            'title' => "tripal_analysis_blast",
+            'value' => "error. Some required modules are just being installed. Please try again.",
             'severity' => REQUIREMENT_ERROR,
          );
       }
@@ -324,7 +322,7 @@ function tripal_analysis_blast_add_cvterms() {
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
-   
+
   // add cvterms for the blast search keywords
   tripal_insert_cvterm(array(
     'name' => 'blast_match_name',
@@ -374,7 +372,7 @@ function tripal_analysis_blast_add_cvterms() {
     'cv_name' => 'tripal',
     'db_name' => 'tripal',
   ));
-   
+
    // Add cvterm 'analysis_blast_output_iteration_hits' for inserting into featureprop table
    tripal_insert_cvterm(array(
     'name' => 'analysis_blast_output_iteration_hits',
@@ -385,7 +383,7 @@ function tripal_analysis_blast_add_cvterms() {
      'cv_name' => 'tripal',
      'db_name' => 'tripal',
    ));
-   
+
    // Add cvterms for the best hits report
    tripal_insert_cvterm(array(
     'name' => 'analysis_blast_besthit_query',
@@ -406,7 +404,7 @@ function tripal_analysis_blast_add_cvterms() {
      'db_name' => 'tripal',
    ));
    tripal_insert_cvterm(array(
-    'name' => 'analysis_blast_besthit_evalue',   
+    'name' => 'analysis_blast_besthit_evalue',
     'def' => 'evalue of the best hit associated with a feature and a blast analysis ',
      'cv_name' => 'tripal',
      'db_name' => 'tripal',
@@ -416,7 +414,7 @@ function tripal_analysis_blast_add_cvterms() {
     'def' =>  'identity (%) of the best hit associated with a feature and a blast analysis ',
      'cv_name' => 'tripal',
      'db_name' => 'tripal',
-   )); 
+   ));
    tripal_insert_cvterm(array(
     'name' => 'analysis_blast_besthit_length',
     'def' =>  'length of the best hit associated with a feature and a blast analysis ',
@@ -501,14 +499,14 @@ function tripal_analysis_blast_update_7201() {
 function tripal_analysis_blast_update_7202() {
   try {
     module_load_include('inc', 'tripal_cv', 'api/tripal_cv.api');
-    
+
     tripal_insert_cvterm(array(
       'name' => 'analysis_blast_blastdb',
       'def' => 'The database used for blasting',
       'cv_name' => 'tripal',
       'db_name' => 'tripal',
     ));
-    
+
     tripal_insert_cvterm(array(
       'name' => 'analysis_blast_blastfile',
       'def' => 'The input file or directory that contains the XML blast output',

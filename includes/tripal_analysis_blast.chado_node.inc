@@ -155,7 +155,7 @@ function chado_analysis_blast_form($node, $form_state) {
     '#description' => t('Specific Settings for Blast Analysis.'),
     '#collapsible' => TRUE,
     '#attributes' => array('id' => 'blast-extra-settings'),
-    '#weight' => 11
+    '#group' => 'chado_node_api',
   );
 
   // get a list of db from chado for user to choose
@@ -221,13 +221,16 @@ function chado_analysis_blast_form($node, $form_state) {
       '#default_value' => $query_re,
   );
 
+  $cv = tripal_get_cv(array('name' => 'sequence'));
+  $cv_id = $cv->cv_id;
   $form['blast']['query_type'] = array(
-      '#title' => t('Query Type'),
-      '#type' => 'textfield',
-      '#description' => t('Please enter the Sequence Ontology term that describes '.
-         'the query sequences used for blasting.  This is only necessary if two '.
-         'or more sequences have the same name.'),
-      '#default_value' => $query_type,
+    '#title' => t('Query Type'),
+    '#type' => 'textfield',
+    '#description' => t('Please enter the Sequence Ontology term that describes '.
+       'the query sequences used for blasting.  This is only necessary if two '.
+       'or more sequences have the same name.'),
+    '#default_value' => $query_type,
+    '#autocomplete_path' => "admin/tripal/chado/tripal_cv/cvterm/auto_name/$cv_id",
   );
 
   $form['blast']['query_uniquename'] = array(
