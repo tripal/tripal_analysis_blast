@@ -220,17 +220,18 @@ function tripal_analysis_blast_schema() {
  * Analysis' are enabled before installation
  */
 function tripal_analysis_blast_requirements($phase) {
-   $requirements = array();
-   if ($phase == 'install') {
-      if (!function_exists('tripal_register_analysis_child')) {
-         $requirements ['tripal_analysis_blast'] = array(
-            'title' => "tripal_analysis_blast",
-            'value' => "error. Some required modules are just being installed. Please try again.",
-            'severity' => REQUIREMENT_ERROR,
-         );
-      }
-   }
-   return $requirements;
+  $requirements = array();
+  if ($phase == 'install') {
+    // make sure chado is installed
+    if (!$GLOBALS["chado_is_installed"]) {
+      $requirements ['tripal_feature'] = array(
+          'title' => "t ripal_feature",
+          'value' => "ERROR: Chado must be installed before this module can be enabled",
+          'severity' => REQUIREMENT_ERROR,
+      );
+    }
+  }
+  return $requirements;
 }
 
 /*******************************************************************************
