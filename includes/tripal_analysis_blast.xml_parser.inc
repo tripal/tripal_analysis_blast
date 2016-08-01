@@ -74,20 +74,23 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
          $blastfile_ext = 'xml';
       }
 
-      $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
-      $pattern = sql_regcase($blastfile . "/*.$blastfile_ext");
-      $total_files = count(glob($pattern));
-      $no_file = 0;
-
       // Parsing all files in the directory
+      $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
+      $files_to_parse = [];
       while ($file = readdir($dir_handle)) {
         if (preg_match("/^.*\.$blastfile_ext/i", $file)) {
+          $files_to_parse[] = $file;
+        }
+      }
+
+      $no_file = 0;
+      $total_files = count($files_to_parse);
+      foreach ($files_to_parse as $file) {
           print "File $no_file of $total_files: $file                       \n";
           tripal_analysis_blast_parseXML($analysis_id, $blastdb, "$blastfile/$file",
             $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
             $job_id, $is_concat, $search_keywords);
           $no_file ++;
-        }
       }
     }
   }
