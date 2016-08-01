@@ -896,7 +896,7 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $feature_id, 
                 $hits_array[$hit_count]['description'] = $description;
 
                 // if there is at least one HSP
-                if (!empty($hsp_array[0]['query_frame'])) {
+                if (isset($hsp_array[0]['query_frame'])) {
                   $hits_array[$hit_count]['hsp'] = $hsp_array;
                 }
                 else {
