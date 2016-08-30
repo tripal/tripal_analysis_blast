@@ -866,8 +866,6 @@ function tripal_analysis_blast_get_result_object($xml_string, $db, $feature_id, 
               if (strcmp($xml->name, 'Hit') == 0) {
 
                 $number_hits++;
-                $arrowr_url = url(drupal_get_path('theme', 'tripal') . "/images/arrow_r.png");
-                $hits_array[$hit_count]['arrowr_url'] = $arrowr_url;
                 $hits_array[$hit_count]['accession'] = $accession;
                 $hits_array[$hit_count]['hit_organism'] = $hit_organism;
                 $hits_array[$hit_count]['hit_name'] = $hit_name;
