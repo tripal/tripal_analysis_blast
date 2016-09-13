@@ -7,6 +7,18 @@ require_once "includes/tripal_analysis_blast.chado_node.inc";
 
 require_once "theme/tripal_analysis_blast.theme.inc";
 
+
+/**
+ * Implements hook_init().
+ */
+function tripal_analysis_blast_init(){
+
+   drupal_add_css("https://cdn.rawgit.com/calipho-sib/feature-viewer/v0.1.44/dist/feature-viewer.min.css", array('type' => 'external'));
+
+   drupal_add_js("https://cdn.rawgit.com/calipho-sib/feature-viewer/v0.1.44/dist/feature-viewer.bundle.js");
+}
+
+
 /**
  * Implements hook_menu().
  */
