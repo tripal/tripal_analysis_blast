@@ -107,7 +107,6 @@ Query: <?php print sprintf("%4d", $hsp['query_from'])?> <?php print $hsp['qseq']
 
 Sbjct: <?php print sprintf("%4d", $hsp['hit_from']) ?> <?php print $hsp['hseq']?> <?php print sprintf("%d",$hsp['hit_to']) ?>
           </pre><?php
-          $desc =
           $hsp_pos[] = array('x' => $hsp['query_from'], 'y' => $hsp['query_to'], 'description' => 'Expect = '.$hsp['evalue']);
         }
         // In case the hitname is a long id, simplify it
