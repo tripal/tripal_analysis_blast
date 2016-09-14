@@ -77,7 +77,7 @@ if(count($blast_results_list) > 0){
 
       $rows[] = array(
         $hit_name,
-        sprintf("%e", $hit['best_evalue']),
+        sprintf("%.3e", $hit['best_evalue']),
         array_key_exists('percent_identity', $hit) ? $hit['percent_identity'] : '',
         // we want a tooltip if the user mouses-over a description to show the entire thing
         '<span title="' . $hit['description'] . '">' . $description . '</span>',
@@ -99,7 +99,7 @@ if(count($blast_results_list) > 0){
         <br>Match: <?php print $hit_name . " (" . $hit['description'] . ")<br>";
         $hsp_pos = array();
         foreach ($hsps_array AS $hsp) { ?>
-          <br><b>HSP <?php  print $hsp['hsp_num'] ?></b> Score: <?php print $hsp['bit_score'] ?> bits (<?php print $hsp['score'] ?>), Expect = <?php print $hsp['evalue'] ?><br>Identity = <?php print sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100) ?>, Postives = <?php print sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100)?>, Query Frame = <?php print $hsp['query_frame']?>
+          <br><b>HSP <?php  print $hsp['hsp_num'] ?></b> Score: <?php print $hsp['bit_score'] ?> bits (<?php print $hsp['score'] ?>), Expect = <?php print sprintf('%.3e', floatval($hsp['evalue'])) ?><br>Identity = <?php print sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100) ?>, Postives = <?php print sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100)?>, Query Frame = <?php print $hsp['query_frame']?>
           <pre class="blast_align">
 Query: <?php print sprintf("%4d", $hsp['query_from'])?> <?php print $hsp['qseq'] ?> <?php print sprintf("%d", $hsp['query_to']); ?>
 
@@ -107,7 +107,7 @@ Query: <?php print sprintf("%4d", $hsp['query_from'])?> <?php print $hsp['qseq']
 
 Sbjct: <?php print sprintf("%4d", $hsp['hit_from']) ?> <?php print $hsp['hseq']?> <?php print sprintf("%d",$hsp['hit_to']) ?>
           </pre><?php
-          $hsp_pos[] = array('x' => $hsp['query_from'], 'y' => $hsp['query_to'], 'description' => 'Expect = '.$hsp['evalue']);
+          $hsp_pos[] = array('x' => intval($hsp['query_from']), 'y' => intval($hsp['query_to']), 'description' => 'Expect = '.sprintf('%.2e', floatval($hsp['evalue'])).' / Id = '.$hit['percent_identity']);
         }
         // In case the hitname is a long id, simplify it
         $clean_hit_name = preg_replace("/^([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|$/", "$4", $hit['hit_name']);
@@ -117,7 +117,7 @@ Sbjct: <?php print sprintf("%4d", $hsp['hit_from']) ?> <?php print $hsp['hseq']?
                name: \"".$clean_hit_name."\",
                className: \"blast_match\", //can be used for styling
                color: \"#0F8292\",
-               type: \"rect\" // ['rect', 'path', 'line']
+               type: \"rect\"
            });
         </script>"; ?>
       </div>
