@@ -35,16 +35,24 @@ if(count($blast_results_list) > 0){
         <br>Total hits: " . number_format($total_records) . "
       <div id=\"features_vis-".$analysis->analysis_id."\"></div>
       <script lang=\"javascript\">
-          var ft".$analysis->analysis_id." = new FeatureViewer('".$feature->residues."',
+          (function($) {
+          // hack to work with multiple jquery versions
+          backup_jquery = window.jQuery;
+          window.jQuery = $;
+          window.$ = $;
+          window.ft".$analysis->analysis_id." = new FeatureViewer('".$feature->residues."',
           '#features_vis-".$analysis->analysis_id."',
           {
               showAxis: true,
               showSequence: true,
               brushActive: true, //zoom
               toolbar:true, //current zoom & mouse position
-              bubbleHelp:true,
+              bubbleHelp:false,
               zoomMax:3 //define the maximum range of the zoom
           });
+          window.jQuery = backup_jquery;
+          window.$ = backup_jquery;
+        })(feature_viewer_jquery);
       </script>
   ";
   ?>
@@ -112,13 +120,21 @@ Sbjct: <?php print sprintf("%4d", $hsp['hit_from']) ?> <?php print $hsp['hseq']?
         // In case the hitname is a long id, simplify it
         $clean_hit_name = preg_replace("/^([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|$/", "$4", $hit['hit_name']);
         $results_html .= "<script lang=\"javascript\">
-            ft".$analysis->analysis_id.".addFeature({
+            (function($) {
+            // hack to work with multiple jquery versions
+            backup_jquery = window.jQuery;
+            window.jQuery = $;
+            window.$ = $;
+            window.ft".$analysis->analysis_id.".addFeature({
                data: ".json_encode($hsp_pos).",
                name: \"".$clean_hit_name."\",
                className: \"blast_match\", //can be used for styling
                color: \"#0F8292\",
                type: \"rect\"
            });
+           window.jQuery = backup_jquery;
+           //window.$ = backup_jquery;
+         })(feature_viewer_jquery);
         </script>"; ?>
       </div>
     <?php }
