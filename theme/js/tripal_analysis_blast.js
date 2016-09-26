@@ -1,5 +1,5 @@
 (function ($) {
-  Drupal.behaviors.triapl_analysis_blast = {
+  Drupal.behaviors.tripal_analysis_blast = {
     attach: function (context, settings) {
 
       // hide all the HSP description boxes by default
@@ -27,7 +27,7 @@
       $("div.tripal_analysis_blast-info-box-desc ul.pager a").each(function() {
         pager_link = $(this);
         parent = pager_link.parents('div.tripal_analysis_blast-info-box-desc');
-        pager_link.attr('href', pager_link.attr('href') + '#' + parent.attr('id')); 
+        pager_link.attr('href', pager_link.attr('href') + '#' + parent.attr('id'));
       })
     }
   };

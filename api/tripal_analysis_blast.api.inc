@@ -3,12 +3,12 @@
 /**
  * Get blast result for a given feature as stored by this module in the
  * analysisfeature_prop table
- * 
+ *
  * @param $feature_id
  *   The feature_id of the feature
  * @param $db_id
  *   Optional.  Specify a database id.  This is useful if a feature was
- *   blast'ed against multipe databases and you only need to retrieve 
+ *   blast'ed against multipe databases and you only need to retrieve
  *   results for a specific set.
  */
 function tripal_get_feature_blast_results($feature_id, $db_id) {
