@@ -53,7 +53,7 @@ function tripal_get_feature_blast_results($feature_id, $db_id) {
     // we still need to support the old method for backwards compatibility.
     // so,  first get the old style variable and see if it has values. In
     // particular we need the database setting
-    $blast_settings  = tripal_analysis_get_property($analysis_id, 'analysis_blast_settings');
+    $blast_settings  = chado_get_property(array('table'=> 'analysis', 'id' => $analysis_id), array('type_name' => 'analysis_blast_settings', 'cv_name' => 'tripal'));
     if ($blast_settings) {
       $blastsettings = explode("|",   $blast_settings->value);
       // if we don't have the proper number of fields in the value column then
@@ -66,7 +66,7 @@ function tripal_get_feature_blast_results($feature_id, $db_id) {
     // if we're not using the old style then try the new method to get the
     // database id
     else {
-      $blastdb = tripal_analysis_get_property($analysis_id, 'analysis_blast_blastdb');
+      $blastdb = chado_get_property(array('table'=> 'analysis', 'id' => $analysis_id), array('type_name' => 'analysis_blast_blastdb', 'cv_name' => 'tripal'));
       $adb_id = $blastdb->value;
     }
     // if the callee specified a database to show then we want to check that
