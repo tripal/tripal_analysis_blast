@@ -55,7 +55,7 @@ function tripal_get_feature_blast_results($feature_id, $db_id) {
     // particular we need the database setting
     $blast_settings  = chado_get_property(array('table'=> 'analysis', 'id' => $analysis_id), array('type_name' => 'analysis_blast_settings', 'cv_name' => 'tripal'));
     if ($blast_settings) {
-      $blastsettings = explode("|",   $blast_settings->value);
+      $blastsettings = isset($blast_settings->value) ? explode("|",   $blast_settings->value) : $blast_settings;
       // if we don't have the proper number of fields in the value column then
       // skip this entry
       if (count($blastsettings) != 3) {

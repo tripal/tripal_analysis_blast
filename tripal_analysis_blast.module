@@ -5,6 +5,14 @@ require_once "includes/tripal_analysis_blast.xml_parser.inc";
 require_once "includes/tripal_analysis_blast.admin.inc";
 require_once "includes/tripal_analysis_blast.chado_node.inc";
 
+require_once drupal_get_path('module', 'tripal_chado') . "/includes/TripalFields/ChadoField.inc";
+require_once drupal_get_path('module', 'tripal_chado') . "/includes/TripalFields/ChadoFieldWidget.inc";
+require_once drupal_get_path('module', 'tripal_chado') . "/includes/TripalFields/ChadoFieldFormatter.inc";
+require_once "includes/tripal_analysis_blast.fields.inc";
+require_once "includes/tripal__blast_result.inc";
+require_once "includes/tripal__blast_result_widget.inc";
+require_once "includes/tripal__blast_result_formatter.inc";
+
 require_once "theme/tripal_analysis_blast.theme.inc";
 
 /**

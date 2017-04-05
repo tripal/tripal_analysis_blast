@@ -76,7 +76,7 @@ function tripal_analysis_blast_parseXMLFile($analysis_id, $blastdb, $blastfile,
 
       // Parsing all files in the directory
       $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
-      $files_to_parse = [];
+      $files_to_parse = array();
       while ($file = readdir($dir_handle)) {
         if (preg_match("/^.*\.$blastfile_ext/i", $file)) {
           $files_to_parse[] = $file;
