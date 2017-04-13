@@ -104,7 +104,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       // the $headers array is an array of fields to use as the colum headers.
       // additional documentation can be found here
       // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
-      $headers = array('Match Name', 'E-value', 'Identity', 'Description', '');
+      $headers = array('Match Name', 'Stats', 'Description');
 
       // the $rows array contains an array of rows where each row is an array
       // of values for each column of the table in that row.  Additional documentation
@@ -126,12 +126,13 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
           $description = $description . "... ";
         }
 
+        $evalue = sprintf("%.3e", $hit['best_evalue']);
+        $pid = array_key_exists('percent_identity', $hit) ? $hit['percent_identity'] : '';
         $rows[] = array(
           $hit_name,
-          sprintf("%.3e", $hit['best_evalue']),
-          array_key_exists('percent_identity', $hit) ? $hit['percent_identity'] : '',
+          'E-Value: ' . $evalue . ', PID: ' . $pid,
           // we want a tooltip if the user mouses-over a description to show the entire thing
-          '<span title="' . $hit['description'] . '">' . $description . '</span>',
+          '<span title="' . $hit['description'] . '">' . $description . '</span>' .
           // add the [more] link at the end of the row.  Javascript is used
           // to display this record
           '<a href="javascript:void(0);" id="hsp-link-"' . $analysis->analysis_id . '-' .  $j . '" class="tripal-analysis-blast-info-hsp-link">[more]</a>',
