@@ -1,12 +1,12 @@
 <?php
 
-class tripal__blast_result_widget extends ChadoFieldWidget {
+class format__blast_results_widget extends ChadoFieldWidget {
 
   // The default lable for this field.
-  public static $default_label = 'Blast Result';
+  public static $default_label = 'BLAST Results';
 
   // The list of field types for which this formatter is appropriate.
-  public static $field_types = array('tripal__blast_result');
+  public static $field_types = array('format__blast_results');
 
 
   /**

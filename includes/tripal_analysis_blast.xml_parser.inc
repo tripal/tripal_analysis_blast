@@ -573,6 +573,8 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
 function tripal_analysis_blast_get_result_object($xml_string, $db, $feature_id, $analysis) {
   $blast_object = new stdClass();
 
+  $blast_object->xml = $xml_string;
+
   // Get the parser using db_id
   $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = :db_id";
   $parser  = db_query($sql, array(':db_id' => $db->db_id))->fetchObject();

@@ -1,18 +1,7 @@
 <?php
 
 require_once "api/tripal_analysis_blast.api.inc";
-require_once "includes/tripal_analysis_blast.xml_parser.inc";
-require_once "includes/tripal_analysis_blast.admin.inc";
-require_once "includes/tripal_analysis_blast.chado_node.inc";
-
-require_once drupal_get_path('module', 'tripal_chado') . "/includes/TripalFields/ChadoField.inc";
-require_once drupal_get_path('module', 'tripal_chado') . "/includes/TripalFields/ChadoFieldWidget.inc";
-require_once drupal_get_path('module', 'tripal_chado') . "/includes/TripalFields/ChadoFieldFormatter.inc";
 require_once "includes/tripal_analysis_blast.fields.inc";
-require_once "includes/tripal__blast_result.inc";
-require_once "includes/tripal__blast_result_widget.inc";
-require_once "includes/tripal__blast_result_formatter.inc";
-
 require_once "theme/tripal_analysis_blast.theme.inc";
 
 /**
@@ -23,8 +12,11 @@ function tripal_analysis_blast_menu() {
   $items['admin/tripal/extension/tripal_blast_analysis'] = array(
     'title' => 'BLAST Analyses',
     'description' => 'Administrative pages for the Tripal Blast Analysis module.',
-    'page callback' => 'tripal_analysis_blast_admin_view',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('tripal_analysis_blast_settings_form'),
     'access arguments' => array('administer site configuration'),
+    'file' => 'includes/tripal_analysis_blast.admin.inc',
+    'file path' => drupal_get_path('module', 'tripal_analysis_blast'),
     'type' => MENU_NORMAL_ITEM,
   );
 
@@ -45,6 +37,17 @@ function tripal_analysis_blast_menu() {
     'access arguments' => array('administer site configuration'),
     'type' => MENU_LOCAL_TASK,
     'weight' => 2
+  );
+
+  $items['admin/tripal/loaders/blast_loader'] = array(
+    'title' => 'Chado BLAST XML results Loader',
+    'description' => 'Loads blast results in XML format and associates with genomic features.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('tripal_analysis_blast_form'),
+    'access arguments' => array('administer tripal'),
+    'file' => 'includes/tripal_analysis_blast.form.inc',
+    'file path' => drupal_get_path('module', 'tripal_analysis_blast'),
+    'type' => MENU_NORMAL_ITEM,
   );
   return $items;
 }
