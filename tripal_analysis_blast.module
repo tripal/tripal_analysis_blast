@@ -2,6 +2,7 @@
 
 require_once "api/tripal_analysis_blast.api.inc";
 require_once "includes/tripal_analysis_blast.fields.inc";
+require_once "includes/tripal_analysis_blast.xml_parser.inc";
 require_once "theme/tripal_analysis_blast.theme.inc";
 
 /**
@@ -39,6 +40,7 @@ function tripal_analysis_blast_menu() {
     'weight' => 2
   );
 
+  /*
   $items['admin/tripal/loaders/blast_loader'] = array(
     'title' => 'Chado BLAST XML results Loader',
     'description' => 'Loads blast results in XML format and associates with genomic features.',
@@ -49,6 +51,7 @@ function tripal_analysis_blast_menu() {
     'file path' => drupal_get_path('module', 'tripal_analysis_blast'),
     'type' => MENU_NORMAL_ITEM,
   );
+  */
   return $items;
 }
 /**
