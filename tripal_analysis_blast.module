@@ -3,7 +3,11 @@
 require_once "api/tripal_analysis_blast.api.inc";
 require_once "includes/tripal_analysis_blast.fields.inc";
 require_once "includes/tripal_analysis_blast.xml_parser.inc";
+
 require_once "theme/tripal_analysis_blast.theme.inc";
+
+//*.chado_node.inc is required to support legacy template
+require_once "includes/tripal_analysis_blast.chado_node.inc";
 
 /**
  * Implements hook_menu().
