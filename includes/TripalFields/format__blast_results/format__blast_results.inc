@@ -55,13 +55,15 @@ class format__blast_results extends ChadoField {
 
     // Get the list of results.
     $blast_results = tripal_get_feature_blast_results($record->feature_id, NULL);
-    foreach ($blast_results as $delta => $results) {
-      $xml = $results->xml;
-      unset($results->xml);
-      $entity->{$field_name}['und'][$delta] = array(
-        'value' => $xml,
-        'parsed' => $results
-      );
+    if (is_array($blast_results)) {
+      foreach ($blast_results as $delta => $results) {
+        $xml = $results->xml;
+        unset($results->xml);
+        $entity->{$field_name}['und'][$delta] = array(
+          'value' => $xml,
+          'parsed' => $results
+        );
+      }
     }
   }
 }
