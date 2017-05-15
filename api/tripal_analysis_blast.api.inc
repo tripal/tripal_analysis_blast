@@ -101,8 +101,9 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
     }
 
     // parse the XML and add it to the array of blast results to be returned
-    module_load_include('inc', 'tripal_analysis_blast', 'includes/tripal_analysis_blast.xml_parser');
-    $blast_obj = tripal_analysis_blast_get_result_object($blast_xml, $db, $feature_id, $analysis);
+    module_load_include('inc', 'tripal_analysis_blast', 'includes/TripalImporter/BlastImporter');
+    $importer = new BlastImporter();
+    $blast_obj =$importer->getResultObject($blast_xml, $db, $feature_id, $analysis);
     $blast_obj->analysis = $analysis;
     $blast_obj_array [$blast_obj_counter] = $blast_obj;
     $blast_obj_counter ++;
