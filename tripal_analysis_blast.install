@@ -80,7 +80,6 @@ function tripal_analysis_blast_install() {
      'cv_name' => 'EDAM',
      'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
    ));
-   tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
 
    // Create 'Analysis Blast' entity type
    tripal_analysis_blast_create_entity_type();
@@ -569,7 +568,6 @@ function tripal_analysis_blast_update_7300() {
       'cv_name' => 'EDAM',
       'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
     ));
-    tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
   }
   catch (\PDOException $e) {
     $error = $e->getMessage();
