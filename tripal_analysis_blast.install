@@ -81,7 +81,7 @@ function tripal_analysis_blast_install() {
      'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
    ));
    tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
-   
+
    // Create 'Analysis Blast' entity type
    tripal_analysis_blast_create_entity_type();
 }
@@ -443,7 +443,7 @@ function tripal_analysis_blast_create_entity_type () {
   $args = array(
     'vocabulary' => 'format',
     'accession' => '1333',
-    'term_name' => 'Blast results',
+    'term_name' => 'BLAST results',
     'storage_args' => array(
       'data_table' => 'analysis',
       'type_linker_table' => 'analysisprop',
