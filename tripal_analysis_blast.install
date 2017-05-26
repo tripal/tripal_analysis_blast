@@ -81,6 +81,9 @@ function tripal_analysis_blast_install() {
      'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
    ));
    tripal_associate_chado_semweb_term('feature', 'seqlen', $term);
+   
+   // Create 'Analysis Blast' entity type
+   tripal_analysis_blast_create_entity_type();
 }
 
 /*******************************************************************************
@@ -433,6 +436,31 @@ function tripal_analysis_blast_add_cvterms() {
 }
 
 /**
+ * Create Analysis Blast Entity Type
+ */
+function tripal_analysis_blast_create_entity_type () {
+  $error = '';
+  $args = array(
+    'vocabulary' => 'format',
+    'accession' => '1333',
+    'term_name' => 'Blast results',
+    'storage_args' => array(
+      'data_table' => 'analysis',
+      'type_linker_table' => 'analysisprop',
+      'type_column' => 'type_id',
+      'type_value' => 'blast_analysis'
+    )
+  );
+  $term = tripal_load_term_entity(array('vocabulary' => 'format', 'accession' => '1333'));
+  $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
+  if (!$term or !$bundle) {
+    if (!tripal_create_bundle($args, $error)) {
+      throw new Exception($error['!message']);
+    }
+  }
+}
+
+/**
  * Adds missing foreign key constraints
  *
  */
@@ -546,5 +574,18 @@ function tripal_analysis_blast_update_7300() {
   catch (\PDOException $e) {
     $error = $e->getMessage();
     throw new DrupalUpdateException('Failed to update terms: '. $error);
+  }
+}
+
+/**
+ * Create Blast results entity type.
+ */
+function tripal_analysis_blast_update_7301() {
+  try {
+    tripal_analysis_blast_create_entity_type();
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Failed to create entity type [Blast results]: '. $error);
   }
 }
