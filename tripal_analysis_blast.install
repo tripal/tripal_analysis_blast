@@ -452,6 +452,13 @@ function tripal_analysis_blast_create_entity_type () {
   );
   $term = tripal_load_term_entity(array('vocabulary' => 'format', 'accession' => '1333'));
   $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
+  // Add cvterm_mapping for the BLAST results entity type
+  $identifier = array(
+    'cv_id' => array('name' => 'format'),
+    'name' => 'BLAST results'
+  );
+  $cvterm = tripal_get_cvterm($identifier);
+  tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
   if (!$term or !$bundle) {
     if (!tripal_create_bundle($args, $error)) {
       throw new Exception($error['!message']);
@@ -585,5 +592,23 @@ function tripal_analysis_blast_update_7301() {
   catch (\PDOException $e) {
     $error = $e->getMessage();
     throw new DrupalUpdateException('Failed to create entity type [Blast results]: '. $error);
+  }
+}
+
+/**
+ * Add cvterm mapping for the 'BLAST results' entity type
+ */
+function tripal_analysis_blast_update_7302() {
+  try {
+    $identifier = array(
+      'cv_id' => array('name' => 'EDAM'),
+      'name' => 'BLAST results'
+    );
+    $cvterm = tripal_get_cvterm($identifier);
+    tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Could not perform update: '. $error);
   }
 }
