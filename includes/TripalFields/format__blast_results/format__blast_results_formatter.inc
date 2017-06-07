@@ -57,7 +57,11 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
     $num_results_per_page = 10;
     $feature_pager_id = 15; // increment by 1 for each database
     $i = 0;
+    $list_items = array();
     foreach ($items as $delta => $item) {
+      if (!isset($item['parsed'])) {
+        continue;
+      }
       $blast_result = $item['parsed'];
 
       $hits_array    = $blast_result->hits_array;
@@ -257,10 +261,12 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         'type' => 'ul',
         'attributes' => array(),
       ));
-      $element[0] = array(
-        '#type' => 'markup',
-        '#markup' => $content . $element[0]['#markup'],
-      );
+      if(key_exists(0, $element)) {
+        $element[0] = array(
+          '#type' => 'markup',
+          '#markup' => $content . $element[0]['#markup'],
+        );
+      }
     }
   }
 }
