@@ -60,7 +60,7 @@ function tripal_analysis_blast_bundle_instances_info($entity_type, $bundle) {
       ),
       'display' => array(
         'default' => array(
-          'label' => 'inline',
+          'label' => 'hidden',
           'type' => 'format__blast_results_formatter',
         ),
       ),

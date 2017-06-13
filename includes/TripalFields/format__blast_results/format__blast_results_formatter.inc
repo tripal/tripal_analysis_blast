@@ -12,6 +12,14 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
    * @see TripalFieldFormatter::view()
    */
   public function view(&$element, $entity_type, $entity, $langcode, $items, $display) {
+
+    if (count($items) == 0) {
+      $element[0] = array(
+        '#type' => 'markup',
+        '#markup' => 'There are no blast results.',
+      );
+      return;
+    }
     // Hack to ensure that jquery 3.1.0 is loaded just before calling noconflict
     drupal_add_js("https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js", array(
       'type' => 'external',
