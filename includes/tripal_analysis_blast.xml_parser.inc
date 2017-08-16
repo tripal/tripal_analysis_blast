@@ -481,7 +481,7 @@ function tripal_analysis_blast_handle_iteration($blastoutput, $analysis_id, $bla
                 'db_id' => $blastdb,
                 'hit_num' => $i + 1,
                 'hit_name' => $blast_obj->hits_array[$i]['hit_name'],
-                'hit_url' => $blast_obj->hits_array[$i]['hit_url'],
+                'hit_url' => (array_key_exists('hit_url', $blast_obj->hits_array[$i]) ? $blast_obj->hits_array[$i]['hit_url'] : ''),
                 'hit_description' => $blast_obj->hits_array[$i]['description'],
                 'hit_organism' => $blast_org_name,
                 'blast_org_id' => $blast_org_id,
