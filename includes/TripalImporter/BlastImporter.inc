@@ -192,7 +192,7 @@ class BlastImporter extends TripalImporter {
     $analysis_id = $arguments['analysis_id'];
     $db_options = $arguments['db_options'];
     $blastdb = $arguments['blastdb'];
-    $blastfile = trim($this->arguments['file']['file_path']);
+    $blastfile = trim($this->arguments['files'][0]['file_path']);
     $blastfile_ext = trim($arguments['blastfile_ext']);
     $is_concat = $arguments['is_concat'];
     $no_parsed = $arguments['no_parsed'];
@@ -210,7 +210,7 @@ class BlastImporter extends TripalImporter {
    * @file
    * @todo Add file header description
    */
-  
+
   /*******************************************************************************
    * This function is a wrapper for the parseXML function.
    * If a directory of blast results is provided then this function will
@@ -259,11 +259,11 @@ class BlastImporter extends TripalImporter {
   function parseXMLFile($analysis_id, $blastdb, $blastfile,
       $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
       $is_concat, $search_keywords) {
-        
-        
+
+
         $transaction = db_transaction();
         try {
-          
+
           // If user input a file (e.g. blast.xml)
           if (is_file($blastfile)) {
             $this->parseXML($analysis_id, $blastdb, $blastfile,
@@ -275,7 +275,7 @@ class BlastImporter extends TripalImporter {
             if (!$blastfile_ext) {
               $blastfile_ext = 'xml';
             }
-            
+
             // Parsing all files in the directory
             $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
             $files_to_parse = array();
@@ -284,7 +284,7 @@ class BlastImporter extends TripalImporter {
                 $files_to_parse[] = $file;
               }
             }
-            
+
             $no_file = 0;
             $total_files = count($files_to_parse);
             $this->setTotalItems($total_files);
@@ -305,7 +305,7 @@ class BlastImporter extends TripalImporter {
           $this->logMessage(t("FAILED: Rolling back database changes...\n"));
         }
         $this->logMessage(t("\nDone.\n"));
-        
+
         return;
   }
   /*******************************************************************************
@@ -354,7 +354,7 @@ class BlastImporter extends TripalImporter {
   function parseXML($analysis_id, $blastdb, $blastfile,
       $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
       $is_concat, $search_keywords, $progress = TRUE) {
-        
+
         // Get cvterm_id for 'analysis_blast_output_iteration_hits' which is required
         // for inserting into the analysisfeatureprop table
         $values = array(
@@ -370,22 +370,22 @@ class BlastImporter extends TripalImporter {
           exit;
         }
         $type_id = $cvterm[0]->cvterm_id;
-        
+
         // Load the XML file.
         if (!is_readable($blastfile)) {
           exit("Could not open the XML file '$blastfile'.  Check that file exists and that permissions are correct.\n");
         }
-        
+
         // if the file is a set of concatenated files then we want to split it up
         // and run each one individually
         if ($is_concat) {
-          
+
           // generate a temporary file name
           $temp = tempnam(sys_get_temp_dir(), 'blast_');
           $count = 1;
           $this->logMessage(t("Blast XML file is concatenated.  Breaking apart and parsing each individually: $temp\n"));
           $out_fh = fopen($temp, "w");
-          
+
           // run through the lines of the XML file
           $in_fh = fopen($blastfile, "r");
           while (!feof($in_fh)) {
@@ -413,10 +413,10 @@ class BlastImporter extends TripalImporter {
           fclose($in_fh);
           return;
         }
-        
+
         $blastoutput = new XMLReader();
         $blastoutput->open($blastfile);
-        
+
         // get the number of blast iterations elements
         $no_iterations = 0;
         while ($blastoutput->read()) {
@@ -427,11 +427,11 @@ class BlastImporter extends TripalImporter {
           }
         }
         $blastoutput->close();
-        
+
         if ($progress) {
           $this->setTotalItems($no_iterations);
         }
-        
+
         // reopen the file and iterate through the nodes until we get to the BlastOutput_iterations section
         $blastoutput->open($blastfile);
         $num_read = 0;
@@ -462,12 +462,12 @@ class BlastImporter extends TripalImporter {
   function handleIteration($blastoutput, $analysis_id, $blastdb, $blastfile,
       $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
       $is_concat, $search_keywords, $type_id) {
-        
+
         $feature_id = 0;
         $analysisfeature_id = 0;
         $iteration_tags_xml = '';
         $num_hits = 1;
-        
+
         // iterate though the child nodes of the <Iteration> tag
         while ($blastoutput->read()) {
           // if we've hit the closing tag (</Iteration>) then return
@@ -481,14 +481,14 @@ class BlastImporter extends TripalImporter {
             $tag_name =  $blastoutput->name;
             $blastoutput->read();
             $value = $blastoutput->value;
-            
+
             switch ($tag_name) {
-              
+
               // if the node is <Iteration_query-def>
               case 'Iteration_query-def':
-                
+
                 $iteration_tags_xml .= "  <$tag_name>$value</$tag_name>\n";
-                
+
                 // If the user provided a query RE to extract the feature name then use that now
                 if ($query_re and preg_match("/$query_re/", $value, $matches)) {
                   $feature = $matches[1];
@@ -501,13 +501,13 @@ class BlastImporter extends TripalImporter {
                 else {
                   $feature = $value;
                 }
-                
+
                 if (!$feature and $query_re) {
                   watchdog('T_blastXML_load', "Cannot find feature in '$value' using the " .
                       "regular expression: $query_re", array(), WATCHDOG_ERROR);
                   exit;
                 }
-                
+
                 // now find the feature in chado
                 $select = array();
                 if ($query_uniquename) {
@@ -524,7 +524,7 @@ class BlastImporter extends TripalImporter {
                     ),
                   );
                 }
-                
+
                 $feature_arr = chado_select_record('feature', array('feature_id'), $select);
                 if (!$feature_arr) {
                   watchdog('T_blastXML_load', "Database query failed when searching for feature '$value'.",
@@ -542,9 +542,9 @@ class BlastImporter extends TripalImporter {
                   continue;
                 }
                 $feature_id = $feature_arr[0]->feature_id;
-                
+
                 break;
-                
+
                 // if the node is <Iteration_hits>
               case 'Iteration_hits':
                 if (!$feature_id) {
@@ -554,10 +554,10 @@ class BlastImporter extends TripalImporter {
                 }
                 // we are going to store the XML in the analysisfeatureprop table so we need to rebuild it.
                 $xml_content =  "<Iteration>\n" . $iteration_tags_xml . "    <$tag_name>\n";
-                
+
                 // iterate through each of the <Hit> tags, extract the XML and add to our $xml_content
                 while ($blastoutput->next()) {
-                  
+
                   // if we've reached the node </Iteration> then break out
                   // of the while loop.
                   if ($blastoutput->nodeType == XMLReader::END_ELEMENT) {
@@ -580,7 +580,7 @@ class BlastImporter extends TripalImporter {
                   }
                 }
                 $xml_content .= "\n  </$tag_name>\n</Iteration>";
-                
+
                 // Make sure this iteration doesn't exist in analysisfeatureprop. If it does, update but not insert
                 $sql = "SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id
             FROM {analysisfeatureprop} AFP
@@ -588,7 +588,7 @@ class BlastImporter extends TripalImporter {
             WHERE feature_id = :feature_id AND analysis_id = :analysis_id AND type_id = :type_id";
                 $results = chado_query($sql, array(':feature_id' => $feature_id, ':analysis_id' => $analysis_id, ':type_id' => $type_id));
                 $analysisfeatureprop = $results->fetchObject();
-                
+
                 // if the analysis feature already exists then get that record
                 $values = array(
                   'feature_id' => $feature_id,
@@ -607,7 +607,7 @@ class BlastImporter extends TripalImporter {
                 else {
                   $analysisfeature_id = $result[0]->analysisfeature_id;
                 }
-                
+
                 // If the analysisfeatureprop record exists then update it
                 if ($analysisfeatureprop) {
                   $sql = "UPDATE {analysisfeatureprop}
@@ -622,7 +622,7 @@ class BlastImporter extends TripalImporter {
                 }
                 // if the analyisfeatureprop record doesn't exist then add it
                 else {
-                  
+
                   // add the analysisfeatureprop record
                   $values = array(
                     'analysisfeature_id' => $analysisfeature_id,
@@ -639,22 +639,22 @@ class BlastImporter extends TripalImporter {
                 }
                 // if the user wants to store the keywords then do so
                 if ($search_keywords) {
-                  
+
                   // remove any existing entries. we'll replace them.
                   $match = array('analysisfeature_id' => $analysisfeature_id);
                   chado_delete_record('blast_hit_data', $match);
-                  
+
                   // get the db object
                   $values = array('db_id' => $blastdb);
                   $db = chado_select_record('db', array('*'), $values);
-                  
+
                   // get the analysis object
                   $values = array('analysis_id' => $analysis_id);
                   $analysis = chado_select_record('analysis', array('*'), $values);
-                  
+
                   // get the blast object
                   $blast_obj = $this->getResultObject($xml_content, $db[0], $feature_id, $analysis[0]);
-                  
+
                   // iterate through the hits and add the records to the
                   // blast_hit_data table
                   $failed = 0;
@@ -679,7 +679,7 @@ class BlastImporter extends TripalImporter {
                         $blast_org_id = $result[0]->blast_org_id;
                       }
                     }
-                    
+
                     $values = array(
                       'analysisfeature_id' => $analysisfeature_id,
                       'analysis_id' => $analysis_id,
@@ -708,7 +708,7 @@ class BlastImporter extends TripalImporter {
                   }
                 } // end if ($search_keywords) ...
                 break;
-                
+
               default:
                 $iteration_tags_xml .= "  <$tag_name>$value</$tag_name>\n";
                 break;
@@ -778,13 +778,13 @@ class BlastImporter extends TripalImporter {
    */
   function getResultObject($xml_string, $db, $feature_id, $analysis) {
     $blast_object = new stdClass();
-    
+
     $blast_object->xml = $xml_string;
-    
+
     // Get the parser using db_id
     $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = :db_id";
     $parser  = db_query($sql, array(':db_id' => $db->db_id))->fetchObject();
-    
+
     $db_name             = '';
     $is_genbank          = '';
     $regex_hit_id        = '';
@@ -792,7 +792,7 @@ class BlastImporter extends TripalImporter {
     $regex_hit_organism  = '';
     $regex_hit_accession = '';
     $db_organism         = '';
-    
+
     // set defaults
     if ($parser) {
       $db_name             = $parser->displayname;
@@ -803,7 +803,7 @@ class BlastImporter extends TripalImporter {
       $regex_hit_accession = $parser->regex_hit_accession;
       $db_organism         = $parser->hit_organism;
     }
-    
+
     // set default if regular expressions have not been specified
     if (!$regex_hit_id) {
       $regex_hit_id = '/^(.*?)\s.*$/';
@@ -826,7 +826,7 @@ class BlastImporter extends TripalImporter {
     if ($regex_hit_organism) {
       $regex_hit_organism = '/' . $regex_hit_organism . '/';
     }
-    
+
     // Get analysis information
     $blast_object->analysis = $analysis;
     $db->displayname = $db_name;
@@ -837,12 +837,12 @@ class BlastImporter extends TripalImporter {
     else {
       $blast_object->title = $db_name;
     }
-    
+
     // Find node id for the analysis
     $ana_nid = db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id", array(':analysis_id' => $analysis->analysis_id))->fetchField();
     $analysis->nid = $ana_nid;
-    
-    
+
+
     // Load the file.  This XML file should be an extract
     // of the original XML file with only a single iteration.
     // An iteration is essentially all the hits for a single
@@ -850,7 +850,7 @@ class BlastImporter extends TripalImporter {
     $xml = new XMLReader();
     $xml->xml($xml_string);
     $iteration = '';
-    
+
     // iterate though the child nodes of the <Iteration> tag
     while ($xml->read()) {
       // if we've hit the closing tag (</Iteration>) then return
@@ -860,23 +860,23 @@ class BlastImporter extends TripalImporter {
           return;
         }
       }
-      
+
       // if this is the start of an iteration element
       if ($xml->nodeType == XMLReader::ELEMENT) {
         $iteration_element_name =  $xml->name;
         $xml->read();
         $iteration_element_value = $xml->value;
-        
+
         switch ($iteration_element_name) {
           case 'Iteration_query-def':
             $blast_object->xml_tag = $iteration_element_value;
             break;
           case 'Iteration_hits':
             $blast_object->xml_tag = $iteration_element_value;
-            
+
             // add the links for updating blast info using Ajax
             $blast_object->feature_id = $feature_id;
-            
+
             // initalize hit variables
             $hits_array = array();
             $hit_count = 0;
@@ -885,7 +885,7 @@ class BlastImporter extends TripalImporter {
             $hit_name = '';
             $description = '';
             $hit_organism = 'Unknown';
-            
+
             // initalize hsp variables
             $hsp_array = array();
             $counter = 0;
@@ -893,10 +893,10 @@ class BlastImporter extends TripalImporter {
             $best_score = 0;
             $best_identity = 0;
             $best_len = 0;
-            
+
             // iterate through hits
             while ($xml->read()) {
-              
+
               // if we're at the begining of the hit then reset variables
               if ($xml->nodeType == XMLReader::ELEMENT) {
                 if (strcmp($xml->name, 'Hit') == 0) {
@@ -912,14 +912,14 @@ class BlastImporter extends TripalImporter {
                   $hit_organism = 'Unknown';
                 }
               }
-              
+
               // if we're at the beginning of any other element then collect data
               if ($xml->nodeType == XMLReader::ELEMENT) {
                 $hit_element_name =  $xml->name;
                 $xml->read();
                 $hit_element_value = $xml->value;
-                
-                
+
+
                 switch ($hit_element_name) {
                   case 'Hit_id':
                     // if parsing "name, acc, desc" from three tags (1/3)
@@ -957,7 +957,7 @@ class BlastImporter extends TripalImporter {
                   case 'Hit_hsps':
                     // iterate through the HSP children
                     while ($xml->read()) {
-                      
+
                       // if we're at the beginning of a new element collect data
                       if ($xml->nodeType == XMLReader::ELEMENT) {
                         $hsp_element_name = $xml->name;
@@ -1035,7 +1035,7 @@ class BlastImporter extends TripalImporter {
                             break;
                         } // end switch ($hsp_element_name) { ...
                       } //  end if ($xml->nodeType == XMLReader::ELEMENT) { ...
-                      
+
                       // if we're at the end of the HSP then set the values
                       // that we gather through previous iterations in this while loop.
                       if ($xml->nodeType == XMLReader::END_ELEMENT) {
@@ -1059,7 +1059,7 @@ class BlastImporter extends TripalImporter {
                           $hsp_array[$counter] = $hsp_content;
                           $counter ++;
                         }
-                        
+
                         // if we're at the end of the <Hit_hsps> element then
                         // break out of this while loop
                         if (strcmp($xml->name, 'Hit_hsps') == 0) {
@@ -1070,17 +1070,17 @@ class BlastImporter extends TripalImporter {
                     break;
                 } // end switch ($hit_element_name) { ...
               } // end if ($xml->nodeType == XMLReader::ELEMENT) {
-              
+
               // if we're at the end of the <Hit> then add this hit to the
               // hits_array
               if ($xml->nodeType == XMLReader::END_ELEMENT) {
                 if (strcmp($xml->name, 'Hit') == 0) {
-                  
+
                   $number_hits++;
                   $hits_array[$hit_count]['accession'] = $accession;
                   $hits_array[$hit_count]['hit_organism'] = $hit_organism;
                   $hits_array[$hit_count]['hit_name'] = $hit_name;
-                  
+
                   if ($accession && $db->urlprefix) {
                     $hits_array[$hit_count]['hit_url'] = "$db->urlprefix$accession";
                   }
@@ -1093,17 +1093,17 @@ class BlastImporter extends TripalImporter {
                       $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
                     }
                   }
-                  
+
                   $hits_array[$hit_count]['best_evalue'] = $best_evalue;
                   $hits_array[$hit_count]['best_score'] = $best_score;
-                  
+
                   if (!empty($best_len)) {
                     $percent_identity = number_format($best_identity/$best_len*100, 2);
                     $hits_array[$hit_count]['percent_identity'] = $percent_identity;
                   }
-                  
+
                   $hits_array[$hit_count]['description'] = $description;
-                  
+
                   // if there is at least one HSP
                   if (isset($hsp_array[0]['query_frame'])) {
                     $hits_array[$hit_count]['hsp'] = $hsp_array;
@@ -1111,7 +1111,7 @@ class BlastImporter extends TripalImporter {
                   else {
                     $hits_array[$hit_count]['hsp'] = array();
                   }
-                  
+
                   $hit_count ++;
                 } // end if (strcmp($xml->name, 'Hit') == 0) { ...
               }  // end if ($xml->nodeType == XMLReader::END_ELEMENT) ...
@@ -1120,17 +1120,17 @@ class BlastImporter extends TripalImporter {
         } // end switch ($tag_name) { ...
       } // end if ($xml->nodeType == XMLReader::ELEMENT) { ...
     } // end while ($xml->read()) { ...
-    
+
     $blast_object->number_hits = $number_hits;
     $blast_object->hits_array = $hits_array;
     return $blast_object;
   }
-  
+
   /********************************************************************************
    * Parse the best hit to generate the best hit homology report
    */
   function parseBestHit($analysis_id) {
-    
+
     // Select all features for this blast analysis, and save them to the 'feature_set' array
     $sql = "SELECT feature_id
           FROM {analysisfeature} AF
@@ -1142,7 +1142,7 @@ class BlastImporter extends TripalImporter {
       $feature_set[$counter] = $feature->feature_id;
       $counter ++;
     }
-    
+
     // Get analysis information including 'Time', 'Name', and 'DB Settings'
     $sql = "SELECT value, name, to_char(timeexecuted, 'MM-DD-YYYY') AS time
                 FROM {analysis}  A
@@ -1151,15 +1151,15 @@ class BlastImporter extends TripalImporter {
                 AND type_id= (SELECT cvterm_id FROM {cvterm}
                               WHERE name = 'analysis_blast_settings')";
     $analysis = chado_query($sql, array(':analysis_id' => $analysis_id))->fetchObject();
-    
+
     // Parse the blast settings
     $blastsettings = explode("|", $analysis->value);
     $db_id = $blastsettings [0];
-    
+
     // Get the xml description parser using db_id
     $sql = "SELECT * FROM {tripal_analysis_blast} WHERE db_id = :db_id";
     $parser = chado_query($sql, array(':db_id' => $db_id))->fetchObject();
-    
+
     $db_name = $parser->displayname;
     $is_genbank = $parser->genbank_style;
     $regex_hit_id = $parser->regex_hit_id;
@@ -1167,7 +1167,7 @@ class BlastImporter extends TripalImporter {
     $regex_hit_accession = $parser->regex_hit_accession;
     $regex_hit_organism = $parser->regex_hit_organism;
     $hit_organism = $parser->hit_organism;
-    
+
     // set default description parser  if regular expressions have not been specified
     if (!$regex_hit_id) {
       $regex_hit_id = '/^(.*?)\s.*$/';
@@ -1193,9 +1193,9 @@ class BlastImporter extends TripalImporter {
     if (!$hit_organism) {
       $hit_organism = 'Unknown';
     }
-    
+
     // $interval = intval($counter * 0.01);
-    for ($i = 0; $i < $counter; $i ++) {      
+    for ($i = 0; $i < $counter; $i ++) {
       $sql = "SELECT value
             FROM {analysisfeatureprop} AFP
                INNER JOIN {analysisfeature} AF ON AFP.analysisfeature_id = AF.analysisfeature_id
@@ -1205,7 +1205,7 @@ class BlastImporter extends TripalImporter {
                               WHERE name='analysis_blast_output_iteration_hits'
                                  AND cv_id = (SELECT cv_id FROM cv WHERE name='tripal'))";
       $xml_output = simplexml_load_string(chado_query($sql, array(':analysis_id' => $analysis_id, ':feature_id' => $feature_set[$i]))->fetchField());
-      
+
       $iteration = '';
       // new XML file parser has added the feature name within <Iteration_query-def> tags.
       if ($xml_output->getName() == 'Iteration') {
@@ -1224,21 +1224,21 @@ class BlastImporter extends TripalImporter {
       else {
         $iteration = $xml_output;
       }
-      
+
       $number_hits = 0;
       foreach ($iteration->children() as $hits) {
         $number_hits ++;
       }
-      
+
       $query = explode(" ", $query) ;
       $query = $query [0];
       if ($number_hits == 0) {
         continue;
       }
-      
+
       // now run through the blast hits/hsps of this iteration
       // and generate the rows of the table
-      
+
       foreach ($iteration->children() as $hits) {
         $hit_count++;
         foreach ($hits->children() as $hit) {
@@ -1350,33 +1350,33 @@ class BlastImporter extends TripalImporter {
             }
           }
         }
-        
+
         // Get analysisfeature_id
         $sql = "SELECT analysisfeature_id FROM {analysisfeature} WHERE analysis_id = :analysis_id AND feature_id = :feature_id";
         $af_id = chado_query($sql, array(':analysis_id' => $analysis_id, ':feature_id' => $feature_set[$i]))->fetchField();
-        
+
         // Get type_id
         $sql = "SELECT cvterm_id FROM {cvterm} WHERE name = :name AND cv_id = (SELECT cv_id FROM {cv} WHERE name = 'tripal')";
         $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_query'))->fetchField();
-        
+
         $sql_test = "SELECT analysisfeatureprop_id FROM {analysisfeatureprop} WHERE analysisfeature_id = :analysisfeature_id AND type_id = :type_id";
         $test_afpid = chado_query($sql_test, array('analysisfeature_id:' => $af_id, ':type_id' => $type_id))->fetchField();
-        
+
         //Insert only if this blast query not exists.
         if (!$test_afpid) {
           $afp_sql = "INSERT INTO {analysisfeatureprop} (analysisfeature_id, type_id, value, rank) VALUES (:analysisfeature_id, :type_id, :rank, 0)";
-          
+
           //$query;
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $query));
-          
+
           //$hit_name;
           $type_id = chado_query($sql, 'analysis_blast_besthit_match')->fetchField();
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, 'rank' => $hit_name));
-          
+
           //$description;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_description'))->fetchField();
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $description));
-          
+
           //$best_evalue;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_evalue'))->fetchField();
           $e_digit = explode("e-", $best_evalue);
@@ -1385,34 +1385,34 @@ class BlastImporter extends TripalImporter {
             $best_evalue = $evalue_shown . "e-" . $e_digit[1];
           }
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $best_evalue));
-          
+
           //$best_identity;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_identity'))->fetchField();
           $percent_identity = number_format($best_identity/$best_len*100, 1);
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $percent_identity));
-          
+
           //$best_len;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_length'))->fetchField();
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':rank' => $best_len));
-          
+
           // Otherwise, update all instead
         }
         else {
           $afp_sql = "UPDATE {analysisfeatureprop} SET analysisfeature_id = :analysisfeature_id, type_id = :type_id, value = :value, rank = 0 WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
-          
+
           //$query;
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $query, ':analysisfeatureprop_id' => $test_afpid));
-          
+
           //$hit_name;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_match'))->fetchField();
           $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $hit_name, ':analysisfeatureprop_id' => $test_afpid));
-          
+
           //$description;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_description'))->fetchField();
           $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $description, ':analysisfeatureprop_id' => $test_afpid));
-          
+
           //$best_evalue;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_evalue'))->fetchField();
           $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
@@ -1422,19 +1422,19 @@ class BlastImporter extends TripalImporter {
             $best_evalue = $evalue_shown . "e-" . $e_digit[1];
           }
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $best_evalue, ':analysisfeatureprop_id' => $test_afpid));
-          
+
           //$best_identity;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_identity'))->fetchField();
           $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
           $percent_identity = number_format($best_identity/$best_len*100, 1);
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $percent_identity, ':analysisfeatureprop_id' => $test_afpid));
-          
+
           //$best_len;
           $type_id = chado_query($sql, array(':name' => 'analysis_blast_besthit_length'))->fetchField();
           $test_afpid = chado_query($sql_test, array(':analysisfeature_id' => $af_id, ':type_id' =>$type_id))->fetchField();
           chado_query($afp_sql, array(':analysisfeature_id' => $af_id, ':type_id' => $type_id, ':value' => $best_len, ':analysisfeatureprop_id' => $test_afpid));
         }
-        
+
         break;
       }
     }
