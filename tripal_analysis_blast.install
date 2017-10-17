@@ -10,8 +10,11 @@
  */
 function tripal_analysis_blast_install() {
 
-   // Register this analysis.
+  // For Tripal v2 backwards compatibility, register this
+  // module as an analysis.
+  if (module_exists('tripal_analysis')) {
    tripal_register_analysis_child('tripal_analysis_blast');
+  }
 
    // Add cvterms.
    tripal_analysis_blast_add_cvterms();
@@ -96,8 +99,11 @@ function tripal_analysis_blast_uninstall() {
    // the {tripal_analysis} table before we can delete anything from it. Thus,
    // we perform a db_table_exists() check before the deletion
 
-   //Delete the settings from {tripal_analysis} table
-   tripal_unregister_analysis_child('tripal_analysis_blast');
+  // For Tripal v2 backwards compatibility, unregister this
+  // module as an analysis.
+  if (module_exists('tripal_analysis')) {
+    tripal_unregister_analysis_child('tripal_analysis_blast');
+  }
 
    // Delete module's variables from variables table.
    db_query("DELETE FROM {variable} WHERE name = :name",
