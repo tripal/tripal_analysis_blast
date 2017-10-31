@@ -97,7 +97,7 @@ class BlastImporter extends TripalImporter {
         this information. Please set the proper regular expression values on the !settings_page
         Databases from NCBI have a built-in parser. On the Blast Settings page, simply click the box "Use Genebank style parser"',
             array(
-            '!add_database' => l('add a new database', '/admin/tripal/loaders/chado_db/add', array('attributes' => array('target' => '_blank'))),
+            '!add_database' => l('add a new database', 'admin/tripal/loaders/chado_db/add', array('attributes' => array('target' => '_blank'))),
             '!settings_page' => l('Blast Settings page.', 'admin/tripal/extension/tripal_blast_analysis', array('attributes' => array('target' => '_blank')))
             )),
         '#options' => $form['db_options']['#value'],
