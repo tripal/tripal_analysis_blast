@@ -147,7 +147,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
           '<span title="' . $hit['description'] . '">' . $description . '</span>' .
           // add the [more] link at the end of the row.  Javascript is used
           // to display this record
-          '<a href="javascript:void(0);" id="hsp-link-"' . $analysis->analysis_id . '-' .  $j . '" class="tripal-analysis-blast-info-hsp-link">[more]</a>',
+          '<a href="javascript:void(0);" id="hsp-link-' . $analysis->analysis_id . '-' .  $j . '" class="tripal-analysis-blast-info-hsp-link">[more]</a>',
         );
 
         // add a div box for each HSP details.  This box will be invisible by default
