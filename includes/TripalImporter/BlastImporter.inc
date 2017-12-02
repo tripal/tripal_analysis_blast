@@ -839,9 +839,12 @@ class BlastImporter extends TripalImporter {
     }
 
     // Find node id for the analysis
-    $ana_nid = db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id", array(':analysis_id' => $analysis->analysis_id))->fetchField();
-    $analysis->nid = $ana_nid;
-
+    if (module_exists('tripal_analysis')) {
+      $query = "SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id";
+      $args = array(':analysis_id' => $analysis->analysis_id);
+      $ana_nid = db_query()->fetchField();
+      $analysis->nid = $ana_nid;
+    }
 
     // Load the file.  This XML file should be an extract
     // of the original XML file with only a single iteration.
