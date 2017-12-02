@@ -44,9 +44,8 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
     // get the analysis record
     $analysisfeature = chado_select_record('analysisfeature', array('analysis_id'),
         array('analysisfeature_id' => $analysisfeature_id));
-    $analysis = chado_select_record('analysis', array('*'),
-        array('analysis_id' => $analysisfeature[0]->analysis_id));
-    $analysis = $analysis[0];
+
+    $analysis = chado_generate_var('analysis', array('analysis_id' => $analysisfeature[0]->analysis_id));
     $analysis_id = $analysis->analysis_id;
 
     // Get the blast_hit_data record for this analysis feature. For Tripal v3
