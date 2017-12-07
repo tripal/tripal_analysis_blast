@@ -77,13 +77,6 @@ function tripal_analysis_blast_install() {
      );
    }
 
-   $term = tripal_insert_cvterm(array(
-     'id' => 'format:1333',
-     'name' => 'BLAST results',
-     'cv_name' => 'EDAM',
-     'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
-   ));
-
    // Create 'Analysis Blast' entity type
    tripal_analysis_blast_create_entity_type();
 }
@@ -443,7 +436,18 @@ function tripal_analysis_blast_add_cvterms() {
 /**
  * Create Analysis Blast Entity Type
  */
+
+
 function tripal_analysis_blast_create_entity_type () {
+
+
+  $term = tripal_insert_cvterm(array(
+    'id' => 'format:1333',
+    'name' => 'BLAST results',
+    'cv_name' => 'EDAM',
+    'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
+  ));
+
   $error = '';
   $args = array(
     'vocabulary' => 'format',
