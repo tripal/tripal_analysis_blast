@@ -17,24 +17,24 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
   // the type for the property is named 'analysis_blast_output_iteration_hits'
   // and is found in the 'tripal' controlled vocabulary.  This CV term was
   // added by this module.
-  $select = array(
-    'analysisfeature_id' => array(
+  $select = [
+    'analysisfeature_id' => [
       'feature_id' => $feature_id,
-    ),
-    'type_id' => array(
+    ],
+    'type_id' => [
       'name' => 'analysis_blast_output_iteration_hits',
-      'cv_id' => array(
-        'name' => 'tripal'
-      ),
-    ),
-  );
-  $blast_results = chado_select_record('analysisfeatureprop', array('*'), $select);
+      'cv_id' => [
+        'name' => 'tripal',
+      ],
+    ],
+  ];
+  $blast_results = chado_select_record('analysisfeatureprop', ['*'], $select);
   if (!$blast_results) {
     return;
   }
 
   // get the HTML content for viewing each of the XML file
-  $blast_obj_array = array();
+  $blast_obj_array = [];
   $blast_obj_counter = 0;
   foreach ($blast_results as $index => $analysisfeatureprop) {
     // get the blast XML for this feature
@@ -42,33 +42,36 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
     $analysisfeature_id = $analysisfeatureprop->analysisfeature_id;
 
     // get the analysis record
-    $analysisfeature = chado_select_record('analysisfeature', array('analysis_id'),
-        array('analysisfeature_id' => $analysisfeature_id));
+    $analysisfeature = chado_select_record('analysisfeature', ['analysis_id'],
+      ['analysisfeature_id' => $analysisfeature_id]);
 
-    $analysis = chado_generate_var('analysis', array('analysis_id' => $analysisfeature[0]->analysis_id));
+    $analysis = chado_generate_var('analysis', ['analysis_id' => $analysisfeature[0]->analysis_id]);
     $analysis_id = $analysis->analysis_id;
 
     // Get the blast_hit_data record for this analysis feature. For Tripal v3
     // all blast files imported will use this table. Previously it was optional.
-    $blast_settings = chado_db_select('blast_hit_data', 'bhd')
-      ->fields('bhd')
-      ->condition('analysisfeature_id', $analysisfeature_id)
-      ->execute()
-      ->fetchObject();
+    $sql = 'SELECT * FROM {blast_hit_data} 
+              WHERE analysisfeature_id=:analysisfeature_id';
+    $blast_settings = chado_query($sql, [
+      ':analysisfeature_id' => $analysisfeature_id,
+    ])->fetchObject();
     if ($blast_settings) {
       $adb_id = $blast_settings->db_id;
     }
     // If we don't have a record in the blast_hit_data table then try to
     // find settings details using old-style storage methods.
-    else{
+    else {
       // The old style was to store all parameters in a single CV term in the
       // analysisprop table. However now each property has it's own CV term in
       // that table. But, we still need to support the old method for backwards
       // compatibility. so,  first get the old style variable and see if it has
       // values. In particular we need the database setting.
-      $blast_settings  = chado_get_property(array('table'=> 'analysis', 'id' => $analysis_id), array('type_name' => 'analysis_blast_settings', 'cv_name' => 'tripal'));
+      $blast_settings = chado_get_property([
+        'table' => 'analysis',
+        'id' => $analysis_id,
+      ], ['type_name' => 'analysis_blast_settings', 'cv_name' => 'tripal']);
       if ($blast_settings) {
-        $blastsettings = isset($blast_settings->value) ? explode("|",   $blast_settings->value) : $blast_settings;
+        $blastsettings = isset($blast_settings->value) ? explode("|", $blast_settings->value) : $blast_settings;
         // if we don't have the proper number of fields in the value column then
         // skip this entry
         if (count($blastsettings) != 3) {
@@ -79,7 +82,10 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
       // if we're not using the old style then try the new method to get the
       // database id
       else {
-        $blastdb = chado_get_property(array('table'=> 'analysis', 'id' => $analysis_id), array('type_name' => 'analysis_blast_blastdb', 'cv_name' => 'tripal'));
+        $blastdb = chado_get_property([
+          'table' => 'analysis',
+          'id' => $analysis_id,
+        ], ['type_name' => 'analysis_blast_blastdb', 'cv_name' => 'tripal']);
         $adb_id = $blastdb->value;
       }
     }
@@ -95,17 +101,17 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
 
     // get the database
     if ($adb_id) {
-      $db_arr = chado_select_record('db', array('*'), array('db_id' => $adb_id));
+      $db_arr = chado_select_record('db', ['*'], ['db_id' => $adb_id]);
       $db = $db_arr[0];
     }
 
     // parse the XML and add it to the array of blast results to be returned
     module_load_include('inc', 'tripal_analysis_blast', 'includes/TripalImporter/BlastImporter');
     $importer = new BlastImporter();
-    $blast_obj =$importer->getResultObject($blast_xml, $db, $feature_id, $analysis);
+    $blast_obj = $importer->getResultObject($blast_xml, $db, $feature_id, $analysis);
     $blast_obj->analysis = $analysis;
     $blast_obj_array [$blast_obj_counter] = $blast_obj;
-    $blast_obj_counter ++;
+    $blast_obj_counter++;
   }
 
   return $blast_obj_array;
