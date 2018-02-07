@@ -85,11 +85,20 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $result_name = "BLAST of " . $feature->name . " vs. " . $db->name;
       $list_items[] = "<a href=\"#" . $analysis->analysis_id . "\">$result_name</a>";
 
+      $analysis_link = $analysis->name;
+      if (array_key_exists('nid', $analysis)) {
+        $analysis_link = l($analysis->name, 'node/' . $analysis->nid);
+      }
+      if (array_key_exists('entity_id', $analysis)) {
+        $analysis_link = l($analysis->name, 'bio_data/' . $analysis->entity_id);
+      }
+
       // add the div box for each blast results
       $content = '
         <div  id="' . $analysis->analysis_id . '">
           <strong>' . $result_name . '</strong>
-          <br>Analysis Date: ' .  preg_replace("/^(\d+-\d+-\d+) .*/","$1", $analysis->timeexecuted) . " (<a href=" . url("node/$analysis->nid") . '>' . $analysis->name . '</a>)
+          <br>Analysis Date: ' .  preg_replace("/^(\d+-\d+-\d+) .*/", "$1", $analysis->timeexecuted) . '
+          <br>Analysis Name: ' . $analysis_link . '
           <br>Total hits: ' . number_format($total_records) . '
           <div id="features_vis-' . $analysis->analysis_id . '"></div>
           <script lang="javascript">

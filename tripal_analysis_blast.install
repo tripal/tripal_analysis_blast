@@ -77,13 +77,6 @@ function tripal_analysis_blast_install() {
      );
    }
 
-   $term = tripal_insert_cvterm(array(
-     'id' => 'format:1333',
-     'name' => 'BLAST results',
-     'cv_name' => 'EDAM',
-     'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
-   ));
-
    // Create 'Analysis Blast' entity type
    tripal_analysis_blast_create_entity_type();
 }
@@ -443,7 +436,18 @@ function tripal_analysis_blast_add_cvterms() {
 /**
  * Create Analysis Blast Entity Type
  */
+
+
 function tripal_analysis_blast_create_entity_type () {
+
+
+  $term = tripal_insert_cvterm(array(
+    'id' => 'format:1333',
+    'name' => 'BLAST results',
+    'cv_name' => 'EDAM',
+    'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
+  ));
+
   $error = '';
   $args = array(
     'vocabulary' => 'format',
@@ -456,20 +460,17 @@ function tripal_analysis_blast_create_entity_type () {
       'type_value' => 'blast_analysis'
     )
   );
-  $term = tripal_load_term_entity(array('vocabulary' => 'format', 'accession' => '1333'));
+
+  $term = tripal_load_term_entity(array('vocabulary' => 'EDAM', 'accession' => '1333'));
   $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
+
   // Add cvterm_mapping for the BLAST results entity type
   $identifier = array(
-    'cv_id' => array('name' => 'format'),
+    'cv_id' => array('name' => 'EDAM'),
     'name' => 'BLAST results'
   );
   $cvterm = tripal_get_cvterm($identifier);
   tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
-  if (!$term or !$bundle) {
-    if (!tripal_create_bundle($args, $error)) {
-      throw new Exception($error['!message']);
-    }
-  }
 }
 
 /**

@@ -36,6 +36,13 @@ class BlastImporter extends TripalImporter {
    * The title that should appear above the upload button.
    */
   public static $upload_title = 'XML File';
+
+  /**
+   * Text that should appear on the button at the bottom of the importer
+   * form.
+   */
+  public static $button_text = 'Import Blast file';
+
   /**
    * @see TripalImporter::form()
    */
@@ -71,10 +78,6 @@ class BlastImporter extends TripalImporter {
         $query_uniquename = isset($form_state['input']['query_uniquename']) ? $form_state['input']['query_uniquename'] : 0;
         $is_concat        = isset($form_state['input']['is_concat']) ? $form_state['input']['is_concat'] : 0;
     }
-
-    // Get the bundle for an analysis
-    $analysis_term = tripal_load_term_entity(array('vocabulary' => 'local', 'accession' => 'analysis'));
-    $analysis_bundle = tripal_load_bundle_entity(array('term_id' => $analysis_term->id));
 
     // get a list of db from chado for user to choose
     $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
@@ -120,7 +123,7 @@ class BlastImporter extends TripalImporter {
     $form['no_parsed'] = array(
         '#title' => t('Number of hits to be parsed'),
         '#type' => 'textfield',
-        '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10'' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),
+        '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),
         '#default_value' => '25',
     );
 
@@ -190,7 +193,6 @@ class BlastImporter extends TripalImporter {
   public function run() {
     $arguments = $this->arguments['run_args'];
     $analysis_id = $arguments['analysis_id'];
-    $db_options = $arguments['db_options'];
     $blastdb = $arguments['blastdb'];
     $blastfile = trim($this->arguments['files'][0]['file_path']);
     $blastfile_ext = trim($arguments['blastfile_ext']);
@@ -1094,6 +1096,9 @@ class BlastImporter extends TripalImporter {
                     // If it is, add link to that feature
                     if ($hit_feature_id) {
                       $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
+                    }
+                    else {
+                      $hits_array[$hit_count]['hit_url'] = NULL;
                     }
                   }
 
