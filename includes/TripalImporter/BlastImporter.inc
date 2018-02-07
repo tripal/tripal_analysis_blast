@@ -840,9 +840,9 @@ class BlastImporter extends TripalImporter {
 
     // Find node id for the analysis
     if (module_exists('tripal_analysis')) {
-      $query = "SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id";
+      $sql = "SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id";
       $args = array(':analysis_id' => $analysis->analysis_id);
-      $ana_nid = db_query()->fetchField();
+      $ana_nid = db_query($sql, $args)->fetchField();
       $analysis->nid = $ana_nid;
     }
 
