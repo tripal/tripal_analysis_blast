@@ -3,7 +3,7 @@
 /**
  * Implements hook_node_info();
  */
- /*
+
 function tripal_analysis_blast_node_info() {
   $nodes = array();
   $nodes['chado_analysis_blast'] = array(
@@ -32,7 +32,7 @@ function tripal_analysis_blast_node_info() {
   );
   return $nodes;
 }
-*/
+
 /**
  * Implements hook_chado_node_sync_select_query().
  */
