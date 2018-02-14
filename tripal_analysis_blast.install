@@ -19,8 +19,9 @@ function tripal_analysis_blast_install() {
    // Add cvterms.
    tripal_analysis_blast_add_cvterms();
 
-   // add custom tables.
-   tripal_analysis_blast_add_custom_tables();
+   // Add custom tables.
+   tripal_analysis_blast_add_blast_organisms_table();
+   tripal_analysis_blast_add_blast_hit_data_table();
 
    // Create default parser for swissprot,  DB:genbank, and go-seqdb.
    $sql_db = "SELECT db_id,  name FROM {db} WHERE lower(name) like :name";
@@ -103,18 +104,16 @@ function tripal_analysis_blast_uninstall() {
      array('name' => 'tripal_analysis_blast_setting'));
 
 }
-/*******************************************************************************
-*  The blast analysis module creates it's own custom table for storing
-*  blast results in a format more condusive for fine-grained searching.
-*  Therefore,  we must define the hook_schema function, as recoginzed by
-*  the Tripal core API,  for specifying the details for this table.
+/**
+* Add the blast_organism table to the Chado database as a custom table.
+*
+* The blast_organisms table is used to help when integrating with
+* Drupal Views.  Trying to get a list of organisms for a drop down
+* in Views would require querying the blast_hit_data table which has
+* a lot of redunancy and takes too long.  This table was created
+* to speed up the query the popluates a drop down list
 */
-function tripal_analysis_blast_add_custom_tables() {
-   // the blast_organisms table is used to help when integrating with
-   // Drupal Views.  Trying to get a list of organisms for a drop down
-   // in Views would require querying the blast_hit_data table which has
-   // a lot of redunancy and takes too long.  This table was created
-   // to speed up the query the popluates a drop down list
+function tripal_analysis_blast_add_blast_organisms_table() {
    $schema = array(
       'table' => 'blast_organisms',
       'fields' => array(
@@ -129,11 +128,14 @@ function tripal_analysis_blast_add_custom_tables() {
          'blast_org_name_uq' => array('blast_org_name'),
       )
    );
-   chado_create_custom_table('blast_organisms', $schema);
-
-   // the schema for our custom Chado tables are in the .module file
-   // so that they integrate properly with everything else Chado.
-   $ret = array();
+   // Note: we have to set the $redirect argument below to FALSE or it
+   // breaks the installation.
+   chado_create_custom_table('blast_organisms', $schema, TRUE, NULL, FALSE);
+}
+/**
+ * Add the blast_hit_data custom table to the chado schema.
+ */
+function tripal_analysis_blast_add_blast_hit_data_table() {
    $schema = array(
       'table' => 'blast_hit_data',
       'fields' => array(
@@ -196,7 +198,9 @@ function tripal_analysis_blast_add_custom_tables() {
         ),
      )
   );
-  chado_create_custom_table('blast_hit_data', $schema);
+  // Note: we have to set the $redirect argument below to FALSE or it
+  // breaks the installation.
+  chado_create_custom_table('blast_hit_data', $schema, TRUE, NULL, FALSE);
 }
 /*******************************************************************************
 * Implementation of hook_schema(). This table stores the parsers for blast xml
@@ -479,7 +483,7 @@ function tripal_analysis_blast_create_entity_type () {
  */
 function tripal_analysis_blast_update_7201() {
 
-  // there was a bug in the function for creating a custom table that
+  // There was a bug in the function for creating a custom table that
   // kept foreign key constraints from being added.  So, we need to add those
   // to keep from error messages appear, we will drop the FK if it already
   // exists and then re-add it.

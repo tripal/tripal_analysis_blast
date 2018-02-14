@@ -43,18 +43,6 @@ function tripal_analysis_blast_menu() {
     'weight' => 2
   );
 
-  /*
-  $items['admin/tripal/loaders/blast_loader'] = array(
-    'title' => 'Chado BLAST XML results Loader',
-    'description' => 'Loads blast results in XML format and associates with genomic features.',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('tripal_analysis_blast_form'),
-    'access arguments' => array('administer tripal'),
-    'file' => 'includes/tripal_analysis_blast.form.inc',
-    'file path' => drupal_get_path('module', 'tripal_analysis_blast'),
-    'type' => MENU_NORMAL_ITEM,
-  );
-  */
   return $items;
 }
 /**
@@ -165,24 +153,28 @@ function chado_analysis_blast_submit_jobs($node) {
  * data objects
  */
 function tripal_analysis_blast_permission() {
-  return array(
-    'access chado_analysis_blast content' => array(
+  $permissions = array();
+
+  // For Tripal v2 backwards compatibility, we have permissions for node types.
+  if (module_exists('tripal_core')) {
+    $permissions['access chado_analysis_blast content'] = array(
       'title' => t('View Chado Analysis Blast'),
       'description' => t('Allow users to view chado analysis blast pages.'),
-    ),
-    'create chado_analysis_blast content' => array(
+    );
+    $permissions['create chado_analysis_blast content'] = array(
       'title' => t('Create Chado Analysis Blast'),
       'description' => t('Allow users to create new chado analysis blast pages.'),
-    ),
-    'delete chado_analysis_blast content'=> array(
+    );
+    $permissions['delete chado_analysis_blast content']= array(
       'title' => t('Delete Chado Analysis Blast'),
       'description' => t('Allow users to delete chado analysis blast pages.'),
-    ),
-    'edit chado_analysis_blast content'=> array(
+    );
+    $permissions['edit chado_analysis_blast content']= array(
       'title' => t('Edit Chado Analysis Blast'),
       'description' => t('Allow users to edit chado analysis blast pages.'),
-    ),
-  );
+    );
+  }
+  return $permissions;
 }
 
 /**
