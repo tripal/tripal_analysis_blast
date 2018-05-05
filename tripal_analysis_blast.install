@@ -466,7 +466,14 @@ function tripal_analysis_blast_create_entity_type () {
   );
 
   $term = tripal_load_term_entity(array('vocabulary' => 'EDAM', 'accession' => '1333'));
-  $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
+  if ($term) {
+      $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
+  }
+  if (!$term or !$bundle) {
+    if (!tripal_create_bundle($args, $error)) {
+    throw new Exception($error['!message']);
+    }
+  }
 
   // Add cvterm_mapping for the BLAST results entity type
   $identifier = array(
