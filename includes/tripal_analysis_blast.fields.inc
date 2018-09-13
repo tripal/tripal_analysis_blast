@@ -54,6 +54,9 @@ function tripal_analysis_blast_bundle_instances_info($entity_type, $bundle) {
         'chado_table' => 'analysis_feature',
         'chado_column' => '',
         'base_table' => 'feature',
+        'term_vocabulary' => 'format',
+        'term_name' => 'BLAST results',
+        'term_accession' => '1333',
       ),
       'widget' => array(
         'type' => 'format__blast_results_widget',
