@@ -444,7 +444,7 @@ function tripal_analysis_blast_add_cvterms() {
 
 function tripal_analysis_blast_create_entity_type () {
 
-
+  // Add the vocabulary term.
   $term = tripal_insert_cvterm(array(
     'id' => 'format:1333',
     'name' => 'BLAST results',
@@ -452,7 +452,8 @@ function tripal_analysis_blast_create_entity_type () {
     'definition' => 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.',
   ));
 
-  $error = '';
+  // Next add the content type
+  $cvterm = chado_get_cvterm(['id' => 'format:1333']);
   $args = array(
     'vocabulary' => 'format',
     'accession' => '1333',
@@ -464,24 +465,13 @@ function tripal_analysis_blast_create_entity_type () {
       'type_value' => 'blast_analysis'
     )
   );
-
-  $term = tripal_load_term_entity(array('vocabulary' => 'EDAM', 'accession' => '1333'));
-  if ($term) {
-      $bundle = tripal_load_bundle_entity(array('term_id' => $term->id));
-  }
-  if (!$term or !$bundle) {
-    if (!tripal_create_bundle($args, $error)) {
-    throw new Exception($error['!message']);
+  $bundle = tripal_load_bundle_entity(['accession' => $args['vocabulary'] . ':' . $args['accession']]);
+  if (!$bundle) {
+    if (!tripal_create_bundle($args, $job)) {
+      $msg = t('Error encountered creating !type Content Type.', ['!type' => $args['term_name']]);
+      throw new Exception($msg);
     }
   }
-
-  // Add cvterm_mapping for the BLAST results entity type
-  $identifier = array(
-    'cv_id' => array('name' => 'EDAM'),
-    'name' => 'BLAST results'
-  );
-  $cvterm = tripal_get_cvterm($identifier);
-  tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
 }
 
 /**

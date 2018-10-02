@@ -11,7 +11,6 @@ function tripal_analysis_blast_bundle_fields_info($entity_type, $bundle) {
 
   $term = tripal_load_term_entity(array('term_id' => $bundle->term_id));
   $vocab = $term->vocab;
-
   if ($vocab->vocabulary == 'SO') {
     $field_name = 'format__blast_results';
     $field_type = 'format__blast_results';

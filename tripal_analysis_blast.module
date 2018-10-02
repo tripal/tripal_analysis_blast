@@ -33,15 +33,17 @@ function tripal_analysis_blast_menu() {
     'type' => MENU_LOCAL_TASK,
     'weight' => 1
   );
-  $items['admin/tripal/extension/tripal_blast_analysis/sync'] = array(
-    'title' => ' Sync',
-    'description' => 'Create pages on this site for BLAST analyses',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('chado_node_sync_form', 'tripal_analysis_blast', 'chado_analysis_blast'),
-    'access arguments' => array('administer site configuration'),
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 2
-  );
+  if (module_exists('tripal_core')) {
+    $items['admin/tripal/extension/tripal_blast_analysis/sync'] = array(
+      'title' => ' Sync',
+      'description' => 'Create pages on this site for BLAST analyses',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('chado_node_sync_form', 'tripal_analysis_blast', 'chado_analysis_blast'),
+      'access arguments' => array('administer site configuration'),
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 2
+    );
+  }
 
   return $items;
 }
