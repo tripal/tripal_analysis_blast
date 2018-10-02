@@ -465,6 +465,11 @@ function tripal_analysis_blast_create_entity_type () {
       'type_value' => 'blast_analysis'
     )
   );
+
+  # Make sure the 'format' cv is in the db2cv_mview materialized view
+  $mview_id = tripal_get_mview_id('db2cv_mview');
+  tripal_populate_mview($mview_id);
+
   $bundle = tripal_load_bundle_entity(['accession' => $args['vocabulary'] . ':' . $args['accession']]);
   if (!$bundle) {
     if (!tripal_create_bundle($args, $job)) {
