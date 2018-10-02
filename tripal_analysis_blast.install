@@ -472,7 +472,7 @@ function tripal_analysis_blast_create_entity_type () {
 
   $bundle = tripal_load_bundle_entity(['accession' => $args['vocabulary'] . ':' . $args['accession']]);
   if (!$bundle) {
-    if (!tripal_create_bundle($args, $job)) {
+    if (!tripal_create_bundle($args)) {
       $msg = t('Error encountered creating !type Content Type.', ['!type' => $args['term_name']]);
       throw new Exception($msg);
     }
