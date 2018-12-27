@@ -78,6 +78,10 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $pager_id      = $feature_pager_id + $i;
       $total_records = count($hits_array);
 
+      if(empty($db->name)) {
+        $db->name = "Database not found";
+      }
+      
       $current_page_num = pager_default_initialize($total_records, $num_results_per_page, $pager_id);
       $offset = $num_results_per_page * $current_page_num;
 
@@ -208,7 +212,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
 
       // if there are no results then print a nice message
       if ($total_records == 0) {
-        $row[] = array(
+        $rows[] = array(
           array(
             'data' => "There are no matches against " . $db->name . " for this " . $feature->type_id->name . ".",
             'colspan' => '5'
