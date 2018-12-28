@@ -17,21 +17,6 @@ function tripal_analysis_blast_admin_view() {
   $breadcrumb[] = l('BLAST Analysis', 'admin/tripal/extension/tripal_analysis_blast');
   drupal_set_breadcrumb($breadcrumb);
 
-  // Add the view
-//   $view = views_embed_view('tripal_analysis_blast_admin_analyses','default');
-//   if (isset($view)) {
-//     $output .= $view;
-//   }
-//   else {
-//     $output .= '<p>The Feature module uses primarily views to provide an '
-//       . 'administrative interface. Currently one or more views needed for this '
-//         . 'administrative interface are disabled. <strong>Click each of the following links to '
-//           . 'enable the pertinent views</strong>:</p>';
-//     $output .= '<ul>';
-//     $output .= '<li>'.l('Features View', 'admin/tripal/chado/tripal_feature/views/features/enable').'</li>';
-//     $output .= '</ul>';
-//   }
-
   $output .= "The Tripal BLAST Module extends the Tripal Analysis module to
     provide support loading and display of BLAST analyses for features that
     reside in the database.";
@@ -236,11 +221,7 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
       '#type' => 'textfield',
       '#default_value' => $hit_organism,
       '#disabled' => $read_only,
-  );
-  $form['db_settings']['button'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save settings')
-  );
+    );
   }
   $form['db_settings']['#prefix'] = '<div id="tripal-analysis-blast-settings-form-wrapper">';
   $form['db_settings']['#suffix'] = '</div>';
@@ -275,12 +256,34 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
     chado_add_admin_form_set_url($form, $form_state, $details);
   }
 
+  $form['viewer_width'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Feature Viewer Width',
+    '#default_value' => variable_get('tripal_blast_results_viewer_size', 500),
+    '#description' => 'When displaying blast results, an alignment viewer is shown. Set the width in pixels of the aligned feature viewer on the page display.',
+    '#required' => TRUE,
+  );
+  $form['button'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save settings')
+  );
+
   return $form;
 }
+
+function tripal_analysis_blast_settings_form_validate($form,  &$form_state) {
+  $viewer_width = trim($form_state['values']['viewer_width']);
+
+  if (!preg_match('/^\d+$/', $viewer_width) or (is_numeric($viewer_width) and  $viewer_width < 0)) {
+    form_set_error('viewer_width', 'Please provide a valid number greater than zero');
+  }
+}
+
 /**
  *
  */
 function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
+
   $db_id = key_exists('blastdb', $form_state['input']) ? trim($form_state['input']['blastdb']) : '';
   $name = key_exists('displayname', $form_state['input']) ? trim($form_state['input']['displayname']) : '';
   $gbstyle = key_exists('gb_style_parser', $form_state['input']) ? trim($form_state['input']['gb_style_parser']) : '';
@@ -289,33 +292,39 @@ function tripal_analysis_blast_settings_form_submit($form,  &$form_state) {
   $reg3 = key_exists('hit_accession', $form_state['input']) ? trim($form_state['input']['hit_accession']) : '';
   $reg4 = key_exists('hit_organism_re', $form_state['input']) ? trim($form_state['input']['hit_organism_re']) : '';
   $org = key_exists('hit_organism', $form_state['input']) ? trim($form_state['input']['hit_organism']) : '';
+  $viewer_width = trim($form_state['values']['viewer_width']);
 
-  // Check if the blast settings exists
-  $sql = "SELECT db_id FROM {tripal_analysis_blast} WHERE db_id = :db_id";
-  $result = db_query($sql,  array(':db_id' => $db_id));
-  $check = $result->rowCount();
+  $success = TRUE;
+  if ($db_id) {
+    // Check if the blast settings exists
+    $sql = "SELECT db_id FROM {tripal_analysis_blast} WHERE db_id = :db_id";
+    $result = db_query($sql,  array(':db_id' => $db_id));
+    $check = $result->rowCount();
 
-  $record = new stdClass();
-  $record->db_id = $db_id;
-  $record->displayname = $name;
-  $record->regex_hit_id = $reg1;
-  $record->regex_hit_def = $reg2;
-  $record->regex_hit_accession = $reg3;
-  $record->genbank_style = $gbstyle;
-  $record->regex_hit_organism = $reg4;
-  $record->hit_organism = $org;
+    $record = new stdClass();
+    $record->db_id = $db_id;
+    $record->displayname = $name;
+    $record->regex_hit_id = $reg1;
+    $record->regex_hit_def = $reg2;
+    $record->regex_hit_accession = $reg3;
+    $record->genbank_style = $gbstyle;
+    $record->regex_hit_organism = $reg4;
+    $record->hit_organism = $org;
 
-  if ($check) {
-    $success = drupal_write_record('tripal_analysis_blast',  $record, 'db_id');
+    if ($check) {
+      $success = drupal_write_record('tripal_analysis_blast',  $record, 'db_id');
+    }
+    else {
+      $success = drupal_write_record('tripal_analysis_blast',  $record);
+    }
+
   }
-  else {
-    $success = drupal_write_record('tripal_analysis_blast',  $record);
-  }
+  variable_set('tripal_blast_results_viewer_size', $viewer_width);
   if ($success) {
-     drupal_set_message("Database settings updated");
+    drupal_set_message("Settings updated");
   }
   else {
-     drupal_set_message("Failure updated database settings", 'error');
+    drupal_set_message("Failure updated settings", 'error');
   }
 }
 /**

@@ -1,8 +1,8 @@
 <?php
 
-/*******************************************************************************
+/**
  *
-*/
+ */
 function tripal_analysis_blast_preprocess_tripal_feature_blast_results(&$variables) {
     $feature = $variables['node']->feature;
     $db_id = null;
@@ -12,12 +12,8 @@ function tripal_analysis_blast_preprocess_tripal_feature_blast_results(&$variabl
     $feature->tripal_analysis_blast = new stdClass;
     $feature->tripal_analysis_blast->blast_results_list = $blast_results;
 
-
-    // -- spf the following CSS overrides some global theme settings which
-    // should not happen. commenting out 1/14/17
-    // drupal_add_css("https://cdn.rawgit.com/calipho-sib/feature-viewer/v0.1.44/dist/feature-viewer.min.css", array('type' => 'external'));
-
     // Hack to ensure that jquery 3.1.0 is loaded just before calling noconflict
+    /*
     drupal_add_js("https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js", array(
       'type' => 'external',
       'scope' => 'header',
@@ -52,5 +48,5 @@ function tripal_analysis_blast_preprocess_tripal_feature_blast_results(&$variabl
       'group' => 15,
       'every_page' => TRUE,
       'weight' => 1000,
-    ));
+    ));*/
 }

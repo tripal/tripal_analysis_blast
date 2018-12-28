@@ -48,6 +48,7 @@ class format__blast_results extends ChadoField {
 
     // Get the terms for each of the keys for the 'values' property.
     $label_term = 'format:1333';
+
     // Set some defaults for the empty record.
     $entity->{$field_name}['und'][0] = array(
       'value' => ''
