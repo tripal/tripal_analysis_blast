@@ -45,7 +45,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
     $content = "<p>Click a tab below to view blast alignments.</p>";
     $content .= '<div id="tripal-blast-analysis-accordian">';
 
-    $num_results_per_page = 25;
+    $num_results_per_page = 10000;
     $feature_pager_id = 15; // increment by 1 for each database
     $i = 0;
     $list_items = array();
