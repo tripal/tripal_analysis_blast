@@ -1,12 +1,42 @@
 (function ($) {
+  
   Drupal.behaviors.tripal_analysis_blast = {
     attach: function (context, settings) {
-
+  
+      $( "#tripal-blast-analysis-accordian" ).accordion({
+    	  collapsible: true,
+    	  active: false,
+    	  heightStyle: "content"
+    	  
+      });
+    	
       /**
        * JS to add the feature viewer.
        */
       tripal_blast_init_feature_viewer();
 
+      
+      /**
+       * JS for hiding/showing the results table.
+       */
+      
+      // Hide all the results tables.
+      $(".tripal-analysis-blast-table").hide();
+      $(".tripal-analysis-blast-table-link").click(function(e) {
+        var my_id = e.target.id;
+        var re = /tripal-analysis-blast-table-link-(\d+)/;
+        var matches = my_id.match(re);
+        var analysis_id = matches[1];
+
+        var table = $("#tripal-analysis-blast-table-" + analysis_id)
+        if (table.is(':visible') === true) {
+          table.hide();
+        }
+        else {
+          table.show();
+          $(this).text('Hide Results Table');
+        }
+      });
       
       /**
        * JS for the HSP box the appears when the [more] link is clicked.
@@ -68,18 +98,29 @@
         // are found in the data table.
         $(".blast-hits-" + analysis_id).each(function() {
           var hit_name = $(this).attr('hit_name');
+          var class_name = $(this).attr('fv_class');
           var data = JSON.parse($(this).attr('fv_data'));
         
           if (data) {
             fv.addFeature({
               data: data,
               name: hit_name,
-              className: "blast_match",
-              color: "#CCCCCC",
+              className: class_name,
+              color: "#888888",
               type: "rect"
             });
           }
         })
+        
+        fv.onFeatureSelected(function (d) {
+    	    var id = d.detail.id;
+    	    var re = /tripal-analysis-blast-hsp-(\d+)-(\d+)/;
+            var matches = id.match(re);
+            var analysis_id = matches[1];
+            var j = matches[2];
+            $(".tripal-analysis-blast-info-hsp-desc").hide();
+            $("#hsp-desc-" + analysis_id + "-" +j).show();
+    	});
       });
   }
 })(jQuery);

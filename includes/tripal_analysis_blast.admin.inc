@@ -56,8 +56,8 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
     '#description' => t('You may customize how blast results are parsed and
         displayed to the end-user.  Select a database from the list to
         show the customizable fields.  The fields specify how to extract hit
-        names, descriptions, database accessions, and organisms from the blast
-        results.')
+        names, descriptions, database accessions, and organisms using regular
+        expressions from the BLAST results.')
   );
 
   // if there is form_state values, there has been an ajax callback or validation error,
@@ -142,6 +142,44 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
     '#value' => $db_id,
   );
 
+  // Get the list of already configured databases and list those.
+  $sql = '
+    SELECT DB.db_id, DB.name, TAB.*
+    FROM {db} DB
+      INNER JOIN [tripal_analysis_blast] TAB on TAB.db_id = DB.db_id
+    ORDER BY lower(name)
+  ';
+  $results = chado_query($sql);
+  $headers = ['Database', 'Hit ID RE', 'Hit Def RE', 'Hit Acc RE', 'Hit Org RE', 'Organism', 'Is Genbank?'];
+  $rows = [];
+  while ($db = $results->fetchObject()) {
+    $rows[] = [
+      $db->name,
+      $db->regex_hit_id,
+      $db->regex_hit_def,
+      $db->regex_hit_accession,
+      $db->regex_hit_organism,
+      $db->hit_organism,
+      $db->genbank_style ? 'Yes' : 'No'
+    ];
+  }
+  $table = [
+    'header' => $headers,
+    'rows' => $rows,
+    'attributes' => [],
+    'sticky' => FALSE,
+    'caption' => '',
+    'colgroups' => [],
+    'empty' => "No databases have been configured.",
+  ];
+  $form['db_settings']['configured'] = [
+    '#type' => 'item',
+    '#title' => 'Configured Databases',
+    '#description' => t('These databases have been configured for BLAST parsing.'),
+    '#markup' => theme_table($table),
+  ];
+
+
   // get a list of db from chado for user to choose
   $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
   $results = chado_query($sql);
@@ -156,10 +194,14 @@ function tripal_analysis_blast_settings_form($form, &$form_state) {
       '#value' => $blastdbs
   );
   $form['db_settings']['blastdb'] = array(
-    '#title' => t('Database'),
+    '#title' => t('Configure Database'),
     '#type' => 'select',
     '#options' => $form['db_settings']['db_options']['#value'],
     '#default_value' => $blastdb,
+    '#description' => t('Select a database to configure for BLAST results ' .
+      'parsing.  If the database does not appear in this list, visit the ' .
+      '!add_db page to add a new one. Then return here to configure it.',
+      ['!add_db' => l('Add Database', 'admin/tripal/loaders/chado_db/add')]),
     '#ajax' => array(
       'callback'    => 'tripal_analysis_blast_settings_form_ajax',
       'wrapper' => 'tripal-analysis-blast-settings-form-wrapper',

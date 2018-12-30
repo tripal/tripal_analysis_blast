@@ -7,7 +7,7 @@
   background-color: #FFFFFF;
   border: 2px solid #CCC5AE;
   padding: 20px;
-  width: 650px;
+  width: 500px;
   max-height: 250px;
   overflow: auto;
   display: none;
@@ -18,7 +18,7 @@
   background-color: #FFFFFF;
   border: none;
   overflow: auto;
-  width: 630px;
+  width: 95%;
   padding: 0 0 10px 0;
   white-space: nowrap;
 }

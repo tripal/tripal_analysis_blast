@@ -49,7 +49,7 @@ function tripal_analysis_blast_bundle_instances_info($entity_type, $bundle) {
       'description' => 'Format of results of a sequence database search using some variant of BLAST',
       'required' => FALSE,
       'settings' => array(
-        'auto_attach' => FALSE,
+        'auto_attach' => TRUE,
         'chado_table' => 'analysis_feature',
         'chado_column' => '',
         'base_table' => 'feature',

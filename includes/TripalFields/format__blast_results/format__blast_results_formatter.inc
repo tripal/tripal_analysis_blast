@@ -29,12 +29,19 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       'weight' => 500,
     ]);
 
+    // We want JQuery UI support for the accordion.
+    drupal_add_library('system','ui.accordion');
+
     // Get the settings
     $settings = $display['settings'];
     $feature = $entity->chado_record;
     $feature = chado_expand_var($feature, 'field', 'feature.residues');
 
-    $num_results_per_page = 10;
+
+    $content = "<p>Click a tab below to view blast alignments.</p>";
+    $content .= '<div id="tripal-blast-analysis-accordian">';
+
+    $num_results_per_page = 25;
     $feature_pager_id = 15; // increment by 1 for each database
     $i = 0;
     $list_items = array();
@@ -58,8 +65,8 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $offset = $num_results_per_page * $current_page_num;
 
       // add this blast report to the list of available reports
-      $result_name = "BLAST of " . $feature->name . " vs. " . $db->name;
-      $list_items[] = "<a href=\"#" . $analysis->analysis_id . "\">$result_name</a>";
+      $result_name = "BLAST of " . $feature->name . " vs. " . $db->name . ' (' . preg_replace('/(.*)\s.*/','\1', $analysis->timeexecuted) . ')';
+      $list_items[] = "<a href=\"#analysis-" . $analysis->analysis_id . "\">$result_name</a>";
 
       $analysis_link = $analysis->name;
       if (array_key_exists('nid', $analysis)) {
@@ -70,26 +77,25 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       }
 
       // add the div box for each blast results
-      $content = '
-        <div id="analysis-' . $analysis->analysis_id . '">
-          <strong>' . $result_name . '</strong>
-          <br>Analysis Date: ' .  preg_replace("/^(\d+-\d+-\d+) .*/", "$1", $analysis->timeexecuted) . '
-          <br>Analysis Name: ' . $analysis_link . '
-          <br>Total hits: ' . number_format($total_records) . '
-          <br><br><i><u>Alignment Viewer</u></i>
-          <div
-            id="features_vis-' . $analysis->analysis_id . '"
-            class="blast-alignment-viewer"
-            analysis_id="' . $analysis->analysis_id . '" residues="' . $feature->residues . '"
-            width="' . variable_get('tripal_blast_results_viewer_size', 500) . 'px"></div>
-          <i> Display provided by the ' . l('neXtProt Feature Viewer' , 'https://github.com/calipho-sib/feature-viewer') . '</i>
-          <br><br><i><u>Results Table</u></i>
+      $content .= '
+        <h3 id="analysis-' . $analysis->analysis_id . '">' . $result_name . '</h3>
+        <div>
+          <p>
+            Performed on: ' .  preg_replace("/^(\d+-\d+-\d+) .*/", "$1", $analysis->timeexecuted) . '
+            <br>Details: ' . $analysis_link . '
+            <br>Display provided by the ' . l('neXtProt Feature Viewer' , 'https://github.com/calipho-sib/feature-viewer') . '
+            <div
+              id="features_vis-' . $analysis->analysis_id . '"
+              class="blast-alignment-viewer"
+              analysis_id="' . $analysis->analysis_id . '" residues="' . $feature->residues . '"
+              width="' . variable_get('tripal_blast_results_viewer_size', 500) . 'px"></div>
+            <br><a id="tripal-analysis-blast-table-link-' . $analysis->analysis_id . '" class="tripal-analysis-blast-table-link" href="javascript:void(0)">Show Results Table</a>
       ';
 
       // the $headers array is an array of fields to use as the colum headers.
       // additional documentation can be found here
       // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
-      $headers = array('Match Name', 'Stats', 'Description');
+      $headers = array('Match Name', 'Stats', 'Description', 'Details');
 
       // the $rows array contains an array of rows where each row is an array
       // of values for each column of the table in that row.  Additional documentation
@@ -124,37 +130,42 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
           <div class="tripal-analysis-blast-info-hsp-desc" id="hsp-desc-' . $analysis->analysis_id . '-' .  $j . '">
             <div class="hsp-desc-close"><a href="javascript:void(0)" onclick="this.hide()">[Close]</a></div>
             <strong>BLAST of ' . $feature->name . ' vs. ' . $db->name . '</strong>
-            <br>Match: ' . $hit_name . ' (' . $hit['description'] . ')<br>';
+            <br>Match Name: ' . $hit_name . '
+            <br>Description: ' . $hit['description'] . '<br>';
         foreach ($hsps_array AS $hsp) {
           $content .= '
             <br><b>HSP ' . $hsp['hsp_num'] . '</b> Score: ' . $hsp['bit_score'] . ' bits (' . $hsp['score'] . '), Expect = ' . sprintf('%.3e', floatval($hsp['evalue'])) . '<br>Identity = ' .  sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100) . ', Postives = ' .  sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100) . ', Query Frame = ' . $hsp['query_frame'] . '
-            <pre class="blast_align">
-              Query: ' . sprintf("%4d", $hsp['query_from']) . ' ' . $hsp['qseq'] . ' ' . sprintf("%d", $hsp['query_to']) . ' ' . $hsp['midline'] . '
-              Sbjct: ' . sprintf("%4d", $hsp['hit_from']) . ' ' . $hsp['hseq'] . ' ' . sprintf("%d",$hsp['hit_to'])  . '
+            <pre class="blast_align">' . "\n" .
+              'Query: ' . sprintf("%8d", $hsp['query_from']) . ' ' . $hsp['qseq'] . ' ' . sprintf("%d", $hsp['query_to'])  . "\n" .
+              '                ' . $hsp['midline'] . "\n" .
+              'Sbjct: ' . sprintf("%8d", $hsp['hit_from']) . ' ' . $hsp['hseq'] . ' ' . sprintf("%d",$hsp['hit_to'])  . '
             </pre>';
 
           // Get the start/stop and description info for the feature viewer.
           $feature_viewer_data[] = array(
             'x' => intval($hsp['query_from']),
             'y' => intval($hsp['query_to']),
+            'id' => 'tripal-analysis-blast-hsp-' . $analysis->analysis_id . '-' .  $j,
             'description' => 'E-value:  ' . sprintf('%.2e', floatval($hsp['evalue'])) . ', PID: ' . $hit['percent_identity']
           );
         }
+        // End the HSP div.
         $content .= '</div>';
 
         $rows[] = [
           'data' => [
             $hit_name,
-            'E-Value: ' . $evalue . ', PID: ' . $pid,
+            'E-Value: ' . $evalue . '<br>PID: ' . $pid,
             // we want a tooltip if the user mouses-over a description to show the entire thing
-            '<span title="' . $hit['description'] . '">' . $description . '</span>' .
+            '<span title="' . $hit['description'] . '">' . $description . '</span>',
             // add the [more] link at the end of the row.  Javascript is used
             // to display this record
-            '<a href="javascript:void(0);" id="hsp-link-' . $analysis->analysis_id . '-' .  $j . '" class="tripal-analysis-blast-info-hsp-link">[more]</a>',
+            '<a href="javascript:void(0);" id="hsp-link-' . $analysis->analysis_id . '-' .  $j . '" class="tripal-analysis-blast-info-hsp-link">details</a>',
           ],
           // Add data as attributes. These will be used for adding the hit
           // to the feature viewer.
           'class' => ["blast-hits-" . $analysis->analysis_id],
+          'fv_class' => 'tripal-analysis-blast-hsp',
           'hit_name' => $hit['hit_name'],
           'fv_data' => json_encode($feature_viewer_data),
         ];
@@ -167,7 +178,10 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $table = [
         'header' => $headers,
         'rows' => $rows,
-        'attributes' => ['id' => 'tripal_feature-table-blast_results'],
+        'attributes' => [
+          'id' => 'tripal-analysis-blast-table-' . $analysis->analysis_id,
+          'class' => ['tripal-analysis-blast-table'],
+        ],
         'sticky' => FALSE,
         'caption' => '',
         'colgroups' => [],
@@ -184,25 +198,32 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       // here we add the parameter 'block' => 'features'. This is because
       // the pager is not on the default block that appears. When the user clicks a
       // page number we want the browser to re-appear with the page is loaded.
-      $pager = [
+      $pager = theme('pager', [
         'tags' => [],
         'element' => $pager_id,
         'parameters' => [
           'block' => 'homology',
         ],
         'quantity' => $num_results_per_page,
-      ];
-      $content .= theme_pager($pager);
+      ]);
+
+      $content .= $this->ajaxifyPager($pager, $entity);
+      // End the paragraph for this item in the accordion.
+      $content .= '</p>';
+      // End the div for this item in the accordion.
       $content .= '</div>';
 
-      $element[$delta] = [
-        '#type' => 'markup',
-        '#markup' => $content,
-      ];
       $i++;
     }
 
-    // Add a list at the top of the field.
+    // End the accordion.
+    $content .= '</div>';
+
+    $element[0] = [
+      '#type' => 'markup',
+      '#markup' => $content,
+    ];
+    /* // Add a list at the top of the field.
     $content = '<div class="tripal_feature-data-block-desc tripal-data-block-desc">The following BLAST results are available for this feature:</div> ';
     $content .= '<a name="blast-results-top"></a>';
     $content .= theme_item_list([
@@ -216,11 +237,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         '#type' => 'markup',
         '#markup' => $content . $element[0]['#markup'],
       ];
-    }
-
-    // On a load from cache the data provided via AJAX and the javascript
-    // code that sets up the viewer is not run after the AJAX is loaded. The
-    // following allows us to setup the viewer after ran AJAX call.
-    ajax_command_invoke(NULL, "tripal_blast_init_feature_viewer");
+    } */
   }
 }

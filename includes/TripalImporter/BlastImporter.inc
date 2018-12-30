@@ -80,7 +80,12 @@ class BlastImporter extends TripalImporter {
     }
 
     // get a list of db from chado for user to choose
-    $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
+    $sql = '
+      SELECT DB.db_id, DB.name
+      FROM {db} DB
+        INNER JOIN [tripal_analysis_blast] TAB on TAB.db_id = DB.db_id
+      ORDER BY lower(name)
+    ';
     $results = chado_query($sql);
 
     $blastdbs = array();
@@ -94,19 +99,17 @@ class BlastImporter extends TripalImporter {
     $form['blastdb'] = array(
         '#title' => t('Database'),
         '#type' => 'select',
-        '#description' => t('The database used for the blast analysis. If the database does not appear in this list, please !add_database.
-        Each database may have a different format for each match. This blast module will attempt to extract the match name,
-        match accession, and organism from each match.  To ensure the parser is able to properly extract
-        this information. Please set the proper regular expression values on the !settings_page
-        Databases from NCBI have a built-in parser. On the Blast Settings page, simply click the box "Use Genebank style parser"',
-            array(
-            '!add_database' => l('add a new database', 'admin/tripal/loaders/chado_db/add', array('attributes' => array('target' => '_blank'))),
-            '!settings_page' => l('Blast Settings page.', 'admin/tripal/extension/tripal_blast_analysis', array('attributes' => array('target' => '_blank')))
-            )),
+        '#description' => t('The protein or nucleotide database used for the ' .
+          'BLAST analysis.  If the database does not appear in this list, ' .
+          'visit the !settings page and configure a database under the ' .
+          '"BLAST Parsing" section.',[
+              '!settings' => l('Blast Settings', 'admin/tripal/extension/tripal_blast_analysis', array('attributes' => array('target' => '_blank')))
+            ]),
         '#options' => $form['db_options']['#value'],
         '#default_value' => $blastdb,
     );
 
+    /*
     $form['blastfile_ext'] = array(
         '#title' => t('Blast XML file extension'),
         '#type' => 'textfield',
@@ -120,6 +123,7 @@ class BlastImporter extends TripalImporter {
         NCBI BLAST was used with output in XML then this options should not be checked.'),
         '#default_value' => $is_concat,
     );
+    */
     $form['no_parsed'] = array(
         '#title' => t('Number of hits to be parsed'),
         '#type' => 'textfield',
@@ -148,6 +152,16 @@ class BlastImporter extends TripalImporter {
             'or more sequences have the same name.'),
         '#default_value' => $query_type,
         '#autocomplete_path' => "admin/tripal/storage/chado/auto_name/cvterm/$cv_id",
+        '#suffix' => '<div class="messages warning">Warning: be careful that ' .
+          'the query type specified above correctly matches sequences used during the BLAST run or ' .
+          'coordinates for matches may be incorrect for the page they appear on. For example. If you ' .
+          'used full gene sequences for blasting do not specify "mRNA" or ' .
+          '"transcript" here you should specify "gene".  If you ' .
+          'want blast results to appear on gene pages but you used mRNA or CDS sequences ' .
+          'for BLASTing, you should re-run BLAST with gene sequences. If you want results ' .
+          'to appear on mRNA pages you should use mRNA sequences when blasting. ' .
+          'if you want BLAST results to appear on protein pages you should use protein ' .
+          'sequences. </div>',
     );
 
     $form['query_uniquename'] = array(
