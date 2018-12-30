@@ -5,8 +5,5 @@ version = 7.x-3.x
 project = tripal_analysis_blast
 package = Tripal Extensions 
 
-stylesheets[all][] = theme/css/tripal_analysis_blast.css
-scripts[]          = theme/js/tripal_analysis_blast.js
-
 dependencies[] = tripal
 dependencies[] = tripal_chado

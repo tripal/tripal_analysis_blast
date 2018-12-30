@@ -12,6 +12,18 @@ function tripal_analysis_blast_preprocess_tripal_feature_blast_results(&$variabl
     $feature->tripal_analysis_blast = new stdClass;
     $feature->tripal_analysis_blast->blast_results_list = $blast_results;
 
+    drupal_add_css(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/css/tripal_analysis_blast.css");
+    drupal_add_js(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/js/tripal_analysis_blast.js");
+
+    drupal_add_js("https://cdn.rawgit.com/calipho-sib/feature-viewer/v1.0.0/dist/feature-viewer.bundle.js", [
+      'type' => 'external',
+      'scope' => 'header',
+      'group' => 15,
+      'every_page' => TRUE,
+      'weight' => 500,
+    ]);
+
+
     // Hack to ensure that jquery 3.1.0 is loaded just before calling noconflict
     /*
     drupal_add_js("https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js", array(

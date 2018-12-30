@@ -21,6 +21,10 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       return;
     }
 
+
+    drupal_add_css(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/css/tripal_analysis_blast.css");
+    drupal_add_js(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/js/tripal_analysis_blast.tv3.js");
+
     drupal_add_js("https://cdn.rawgit.com/calipho-sib/feature-viewer/v1.0.0/dist/feature-viewer.bundle.js", [
       'type' => 'external',
       'scope' => 'header',
