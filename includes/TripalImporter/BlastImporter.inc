@@ -943,13 +943,15 @@ class BlastImporter extends TripalImporter {
                   case 'Hit_id':
                     // if parsing "name, acc, desc" from three tags (1/3)
                     if ($is_genbank) {
-                      $hit_name = $hit_element_value;
+                      // SPF: removed this because the long Genbank style IDs
+                      // aren't helpful.
+                      // $hit_name = $hit_element_value . '.  ';
                     }
                     break;
                   case 'Hit_def':
                     if ($is_genbank) {
                       $description = $hit_element_value;
-                      // look for the organism in the defenition
+                      // look for the organism in the definition
                       $hit_organism = preg_replace('/^.*\[(.*?)\].*$/', "$1", $hit_element_value, 1, $count);
                       if($count == 0){
                         $hit_organism = 'Unknown';
@@ -971,6 +973,7 @@ class BlastImporter extends TripalImporter {
                     // if parsing "name, acc, desc" from three tags (3/3)
                     if ($is_genbank) {
                       $accession = $hit_element_value;
+                      $hit_name = $hit_element_value;
                     }
                     break;
                   case 'Hit_hsps':

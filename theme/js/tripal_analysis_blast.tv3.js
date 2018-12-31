@@ -14,6 +14,9 @@
        * JS to add the feature viewer.
        */
       tripal_blast_init_feature_viewer();
+      
+      // Remove the jquery.ui override of our link theme:
+      $(".ui-widget-content").removeClass('ui-widget-content')
 
       
       /**

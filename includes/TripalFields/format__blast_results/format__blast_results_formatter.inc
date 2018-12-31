@@ -99,7 +99,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       // the $headers array is an array of fields to use as the colum headers.
       // additional documentation can be found here
       // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
-      $headers = array('Match Name', 'Stats', 'Description', 'Details');
+      $headers = array('Match Name', 'Summary');
 
       // the $rows array contains an array of rows where each row is an array
       // of values for each column of the table in that row.  Additional documentation
@@ -116,8 +116,8 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
           $hit_name = l($hit_name, $hit['hit_url'], array('attributes' => array('target' => '_blank')));
         }
 
-        $description = substr($hit['description'], 0, 50);
-        if (strlen($hit['description']) > 50) {
+        $description = substr($hit['description'], 0, 150);
+        if (strlen($hit['description']) > 150) {
           $description = $description . "... ";
         }
 
@@ -159,12 +159,12 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         $rows[] = [
           'data' => [
             $hit_name,
-            'E-Value: ' . $evalue . '<br>PID: ' . $pid,
+            '<strong>E-Value</strong>: ' . $evalue . ', <strong>PID</strong>: ' . $pid . '<br>' .
             // we want a tooltip if the user mouses-over a description to show the entire thing
-            '<span title="' . $hit['description'] . '">' . $description . '</span>',
+            '<strong>Description</strong>: <span title="' . $hit['description'] . '">' . $description . '</span> ' .
             // add the [more] link at the end of the row.  Javascript is used
             // to display this record
-            '<a href="javascript:void(0);" id="hsp-link-' . $analysis->analysis_id . '-' .  $j . '" class="tripal-analysis-blast-info-hsp-link">details</a>',
+            '<a href="javascript:void(0);" id="hsp-link-' . $analysis->analysis_id . '-' .  $j . '" class="tripal-analysis-blast-info-hsp-link">[more]</a>',
           ],
           // Add data as attributes. These will be used for adding the hit
           // to the feature viewer.
