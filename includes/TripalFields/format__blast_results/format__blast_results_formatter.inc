@@ -21,9 +21,8 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       return;
     }
 
+    $element[0]['preamble'] = ['#markup' =>  "<p>Click a tab below to view blast alignments.</p>"];
 
-    drupal_add_css(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/css/tripal_analysis_blast.css");
-    drupal_add_js(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/js/tripal_analysis_blast.tv3.js");
 
     drupal_add_js("https://cdn.rawgit.com/calipho-sib/feature-viewer/v1.0.4/dist/feature-viewer.bundle.js", [
       'type' => 'external',
@@ -38,9 +37,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
     $settings = $display['settings'];
     $feature = $entity->chado_record;
     $feature = chado_expand_var($feature, 'field', 'feature.residues');
-
-
-    $content = "<p>Click a tab below to view blast alignments.</p>";
 
     $num_results_per_page = 10000;
     $feature_pager_id = 15; // increment by 1 for each database
@@ -78,9 +74,9 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       }
 
 
-      $element[0][$i] = ['#type' => 'fieldset', '#title' => $result_name, '#id' => 'analysis-' . $analysis->analysis_id];
+      $element[0][$i] = ['#type' => 'fieldset', '#title' => $result_name];
 
-      $content .= '
+      $content = '
           <p>
             Performed on: ' .  preg_replace("/^(\d+-\d+-\d+) .*/", "$1", $analysis->timeexecuted) . '
             <br>Details: ' . $analysis_link . '
@@ -93,12 +89,14 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
             <br><a id="tripal-analysis-blast-table-link-' . $analysis->analysis_id . '" class="tripal-analysis-blast-table-link" href="javascript:void(0)">Show Results Table</a>
       ';
 
-      $element[0][$i]['content'] = ['#markup'=> $content];
+      $element[0][$i]['content'] = ['#markup' => $content];
       $headers = array('Match Name', 'Summary');
       $rows = array();
 
-      // iterate through the records to display on this page. We have access to all of them
-      // but we use a pager to display just a subset.
+      $content = '';
+
+      // iterate through the records to display on this page for this analysis.
+      // We have access to all of them but we use a pager to display just a subset.
       for ($j = $offset; $j < $offset + $num_results_per_page && $j < $total_records; $j++) {
         $hit = $hits_array[$j];
         $hit_name = $hit['hit_name'];
@@ -122,7 +120,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         $hsps_array = $hit['hsp'];
 
 
-        $content = '
+        $content .= '
           <div class="tripal-analysis-blast-info-hsp-desc" id="hsp-desc-' . $analysis->analysis_id . '-' .  $j . '">
             <div class="hsp-desc-close"><a href="javascript:void(0)" onclick="this.hide()">[Close]</a></div>
             <strong>BLAST of ' . $feature->name . ' vs. ' . $db->name . '</strong>
@@ -150,7 +148,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         $content .= '</div>';
 
         $element[0][$i]['Blast_description'] = ['#markup'=> $content];
-
 
         $rows[] = [
           'data' => [
@@ -214,5 +211,9 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $i++;
     }
     // End items.
+
+
+    drupal_add_css(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/css/tripal_analysis_blast.css");
+    drupal_add_js(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/js/tripal_analysis_blast.tv3.js");
   }
 }

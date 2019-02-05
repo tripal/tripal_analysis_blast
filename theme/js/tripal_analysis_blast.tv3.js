@@ -72,7 +72,7 @@
    * Initializes the feature viewers on the page.
    */
   function tripal_blast_init_feature_viewer(){
-	  // For each element of class "blast-alignment-viewer" add the 
+	  // For each element of class "blast-alignment-viewer" add the
       // feature viewer.
       $(".blast-alignment-viewer").each(function() {
         $(this).css('width', $(this).attr("width"));
