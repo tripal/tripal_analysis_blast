@@ -2,14 +2,7 @@
   
   Drupal.behaviors.tripal_analysis_blast = {
     attach: function (context, settings) {
-  
-      $( "#tripal-blast-analysis-accordian" ).accordion({
-    	  collapsible: true,
-    	  active: false,
-    	  heightStyle: "content"
-    	  
-      });
-    	
+
       /**
        * JS to add the feature viewer.
        */

@@ -25,7 +25,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
     drupal_add_css(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/css/tripal_analysis_blast.css");
     drupal_add_js(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/js/tripal_analysis_blast.tv3.js");
 
-    drupal_add_js("https://cdn.rawgit.com/calipho-sib/feature-viewer/v1.0.0/dist/feature-viewer.bundle.js", [
+    drupal_add_js("https://cdn.rawgit.com/calipho-sib/feature-viewer/v1.0.4/dist/feature-viewer.bundle.js", [
       'type' => 'external',
       'scope' => 'header',
       'group' => 15,
@@ -33,8 +33,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       'weight' => 500,
     ]);
 
-    // We want JQuery UI support for the accordion.
-    drupal_add_library('system','ui.accordion');
 
     // Get the settings
     $settings = $display['settings'];
@@ -43,7 +41,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
 
 
     $content = "<p>Click a tab below to view blast alignments.</p>";
-    $content .= '<div id="tripal-blast-analysis-accordian">';
 
     $num_results_per_page = 10000;
     $feature_pager_id = 15; // increment by 1 for each database
@@ -80,10 +77,10 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         $analysis_link = l($analysis->name, 'bio_data/' . $analysis->entity_id);
       }
 
-      // add the div box for each blast results
+
+      $element[0][$i] = ['#type' => 'fieldset', '#title' => $result_name, '#id' => 'analysis-' . $analysis->analysis_id];
+
       $content .= '
-        <h3 id="analysis-' . $analysis->analysis_id . '">' . $result_name . '</h3>
-        <div>
           <p>
             Performed on: ' .  preg_replace("/^(\d+-\d+-\d+) .*/", "$1", $analysis->timeexecuted) . '
             <br>Details: ' . $analysis_link . '
@@ -96,15 +93,8 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
             <br><a id="tripal-analysis-blast-table-link-' . $analysis->analysis_id . '" class="tripal-analysis-blast-table-link" href="javascript:void(0)">Show Results Table</a>
       ';
 
-      // the $headers array is an array of fields to use as the colum headers.
-      // additional documentation can be found here
-      // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
+      $element[0][$i]['content'] = ['#markup'=> $content];
       $headers = array('Match Name', 'Summary');
-
-      // the $rows array contains an array of rows where each row is an array
-      // of values for each column of the table in that row.  Additional documentation
-      // can be found here:
-      // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
       $rows = array();
 
       // iterate through the records to display on this page. We have access to all of them
@@ -130,7 +120,9 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         // Add a div box for each HSP details.  This box will be invisible by default
         // and made visible when the '[more]' link is clicked
         $hsps_array = $hit['hsp'];
-        $content .= '
+
+
+        $content = '
           <div class="tripal-analysis-blast-info-hsp-desc" id="hsp-desc-' . $analysis->analysis_id . '-' .  $j . '">
             <div class="hsp-desc-close"><a href="javascript:void(0)" onclick="this.hide()">[Close]</a></div>
             <strong>BLAST of ' . $feature->name . ' vs. ' . $db->name . '</strong>
@@ -145,6 +137,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
               'Sbjct: ' . sprintf("%8d", $hsp['hit_from']) . ' ' . $hsp['hseq'] . ' ' . sprintf("%d",$hsp['hit_to'])  . '
             </pre>';
 
+
           // Get the start/stop and description info for the feature viewer.
           $feature_viewer_data[] = array(
             'x' => intval($hsp['query_from']),
@@ -155,6 +148,9 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         }
         // End the HSP div.
         $content .= '</div>';
+
+        $element[0][$i]['Blast_description'] = ['#markup'=> $content];
+
 
         $rows[] = [
           'data' => [
@@ -175,10 +171,7 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         ];
       }
 
-      // the $table array contains the headers and rows array as well as other
-      // options for controlling the display of the table.  Additional
-      // documentation can be found here:
-      // https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7
+      // For information on rows, headers, etc, see https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_table/7.x
       $table = [
         'header' => $headers,
         'rows' => $rows,
@@ -194,10 +187,9 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
 
       // once we have our table array structure defined, we call Drupal's theme_table()
       // function to generate the table.
-      $content .= theme_table($table);
+      $themed_table = theme_table($table);
 
-      // the $pager array values that control the behavior of the pager.  For
-      // documentation on the values allows in this array see:
+      // Add the pager. see:
       // https://api.drupal.org/api/drupal/includes!pager.inc/function/theme_pager/7
       // here we add the parameter 'block' => 'features'. This is because
       // the pager is not on the default block that appears. When the user clicks a
@@ -211,36 +203,16 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         'quantity' => $num_results_per_page,
       ]);
 
-      $content .= $this->ajaxifyPager($pager, $entity);
+      $themed_table .= $this->ajaxifyPager($pager, $entity);
       // End the paragraph for this item in the accordion.
-      $content .= '</p>';
+      $themed_table .= '</p>';
       // End the div for this item in the accordion.
-      $content .= '</div>';
+      $themed_table .= '</div>';
+
+      $element[0][$i]['table'] = ['#markup'=> $themed_table];
 
       $i++;
     }
-
-    // End the accordion.
-    $content .= '</div>';
-
-    $element[0] = [
-      '#type' => 'markup',
-      '#markup' => $content,
-    ];
-    /* // Add a list at the top of the field.
-    $content = '<div class="tripal_feature-data-block-desc tripal-data-block-desc">The following BLAST results are available for this feature:</div> ';
-    $content .= '<a name="blast-results-top"></a>';
-    $content .= theme_item_list([
-      'items' => $list_items,
-      'title' => '',
-      'type' => 'ul',
-      'attributes' => [],
-    ]);
-    if (key_exists(0, $element)) {
-      $element[0] = [
-        '#type' => 'markup',
-        '#markup' => $content . $element[0]['#markup'],
-      ];
-    } */
+    // End items.
   }
 }

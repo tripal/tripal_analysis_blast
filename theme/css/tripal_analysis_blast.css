@@ -2,6 +2,11 @@
 .tripal_analysis_blast-info-box-desc {
   margin-top: 20px;
 }
+
+.tripal-blast-analysis-accordian{
+    min-height: 250px;
+}
+
 .tripal-analysis-blast-info-hsp-desc {
   position: fixed;
   background-color: #FFFFFF;
