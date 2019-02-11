@@ -42,6 +42,8 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
     $feature_pager_id = 15; // increment by 1 for each database
     $i = 0;
     $list_items = array();
+    $total = count($items);
+
     foreach ($items as $delta => $item) {
       if (!isset($item['parsed'])) {
         continue;
@@ -73,8 +75,15 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         $analysis_link = l($analysis->name, 'bio_data/' . $analysis->entity_id);
       }
 
+      $element[0][$i] = ['#type' => 'fieldset', '#title' => $analysis->name];
 
-      $element[0][$i] = ['#type' => 'fieldset', '#title' => $result_name];
+      if ($total > 1) {
+        $element[0][$i]['#collapsible'] = TRUE;
+        if ($i === 1) {
+          $element[0][$i]['#collapsed'] = FALSE;
+        }
+      }
+
 
       $content = '
           <p>
@@ -118,7 +127,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         // Add a div box for each HSP details.  This box will be invisible by default
         // and made visible when the '[more]' link is clicked
         $hsps_array = $hit['hsp'];
-
 
         $content .= '
           <div class="tripal-analysis-blast-info-hsp-desc" id="hsp-desc-' . $analysis->analysis_id . '-' .  $j . '">
@@ -211,7 +219,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $i++;
     }
     // End items.
-
 
     drupal_add_css(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/css/tripal_analysis_blast.css");
     drupal_add_js(drupal_get_path('module', 'tripal_analysis_blast') . "/theme/js/tripal_analysis_blast.tv3.js");
