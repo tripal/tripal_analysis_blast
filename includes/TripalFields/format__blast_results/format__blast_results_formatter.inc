@@ -79,11 +79,10 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
 
       if ($total > 1) {
         $element[0][$i]['#collapsible'] = TRUE;
-        if ($i === 1) {
-          $element[0][$i]['#collapsed'] = FALSE;
+        if ($i > 0) {
+          $element[0][$i]['#collapsed'] = TRUE;
         }
       }
-
 
       $content = '
           <p>
