@@ -23,7 +23,6 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
 
     $element[0]['preamble'] = ['#markup' =>  "<p>Click a tab below to view blast alignments.</p>"];
 
-
     drupal_add_js("https://cdn.rawgit.com/calipho-sib/feature-viewer/v1.0.4/dist/feature-viewer.bundle.js", [
       'type' => 'external',
       'scope' => 'header',
@@ -75,14 +74,17 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         $analysis_link = l($analysis->name, 'bio_data/' . $analysis->entity_id);
       }
 
-      $element[0][$i] = ['#type' => 'fieldset', '#title' => $analysis->name];
-
-      if ($total > 1) {
-        $element[0][$i]['#collapsible'] = TRUE;
-        if ($i > 0) {
-          $element[0][$i]['#collapsed'] = TRUE;
-        }
-      }
+      $element[0][$i] = [
+        '#type' => 'fieldset',
+        '#title' => $analysis->name,
+        '#attached' => ['library' => [
+            ['system', 'drupal.collapse']
+          ]
+        ],
+        '#attributes' => [
+          'class' => ['collapsible', 'collapsed']
+        ]
+        ];
 
       $content = '
           <p>
