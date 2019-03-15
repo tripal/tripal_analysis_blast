@@ -2,12 +2,14 @@
 .tripal_analysis_blast-info-box-desc {
   margin-top: 20px;
 }
+
+
 .tripal-analysis-blast-info-hsp-desc {
   position: fixed;
   background-color: #FFFFFF;
   border: 2px solid #CCC5AE;
   padding: 20px;
-  width: 650px;
+  width: 500px;
   max-height: 250px;
   overflow: auto;
   display: none;
@@ -18,7 +20,7 @@
   background-color: #FFFFFF;
   border: none;
   overflow: auto;
-  width: 630px;
+  width: 95%;
   padding: 0 0 10px 0;
   white-space: nowrap;
 }
@@ -28,4 +30,109 @@
 
 pre.blast_align {
     white-space: pre;
+}
+
+
+/**
+ * CSS to suppor the neXtProt Feature Viewer
+ */
+.blast-alignment-viewer .svgHeader .label-info {
+    background-color: #555555;
+}
+
+.blast-alignment-viewer .svgHeader .label {
+    display: inline;
+    padding: .2em .6em .3em;
+    font-weight: bold;
+    line-height: 1;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: .25em;
+    cursor: pointer;
+}
+
+.blast-alignment-viewer .popover-title {
+    text-align: center;
+    background-color: rgba(197, 0, 99, 0.1);
+}
+
+.blast-alignment-viewer .popover-title {
+    padding: 8px 14px;
+    margin: 0;
+    font-size: 14px;
+    background-color: #f7f7f7;
+    border-bottom: 1px solid #ebebeb;
+    border-radius: 5px 5px 0 0;
+}
+.blast-alignment-viewer .popover.left > .arrow {
+
+    top: 50%;
+    right: -11px;
+    margin-top: -11px;
+    border-right-width: 0;
+    border-left-color: #999;
+    border-left-color: rgba(0, 0, 0, .25);
+
+}
+.blast-alignment-viewer .popover > .arrow {
+
+    border-width: 11px;
+        border-right-width: 11px;
+
+}
+.blast-alignment-viewer .popover > .arrow, .popover > .arrow::after {
+
+    position: absolute;
+    display: block;
+    width: 0;
+    height: 0;
+    border-color: transparent;
+        border-left-color: transparent;
+    border-style: solid;
+
+}
+
+.blast-alignment-viewer .popover.left {
+
+    margin-left: -10px;
+
+}
+.blast-alignment-viewer .fade.in {
+
+    opacity: 1;
+
+}
+.blast-alignment-viewer .popover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1060;
+    display: none;
+    max-width: 400px;
+    padding: 1px;
+    text-align: left;
+    text-align: start;
+    text-decoration: none;
+    text-shadow: none;
+    text-transform: none;
+    letter-spacing: normal;
+    word-break: normal;
+    word-spacing: normal;
+    word-wrap: normal;
+    white-space: normal;
+    background-color: #fff;
+    -webkit-background-clip: padding-box;
+    background-clip: padding-box;
+    border: 1px solid #ccc;
+    border: 1px solid rgba(0, 0, 0, .2);
+    border-radius: 6px;
+    -webkit-box-shadow: 0 5px 10px rgba(0, 0, 0, .2);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, .2);
+    line-break: auto;
+}
+
+.blast-alignment-viewer .popover-content {
+    padding: 9px 14px;
 }

@@ -1,11 +1,17 @@
 (function ($) {
+  
   Drupal.behaviors.tripal_analysis_blast = {
     attach: function (context, settings) {
-
-      // hide all the HSP description boxes by default
+  
+      
+      /**
+       * JS for the HSP box the appears when the [more] link is clicked.
+       */
+      
+      // Hide all the HSP description boxes by default
       $(".tripal-analysis-blast-info-hsp-desc").hide();
 
-      // when the [more] link is clicked, show the appropriate HSP description box
+      // When the [more] link is clicked, show the appropriate HSP description box
       $(".tripal-analysis-blast-info-hsp-link").click(function(e) {
         var my_id = e.target.id;
         var re = /hsp-link-(\d+)-(\d+)/;
@@ -16,14 +22,14 @@
         $("#hsp-desc-" + analysis_id + "-" +j).show();
       });
 
-      // when the [Close] button is clicked on the HSP description close the box
+      // When the [Close] button is clicked on the HSP description close the box
       $(".hsp-desc-close").click(function(e) {
         $(".tripal-analysis-blast-info-hsp-desc").hide();
       });
 
-      // add the achor to the pager links so that when the user clicks a pager
+      // Add the anchor to the pager links so that when the user clicks a pager
       // link and the page refreshes they are taken back to the location
-      // on the page that they were viewing
+      // on the page that they were viewing.
       $("div.tripal_analysis_blast-info-box-desc ul.pager a").each(function() {
         pager_link = $(this);
         parent = pager_link.parents('div.tripal_analysis_blast-info-box-desc');
@@ -31,5 +37,6 @@
       })
     }
   };
-
+  
 })(jQuery);
+

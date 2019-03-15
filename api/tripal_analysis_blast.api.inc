@@ -50,7 +50,7 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
 
     // Get the blast_hit_data record for this analysis feature. For Tripal v3
     // all blast files imported will use this table. Previously it was optional.
-    $sql = 'SELECT * FROM {blast_hit_data} 
+    $sql = 'SELECT * FROM {blast_hit_data}
               WHERE analysisfeature_id=:analysisfeature_id';
     $blast_settings = chado_query($sql, array(
       ':analysisfeature_id' => $analysisfeature_id,

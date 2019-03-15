@@ -625,3 +625,24 @@ function tripal_analysis_blast_update_7302() {
     throw new DrupalUpdateException('Could not perform update: '. $error);
   }
 }
+
+/**
+ * Turn on auto_attach for the blast field to prevent AJAX problems on entity first load.
+ */
+function tripal_analysis_blast_update_7303() {
+
+  try {
+    $bundles = field_info_instances('TripalEntity');
+    foreach ($bundles as $bundle_name => $fields) {
+      $instance_info = field_info_instance('TripalEntity', 'format__blast_results', $bundle_name);
+      if ($instance_info) {
+        $instance_info['settings']['auto_attach'] = TRUE;
+        field_update_instance($instance_info);
+      }
+    }
+  }
+  catch (\PDOException $e) {
+    $error = $e->getMessage();
+    throw new DrupalUpdateException('Could not perform update: '. $error);
+  }
+}
