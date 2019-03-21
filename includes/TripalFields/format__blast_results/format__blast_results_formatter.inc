@@ -80,8 +80,8 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
         '#collapsed' => TRUE,
         '#collapsible' => TRUE,
         '#attached' => [
-          'js' => [
-            ['misc/collapse.js', 'misc/form.js'],
+          'library' => [
+            ['system', 'drupal.collapse'],
           ],
         ],
         '#attributes' => [
