@@ -77,14 +77,17 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $element[0][$i] = [
         '#type' => 'fieldset',
         '#title' => $analysis->name,
-        '#attached' => ['library' => [
-            ['system', 'drupal.collapse']
-          ]
+        '#collapsed' => TRUE,
+        '#collapsible' => TRUE,
+        '#attached' => [
+          'library' => [
+            ['system', 'drupal.collapse'],
+          ],
         ],
         '#attributes' => [
-          'class' => ['collapsible', 'collapsed']
-        ]
-        ];
+          'class' => ['collapsible', 'collapsed'],
+        ],
+      ];
 
       $content = '
           <p>
