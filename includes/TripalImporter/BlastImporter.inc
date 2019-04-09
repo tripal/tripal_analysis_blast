@@ -550,12 +550,12 @@ class BlastImporter extends TripalImporter {
                 if (count($feature_arr) > 1) {
                   watchdog('T_blastXML_load', "Ambiguous: '$feature' matches more than one " .
                       "feature and is being skipped", array(), WATCHDOG_ERROR);
-                  continue;
+                  continue 2;
                 }
                 if (count($feature_arr) == 0) {
                   watchdog('T_blastXML_load', "Failed: '$feature' cannot find a matching " ."
                      feature in the database.", array(), WATCHDOG_ERROR);
-                  continue;
+                  continue 2;
                 }
                 $feature_id = $feature_arr[0]->feature_id;
 
@@ -566,7 +566,7 @@ class BlastImporter extends TripalImporter {
                 if (!$feature_id) {
                   watchdog('T_blastXML_load', "Cannot add blast results as feature_id is missing.", array(),
                       WATCHDOG_ERROR);
-                  continue;
+                  continue 2;
                 }
                 // we are going to store the XML in the analysisfeatureprop table so we need to rebuild it.
                 $xml_content =  "<Iteration>\n" . $iteration_tags_xml . "    <$tag_name>\n";
@@ -616,7 +616,7 @@ class BlastImporter extends TripalImporter {
                   if (!$result) {
                     watchdog('T_blastXML_load', "Cannot add analysis feature record for $feature.", array(),
                         WATCHDOG_ERROR);
-                    continue;
+                    continue 2;
                   }
                   $analysisfeature_id = $result['analysisfeature_id'];
                 }
@@ -633,7 +633,7 @@ class BlastImporter extends TripalImporter {
                   if (!$success) {
                     watchdog('T_blastXML_load', "Cannot update analysis feature property record for $feature.", array(),
                         WATCHDOG_ERROR);
-                    continue;
+                    continue 2;
                   }
                 }
                 // if the analyisfeatureprop record doesn't exist then add it
@@ -650,7 +650,7 @@ class BlastImporter extends TripalImporter {
                   if (!$analysisfeatureprop) {
                     watchdog('T_blastXML_load', "Cannot add analysis feature property record.", array(),
                         WATCHDOG_ERROR);
-                    continue;
+                    continue 2;
                   }
                 }
                 // if the user wants to store the keywords then do so
