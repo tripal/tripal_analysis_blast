@@ -106,6 +106,7 @@ class BlastImporter extends TripalImporter {
               '!settings' => l('Blast Settings', 'admin/tripal/extension/tripal_blast_analysis', array('attributes' => array('target' => '_blank')))
             ]),
         '#options' => $form['db_options']['#value'],
+        '#required' => TRUE,
         '#default_value' => $blastdb,
     );
 
