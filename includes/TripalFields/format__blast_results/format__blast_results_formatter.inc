@@ -67,10 +67,10 @@ class format__blast_results_formatter extends ChadoFieldFormatter {
       $list_items[] = "<a href=\"#analysis-" . $analysis->analysis_id . "\">$result_name</a>";
 
       $analysis_link = $analysis->name;
-      if (array_key_exists('nid', $analysis)) {
+      if (property_exists($analysis, 'nid')) {
         $analysis_link = l($analysis->name, 'node/' . $analysis->nid);
       }
-      if (array_key_exists('entity_id', $analysis)) {
+      if (property_exists($analysis, 'entity_id')) {
         $analysis_link = l($analysis->name, 'bio_data/' . $analysis->entity_id);
       }
 
