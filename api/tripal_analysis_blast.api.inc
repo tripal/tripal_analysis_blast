@@ -47,6 +47,7 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
 
     $analysis = chado_generate_var('analysis', array('analysis_id' => $analysisfeature[0]->analysis_id));
     $analysis_id = $analysis->analysis_id;
+    $adb_id = NULL;
 
     // Get the blast_hit_data record for this analysis feature. For Tripal v3
     // all blast files imported will use this table. Previously it was optional.
@@ -93,19 +94,20 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
       continue;
     }
 
-    // get the database
+    // analysis db will be null if no blast hits for this feature
     if ($adb_id) {
+      // get the database
       $db_arr = chado_select_record('db', array('*'), array('db_id' => $adb_id));
       $db = $db_arr[0];
-    }
 
-    // parse the XML and add it to the array of blast results to be returned
-    module_load_include('inc', 'tripal_analysis_blast', 'includes/TripalImporter/BlastImporter');
-    $importer = new BlastImporter();
-    $blast_obj =$importer->getResultObject($blast_xml, $db, $feature_id, $analysis);
-    $blast_obj->analysis = $analysis;
-    $blast_obj_array [$blast_obj_counter] = $blast_obj;
-    $blast_obj_counter ++;
+      // parse the XML and add it to the array of blast results to be returned
+      module_load_include('inc', 'tripal_analysis_blast', 'includes/TripalImporter/BlastImporter');
+      $importer = new BlastImporter();
+      $blast_obj =$importer->getResultObject($blast_xml, $db, $feature_id, $analysis);
+      $blast_obj->analysis = $analysis;
+      $blast_obj_array [$blast_obj_counter] = $blast_obj;
+      $blast_obj_counter ++;
+    }
   }
 
   return $blast_obj_array;
