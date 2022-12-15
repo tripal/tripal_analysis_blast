@@ -81,7 +81,9 @@ function tripal_get_feature_blast_results($feature_id, $db_id = NULL) {
       // database id
       else {
         $blastdb = chado_get_property(array('table'=> 'analysis', 'id' => $analysis_id), array('type_name' => 'analysis_blast_blastdb', 'cv_name' => 'tripal'));
-        $adb_id = $blastdb->value;
+        if ($blastdb) {
+          $adb_id = $blastdb->value;
+        }
       }
     }
 
