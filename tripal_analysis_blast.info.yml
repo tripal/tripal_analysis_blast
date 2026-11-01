@@ -1,0 +1,11 @@
+name: 'Tripal Analysis Blast'
+type: 'module'
+description: 'An analysis sub-module for adding, editing, and displaying blast analysis results.'
+core_version_requirement: '^10.6 || ^11.2'
+php: '8.2'
+package: 'Tripal'
+version: '4.0.alpha5'
+dependencies:
+  - 'tripal:tripal'
+  - 'tripal:tripal_biodb'
+  - 'tripal:tripal_chado'
