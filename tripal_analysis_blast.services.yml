@@ -1,0 +1,11 @@
+services:
+  tripal_analysis_blast.rebuild_service:
+    class: 'Drupal\tripal_analysis_blast\Services\TripalAnalysisBlastRebuildService'
+    arguments:
+      - '@tripal_chado.database'
+  Drupal\tripal_analysis_blast\Services\TripalAnalysisBlastRebuildService:
+    alias: 'tripal_analysis_blast.rebuild_service'
+  tripal_analysis_blast.hooks:
+    class: 'Drupal\tripal_analysis_blast\Hook\TripalAnalysisBlastHooks'
+    arguments:
+      - '@tripal_analysis_blast.rebuild_service'

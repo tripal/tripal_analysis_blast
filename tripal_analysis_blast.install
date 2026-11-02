@@ -1,0 +1,147 @@
+<?php
+
+use Symfony\Component\Yaml\Yaml;
+use Drupal\Core\Hook\Attribute\LegacyHook;
+use Drupal\Core\Messenger\Messenger;
+use Drupal\tripal_chado\ChadoCustomTables\ChadoCustomTable;
+use Drupal\tripal_chado\Database\ChadoSchema;
+use Drupal\tripal_chado\Entity\ChadoTermMapping;
+use Drupal\tripal_chado\Services\ChadoTermsInit;
+
+/**
+ * @file
+ *
+ * Installation of the Tripal Analysis Blast module
+ */
+
+/**
+ * Implements hook_requirements().
+ *
+ * This hook does not support attributes and must remain procedural.
+ */
+function tripal_analysis_blast_requirements($phase) {
+  $requirements = [];
+  if ($phase == 'install') {
+    if (version_compare(\Drupal::VERSION, 10.6) < 0) {
+      $requirements['tripal_analysis_blast'] = [
+        'title' => 'tripal_analysis_blast',
+        'value' => 'ERROR: You must have Drupal version 10.6 or higher installed to use this module.',
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+  }
+}
+
+/**
+ * Implements hook_install().
+ *
+ * Performs actions when the modules is first installed.
+ *
+ * @ingroup tripal_analysis_blast
+ */
+function tripal_analysis_blast_install() {
+  $chado = \Drupal::service('tripal_chado.database');
+
+  // Create tripal terms for the new CV terms defined in YAML files.
+  tripal_analysis_blast_show_message('Adding new vocabulary terms');
+  tripal_analysis_blast_create_tripal_terms();
+
+  // Add the custom tables needed to associate Chado content with files.
+  tripal_analysis_blast_show_message('Adding custom tables');
+  \Drupal::service('tripal_analysis_blast.rebuild_service')->createCustomChadoTables();
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ * The hook uninstall does not support attributes and must remain procedural.
+ */
+function tripal_analysis_blast_uninstall() {
+  // Delete the custom tables created by this module.
+  \Drupal::service('tripal_analysis_blast.hooks')->tripalAnalysisBlastUninstall();
+}
+
+/**
+ * Displays a status message.
+ * 
+ * This handles displaying both to the UI and to drush output.
+ * 
+ * @param string $message
+ *   The message to be displayed.
+ */
+function tripal_analysis_blast_show_message(string $message) {
+  // This is displayed when this module is installed with the UI.
+  \Drupal::messenger()->addStatus($message);
+  // This is displayed when this module is installed with drush.
+  \Drupal::logger('tripal_analysis_blast')->notice($message);
+}
+
+/**
+ * Creates tripal terms for newly added CV terms for content types.
+ *
+ * The new CV terms are defined in YAML in /config/install/
+ * tripal.tripal_content_terms.tripal_analysis_blast_content_terms.yml
+ * and files located there are added automatically by Drupal,
+ * so here we just need to install them.
+ *
+ * @return void
+ *   No return value.
+ */
+function tripal_analysis_blast_create_tripal_terms(): void {
+#;;;  $terms_init_service = \Drupal::service('tripal_chado.terms_init');
+#;;;  $terms_init_service->installTerms('tripal_analysis_blast_content_terms');
+}
+
+/**
+ * Implements hook_schema().
+ */
+function tripal_analysis_blast_schema(): array {
+  $schema = [];
+
+  $schema['tripal_analysis_blast'] = [
+    'fields' => [
+      'db_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ],
+      'displayname' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ],
+      'regex_hit_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+      ],
+      'regex_hit_def' => [
+        'type' => 'varchar',
+        'length' => 255,
+      ],
+      'regex_hit_accession' => [
+        'type' => 'varchar',
+        'length' => 255,
+      ],
+      'regex_hit_organism' => [
+        'type' => 'varchar',
+        'length' => 255,
+      ],
+      'hit_organism' => [
+        'type' => 'varchar',
+        'length' => 255,
+      ],
+      'genbank_style' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ],
+    ],
+    'indexes' => [
+      'db_id' => ['db_id'],
+    ],
+    'primary key' => ['db_id'],
+  ];
+
+  return $schema;
+}
