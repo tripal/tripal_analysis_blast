@@ -42,6 +42,12 @@ function tripal_analysis_blast_requirements($phase) {
 function tripal_analysis_blast_install() {
   $chado = \Drupal::service('tripal_chado.database');
 
+  // Migrate any existing tripal 3 terms. Only applicable to a migrated site.
+  $report = \Drupal::service('tripal_analysis_blast.rebuild_service')->migrateTripalTerms();
+  if ($report) {
+    tripal_analysis_blast_show_message($report);
+  }
+
   // Create tripal terms for the new CV terms defined in YAML files.
   tripal_analysis_blast_show_message('Adding new vocabulary terms');
   tripal_analysis_blast_create_tripal_terms();
@@ -88,8 +94,8 @@ function tripal_analysis_blast_show_message(string $message) {
  *   No return value.
  */
 function tripal_analysis_blast_create_tripal_terms(): void {
-#;;;  $terms_init_service = \Drupal::service('tripal_chado.terms_init');
-#;;;  $terms_init_service->installTerms('tripal_analysis_blast_content_terms');
+  $terms_init_service = \Drupal::service('tripal_chado.terms_init');
+  $terms_init_service->installTerms('tripal_analysis_blast_content_terms');
 }
 
 /**
