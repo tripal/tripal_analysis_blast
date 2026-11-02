@@ -1,0 +1,105 @@
+# The blast_organisms table is used to help when integrating with
+# Drupal Views. Trying to get a list of organisms for a drop down
+# in Views would require querying the blast_hit_data table which has
+# a lot of redunancy and takes too long. This table was created to
+# speed up the query that populates a drop down list.
+blast_organisms:
+    table: 'blast_organisms'
+    fields:
+        blast_org_id:
+            type: 'serial'
+            'not null': true
+        blast_org_name:
+            type: 'varchar'
+            length: 1025
+    'primary key':
+        - 'blast_org_id'
+    'unique keys':
+        blast_org_name_uq:
+            - 'blast_org_name'
+    indexes:
+        blast_org_name:
+            - 'blast_org_name'
+blast_hit_data:
+    table: 'blast_hit_data'
+    fields:
+        analysisfeature_id:
+            type: 'int'
+            'not null': true
+        analysis_id:
+            type: 'int'
+            'not null': true
+        feature_id:
+            type: 'int'
+            'not null': true
+        db_id:
+            type: 'int'
+            'not null': true
+        hit_num:
+            type: 'int'
+            'not null': true
+        hit_name:
+            type: 'varchar'
+            length: 1025
+        hit_url:
+            type: 'text'
+        hit_description:
+            type: 'text'
+        hit_organism:
+            type: 'varchar'
+            length: 1025
+        blast_org_id:
+            type: 'int'
+        hit_accession:
+            type: 'varchar'
+            length: 255
+        hit_best_eval:
+            type: 'float'
+            size: 'big'
+        hit_best_score:
+            type: 'float'
+            size: 'big'
+        hit_pid:
+            type: 'float'
+            size: 'big'
+    indexes:
+        analysisfeature_id:
+            - 'analysisfeature_id'
+        analysis_id:
+            - 'analysis_id'
+        feature_id:
+            - 'feature_id'
+        db_id:
+            - 'db_id'
+        hit_name:
+            - 'hit_name'
+        hit_organism:
+            - 'hit_organism'
+        blast_org_id:
+            - 'blast_org_id'
+        hit_accession:
+            - 'hit_accession'
+        hit_best_eval:
+            - 'hit_best_eval'
+    'foreign keys':
+        db:
+            table: 'db'
+            columns:
+                db_id: 'db_id'
+        analysisfeature:
+            table: 'analysisfeature'
+            columns:
+                analysisfeature_id: 'analysisfeature_id'
+        analysis:
+            table: 'analysis'
+            columns:
+                analysis_id: 'analysis_id'
+        feature:
+            table: 'feature'
+            columns:
+                feature_id: 'feature_id'
+        blast_organisms:
+            table: 'blast_organisms'
+            columns:
+                blast_org_id: 'blast_org_id'
+
