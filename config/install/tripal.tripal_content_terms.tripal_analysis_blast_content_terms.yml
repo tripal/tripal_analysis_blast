@@ -94,3 +94,14 @@ vocabularies:
             -   id: 'local:analysis_blast_besthit_length'
                 name: 'analysis_blast_besthit_length'
                 description: 'length of the best hit associated with a feature and a blast analysis'
+    -   name: 'EDAM'
+        label: 'Bioscientific data analysis ontology'
+        url: 'http://edamontology.org/page'
+        idSpaces:
+            -   name: 'format'
+                description: 'A defined way or layout of representing and structuring data in a computer file, blob, string, message, or elsewhere. The main focus in EDAM lies on formats as means of structuring data exchanged between different tools or resources.'
+                urlPrefix: "http://edamontology.org/{db}_{accession}"
+        terms:
+            -   id: 'format:1333'
+                name: 'BLAST results'
+                description: 'Format of results of a sequence database search using some variant of BLAST. This includes score data, alignment data and summary table.'
