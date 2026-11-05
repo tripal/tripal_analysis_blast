@@ -26,9 +26,21 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
   public function viewElements(FieldItemListInterface $items, $langcode) {
     $elements = [];
 
-    // Use render arrays to generate markup for your field.
+    // Attaches the js for visualization as defined in
+    // tripal_analysis_blast/tripal_analysis_blast.libraries.yml.
+    $elements['#attached']['library'][] = 'tripal_analysis_blast/feature-viewer';
+
     foreach ($items as $delta => $item) {
+
+      // Adds the placeholder for the blast hit.
+      $elements[$delta]['feature_viewer'] = [
+        '#markup' => '<div class="xxx-container" id="blast-hit-container"></div>',
+      ];
+
+      // Add the variables used by the javascript.
       $hit_data_json = $item->get('hit_data')->getString();
+      $elements['#attached']['drupalSettings']['hitData'] = $hit_data_json;
+
       // @todo temporary placeholder for future blast visualization.
       $elements[$delta] = [
         "#markup" => '@todo NOT IMPLEMENTED: ' . $hit_data_json,

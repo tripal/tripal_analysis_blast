@@ -1,0 +1,9 @@
+tripal_analysis_blast.feature-viewer:
+  js:
+    "https://d3js.org/d3.v6.min.js": { type: 'external', minified: true }
+    "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js": { type: 'external', minified: true }
+    "https://cdn.jsdelivr.net/gh/calipho-sib/feature-viewer@v1.1.0/dist/feature-viewer.bundle.js": { type: 'external', minified: true }
+  dependencies:
+    - 'core/jquery'
+    - 'core/drupal'
+    - 'core/once'
