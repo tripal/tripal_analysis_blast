@@ -184,7 +184,6 @@ class BlastImporter extends ChadoImporterBase {
     $query_re = $form_state_values['query_re'] ?? $form_state_input['query_re'] ?? '';
     $query_type = $form_state_values['query_type'] ?? $form_state_input['query_type'] ?? '';
     $query_uniquename = $form_state_values['query_uniquename'] ?? $form_state_input['query_uniquename'] ?? 0;
-    $is_concat = $form_state_values['is_concat'] ?? $form_state_input['is_concat'] ?? 0;
 
     $form['blastdb_id'] = $this->getDbSelectElement($blastdb_id);
 
@@ -196,17 +195,6 @@ class BlastImporter extends ChadoImporterBase {
         If no extension is provided, then files with a .xml extension will be parsed within the directory.
         Please provide the extension without the preceeding period (e.g. "out" rather than ".out"'),
       '#default_value' => $blastfile_ext,
-    ];
-
-    $blast2go = Link::fromTextAndUrl($this->t('Blast2GO'), Url::fromUri('https://www.blast2go.com/'))->toString();
-    $form['is_concat'] = [
-      '#title' => $this->t('Is the XML file concatenated?'),
-      '#type' => 'checkbox',
-      '#description' => $this->t('Is the XML file a set of concatenated XML results?
-      Such is the case, for instance, if @blast2go was used to generate the blast results.
-      If NCBI BLAST was used with output in XML then this option should not be checked.',
-      ['@blast2go' => $blast2go]),
-      '#default_value' => $is_concat,
     ];
 
     $form['no_parsed'] = [
@@ -318,7 +306,6 @@ class BlastImporter extends ChadoImporterBase {
     $blastdb_id = $arguments['blastdb_id'];
     $blastfile = trim($this->arguments['files'][0]['file_path']);
     $blastfile_ext = trim($arguments['blastfile_ext']);
-    $is_concat = $arguments['is_concat'];
     $no_parsed = $arguments['no_parsed'];
     $query_re = trim($arguments['query_re']);
     $query_type = trim($arguments['query_type']);
@@ -334,7 +321,6 @@ class BlastImporter extends ChadoImporterBase {
       $query_re,
       $query_type,
       $query_uniquename,
-      $is_concat,
       $search_keywords,
     );
   }
@@ -376,9 +362,6 @@ class BlastImporter extends ChadoImporterBase {
    *   be a valid Sequence Ontology term.
    * @param int $query_uniquename
    *   If 1, match to the feature uniquename. If 0, match to the feature name.
-   * @param int $is_concat
-   *   If the blast result file is simply a list of concatenated blast results
-   *   then this value should be set to 1.
    * @param string $search_keywords
    *   The list of fields to extract from the blast results and store as
    *   a separate entry in the analysisfeatureprop table. The list should be
@@ -399,7 +382,6 @@ class BlastImporter extends ChadoImporterBase {
     string $query_re,
     string $query_type,
     int $query_uniquename,
-    int $is_concat,
     string $search_keywords,
   ): int {
     try {
@@ -407,7 +389,7 @@ class BlastImporter extends ChadoImporterBase {
       if (is_file($blastfile)) {
         $this->parseXml($analysis_id, $blastdb_id, $blastfile,
           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-          $is_concat, $search_keywords);
+          $search_keywords);
       }
       // Otherwise, $blastfile is a directory. Iterate through all
       // of the xml files in it.
@@ -436,7 +418,7 @@ class BlastImporter extends ChadoImporterBase {
           );
           $this->parseXML($analysis_id, $blastdb_id, "$blastfile/$file",
             $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-            $is_concat, $search_keywords, FALSE);
+            $search_keywords, FALSE);
           $this->setItemsHandled($no_file);
         }
       }
@@ -478,9 +460,6 @@ class BlastImporter extends ChadoImporterBase {
    *   be a valid Sequence Ontology term.
    * @param int $query_uniquename
    *   If 1, match to the feature uniquename. If 0, match to the feature name.
-   * @param int $is_concat
-   *   If the blast result file is simply a list of concatenated blast results
-   *   then this value should be set to 1.
    * @param string $search_keywords
    *   The list of fields to extract from the blast results and store as
    *   a separate entry in the analysisfeatureprop table.  Th list should be
@@ -503,7 +482,6 @@ class BlastImporter extends ChadoImporterBase {
     string $query_re,
     string $query_type,
     string $query_uniquename,
-    int $is_concat,
     string $search_keywords,
     bool $progress = TRUE,
   ): bool {
@@ -588,7 +566,7 @@ class BlastImporter extends ChadoImporterBase {
                 // This should be the <Iteration> tag.
                 $success = $this->handleIteration($blastoutput, $analysis_object, $blastdb_object, $blastfile,
                   $no_parsed, $blastfile_ext, $query_re, $query_type_id, $query_uniquename,
-                  $is_concat, $search_keywords, $type_id, $search_keywords);
+                  $search_keywords, $type_id, $search_keywords);
                 if (!$success) {
                   return FALSE;
                 }
@@ -714,7 +692,6 @@ class BlastImporter extends ChadoImporterBase {
     string $query_re,
     string $query_type_id,
     int $query_uniquename,
-    int $is_concat,
     string $search_keywords,
     int $type_id,
   ): bool {
