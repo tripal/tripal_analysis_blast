@@ -5,24 +5,19 @@ namespace Drupal\tripal_analysis_blast\Plugin\TripalImporter;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Messenger\Messenger;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\file\FileRepositoryInterface;
 use Drupal\tripal\TripalImporter\Attribute\TripalImporter;
-#use Drupal\tripal\TripalImporter\Interfaces\TripalImporterInterface;
 use Drupal\tripal\Services\TripalFileRetriever;
 use Drupal\tripal\Services\TripalLogger;
 use Drupal\tripal\TripalBackendPublish\PluginManager\TripalBackendPublishManager;
 use Drupal\tripal_chado\ChadoBuddy\PluginManagers\ChadoBuddyPluginManager;
 use Drupal\tripal_chado\Controller\ChadoCVTermAutocompleteController;
-#use Drupal\tripal_chado\Controller\ChadoGenericAutocompleteController;
-#use Drupal\tripal_chado\Controller\ChadoOrganismFormElementController;
 use Drupal\tripal_chado\Database\ChadoConnection;
 use Drupal\tripal_chado\TripalImporter\ChadoImporterBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-#use Symfony\Component\Serializer\Serializer;
 
 /**
  * Blast result importer implementation of the TripalImporterBase.
@@ -68,11 +63,15 @@ class BlastImporter extends ChadoImporterBase {
   protected object $cvterm_buddy;
 
   /**
+   * Drupal file repository service.
+   *
    * @var Drupal\file\FileRepositoryInterface
    */
   protected FileRepositoryInterface $file_repository;
 
   /**
+   * Drupal file system interface service.
+   *
    * @var Drupal\Core\File\FileSystemInterface
    */
   protected FileSystemInterface $file_system;
@@ -213,7 +212,7 @@ class BlastImporter extends ChadoImporterBase {
     $form['no_parsed'] = [
       '#title' => $this->t('Number of hits to be parsed'),
       '#type' => 'textfield',
-      '#description' => $this->t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),
+      '#description' => $this->t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match. \"All\" is also supported."),
       '#default_value' => '25',
     ];
 
@@ -324,6 +323,7 @@ class BlastImporter extends ChadoImporterBase {
     $query_re = trim($arguments['query_re']);
     $query_type = trim($arguments['query_type']);
     $query_uniquename = $arguments['query_uniquename'];
+    // @todo search_keywords is treated as a boolean, not a list.
     $search_keywords = 1;
     $this->parseXMLFile(
       $analysis_id,
@@ -343,7 +343,6 @@ class BlastImporter extends ChadoImporterBase {
    * {@inheritdoc}
    */
   public function formSubmit($form, &$form_state) {
-    $values = $form_state->getValues();
   }
 
   /**
@@ -356,15 +355,15 @@ class BlastImporter extends ChadoImporterBase {
    *
    * @param int $analysis_id
    *   The analysis ID that the blast results belong to.
-   * @param $blastdb_id
-   *   The database blasted against.
+   * @param int $blastdb_id
+   *   The chado db_id of the database blasted against.
    * @param string $blastfile
    *   The directory path containing a collection of blast XML files or a the
    *   path to a single XML file. If a directory is provided the function will
    *   iterate through all of the files with the extension provided by the
    *   $blast_ext argument and extract results.
-   * @param $no_parsed
-   *   The number of hits to keep.
+   * @param string $no_parsed
+   *   The number of hits to keep, or "All" to keep all hits.
    * @param string $blastfile_ext
    *   If the $blastfile argument is a directory path rather than a file, then
    *   this function will look for files with the extension provided.
@@ -375,33 +374,32 @@ class BlastImporter extends ChadoImporterBase {
    * @param string $query_type
    *   The feature type (e.g. 'gene', 'mRNA', 'contig') of the query. It must
    *   be a valid Sequence Ontology term.
-   * @param string $query_uniquename.
-   *   The regular expression that can uniquely identify the query unique name.
-   *   This parameters is required if the feature name is not the
-   *   first word in the blast query name.
-   * @param $is_concat
+   * @param int $query_uniquename
+   *   If 1, match to the feature uniquename. If 0, match to the feature name.
+   * @param int $is_concat
    *   If the blast result file is simply a list of concatenated blast results
    *   then this value should be set to 1.
    * @param string $search_keywords
    *   The list of fields to extract from the blast results and store as
    *   a separate entry in the analysisfeatureprop table. The list should be
    *   a single string with elements separated with a bar '|'. The valid values
-   *   include: 'blast_match_name', 'blast_match_description', 'blast_match_organism'
-   *   'blast_match_accession', 'blast_database', 'blast_evalue', 'blast_score'.
+   *   include: 'blast_match_name', 'blast_match_description',
+   *   'blast_match_organism', 'blast_match_accession', 'blast_database',
+   *   'blast_evalue', 'blast_score'.
    *
    * @return int
    *   Returns 1 for success, 0 for failure.
    */
   protected function parseXmlFile(
     int $analysis_id,
-    $blastdb_id,
+    int $blastdb_id,
     string $blastfile,
-    $no_parsed,
+    string $no_parsed,
     string $blastfile_ext,
     string $query_re,
     string $query_type,
-    string $query_uniquename,
-    $is_concat,
+    int $query_uniquename,
+    int $is_concat,
     string $search_keywords,
   ): int {
     try {
@@ -411,7 +409,8 @@ class BlastImporter extends ChadoImporterBase {
           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
           $is_concat, $search_keywords);
       }
-      // Otherwise, $blastfile is a directory. Iterate through all xml files in it.
+      // Otherwise, $blastfile is a directory. Iterate through all
+      // of the xml files in it.
       else {
         if (!$blastfile_ext) {
           $blastfile_ext = 'xml';
@@ -460,36 +459,37 @@ class BlastImporter extends ChadoImporterBase {
    *   The analysis ID that the blast results belong to.
    * @param int|null $blastdb_id
    *   The database blasted against.
-   * @param $blastfile
+   * @param string $blastfile
    *   The directory path containing a collection of blast XML files or a the
    *   path to a single XML file.  If a directory is provided the function will
    *   iterate through all of the files with the extension provided by the
    *   $blast_ext argument and extract results.
-   * @param $no_parsed
+   * @param string $no_parsed
    *   The number of hits to keep.
-   * @param $blast_ext
+   * @param string $blastfile_ext
    *   If the $blastfile argument is a directory path rather than a file then
    *   this function willlook for files with the extension provided.
-   * @param $query_re
+   * @param string $query_re
    *   The regular expression that can uniquely identify the query name.
    *   This parameter is required if the feature name is not the
    *   first word in the blast query name.
-   * @param $query_type
+   * @param string $query_type
    *   The feature type (e.g. 'gene', 'mRNA', 'contig') of the query. It must
    *   be a valid Sequence Ontology term.
-   * @param $query_uniquename
-   *   The regular expression that can uniquely identify the query unique name.
-   *   This parameters is required if the feature name is not the
-   *   first word in the blast query name.
-   * @param $is_concat
+   * @param int $query_uniquename
+   *   If 1, match to the feature uniquename. If 0, match to the feature name.
+   * @param int $is_concat
    *   If the blast result file is simply a list of concatenated blast results
    *   then this value should be set to 1.
-   * @param $search_keywords
+   * @param string $search_keywords
    *   The list of fields to extract from the blast results and store as
    *   a separate entry in the analysisfeatureprop table.  Th list should be
-   *   a single string with elements separated with a bar '|'.  The valid values
-   *   include:  'blast_match_name', 'blast_match_description', 'blast_match_organism'
-   *   'blast_match_accession', 'blast_database', 'blast_evalue', 'blast_score'
+   *   a single string with elements separated with a bar '|'. The valid values
+   *   include: 'blast_match_name', 'blast_match_description',
+   *   'blast_match_organism', 'blast_match_accession', 'blast_database',
+   *   'blast_evalue', 'blast_score'.
+   * @param bool $progress
+   *   Show progress messages during import. Defaults to TRUE.
    *
    * @return bool
    *   TRUE for success or FALSE for error.
@@ -497,20 +497,23 @@ class BlastImporter extends ChadoImporterBase {
   protected function parseXml(
     int $analysis_id,
     ?int $blastdb_id,
-    $blastfile,
-    $no_parsed,
-    $blastfile_ext,
-    $query_re,
-    $query_type,
-    $query_uniquename,
-    $is_concat,
-    $search_keywords,
-    $progress = TRUE,
+    string $blastfile,
+    string $no_parsed,
+    string $blastfile_ext,
+    string $query_re,
+    string $query_type,
+    string $query_uniquename,
+    int $is_concat,
+    string $search_keywords,
+    bool $progress = TRUE,
   ): bool {
 
     // Get the cvterm_id for 'analysis_blast_output_iteration_hits' which
     // is required for inserting into the analysisfeatureprop table.
-    $cvterm_records = $this->cvterm_buddy->getCvterm(['cv.name' => 'local', 'cvterm.name' => 'analysis_blast_output_iteration_hits'], []);
+    $cvterm_records = $this->cvterm_buddy->getCvterm([
+      'cv.name' => 'local',
+      'cvterm.name' => 'analysis_blast_output_iteration_hits',
+    ], []);
     if (count($cvterm_records) != 1) {
       $this->logger->error("T_blastXML_load: Cannot find the \"local:analysis_blast_output_iteration_hits\" cv term.");
       return FALSE;
@@ -698,23 +701,22 @@ class BlastImporter extends ChadoImporterBase {
   /**
    * Process one <Iteration> element.
    *
-   *
    * @return bool
    *   TRUE for success, FALSE if error.
    */
   protected function handleIteration(
-    $blastoutput,
+    object $blastoutput,
     object $analysis_object,
     object $blastdb_object,
-    $blastfile,
-    $no_parsed,
-    $blastfile_ext,
-    $query_re,
-    $query_type_id,
-    $query_uniquename,
-    $is_concat,
-    $search_keywords,
-    $type_id,
+    string $blastfile,
+    string $no_parsed,
+    string $blastfile_ext,
+    string $query_re,
+    string $query_type_id,
+    int $query_uniquename,
+    int $is_concat,
+    string $search_keywords,
+    int $type_id,
   ): bool {
 
     $feature_id = 0;
@@ -784,13 +786,11 @@ class BlastImporter extends ChadoImporterBase {
               return FALSE;
             }
             if (count($feature_arr) > 1) {
-              $this->logger->error("T_blastXML_load: Ambiguous: '$feature' matches more than one " .
-                "feature$suffix and is being skipped");
+              $this->logger->error("T_blastXML_load: Ambiguous: '$feature' matches more than one feature$suffix and is being skipped");
               continue 2;
             }
             if (count($feature_arr) == 0) {
-              $this->logger->error("T_blastXML_load: Failed: '$feature' cannot find a matching " . "
-                     feature in the database$suffix.");
+              $this->logger->error("T_blastXML_load: Failed: '$feature' cannot find a matching feature in the database$suffix.");
               continue 2;
             }
             $feature_id = $feature_arr[0]->feature_id;
@@ -802,10 +802,12 @@ class BlastImporter extends ChadoImporterBase {
               $this->logger->error("T_blastXML_load: Cannot add blast results as feature_id is missing.");
               continue 2;
             }
-            // We are going to store the XML in the analysisfeatureprop table so we need to rebuild it.
+            // We are going to store the XML in the analysisfeatureprop
+            // table so we need to rebuild it.
             $xml_content = "<Iteration>\n" . $iteration_tags_xml . "    <$tag_name>\n";
 
-            // Iterate through each of the <Hit> tags, extract the XML and add to our $xml_content.
+            // Iterate through each of the <Hit> tags, extract the XML,
+            // and add to our $xml_content.
             while ($blastoutput->next()) {
 
               // If we've reached the node </Iteration> then break out
@@ -834,7 +836,8 @@ class BlastImporter extends ChadoImporterBase {
             }
             $xml_content .= "\n  </$tag_name>\n</Iteration>";
 
-            // Make sure this iteration doesn't exist in analysisfeatureprop. If it does, update but not insert.
+            // Make sure this iteration doesn't already exist in
+            // analysisfeatureprop. If it does, update instead of insert.
             $sql = "SELECT AFP.analysisfeature_id, AFP.analysisfeatureprop_id
             FROM {1:analysisfeatureprop} AFP
               INNER JOIN {1:analysisfeature} AF ON AF.analysisfeature_id = AFP.analysisfeature_id
@@ -867,7 +870,10 @@ class BlastImporter extends ChadoImporterBase {
               $sql = "UPDATE {1:analysisfeatureprop}
               SET value = :xml_content
               WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
-              $success = $this->connection->query($sql, [':xml_content' => $xml_content, 'analysisfeatureprop_id' => $analysisfeatureprop->analysisfeatureprop_id]);
+              $success = $this->connection->query($sql, [
+                ':xml_content' => $xml_content,
+                'analysisfeatureprop_id' => $analysisfeatureprop->analysisfeatureprop_id,
+              ]);
               if (!$success) {
                 $this->logger->error("T_blastXML_load: Cannot update analysis feature property record for $feature.");
                 continue 2;
@@ -895,7 +901,6 @@ class BlastImporter extends ChadoImporterBase {
             if ($search_keywords) {
 
               // Remove any existing entries. we'll replace them.
-              $match = ['analysisfeature_id' => $analysisfeature_id];
               $query = $this->connection->delete('1:blast_hit_data');
               $query->condition('analysisfeature_id', $analysisfeature_id, '=');
               $query->execute();
@@ -999,10 +1004,11 @@ class BlastImporter extends ChadoImporterBase {
    *      Meta Information about the results
    *        $blast_obj->xml_tag      (the feature name)
    *        $blast_obj->number_hits  (the number of hits in the array)
-   *        $blast_obj->title        (the database name--or analysis if no dbname)
+   *        $blast_obj->title        (the database name, or analysis if
+   *                                  no dbname)
    *
-   *      The hits array. The variable $i is indicate an index variable that needs
-   *      to be used for accessing the hits.
+   *      The hits array. The variable $i is indicate an index variable
+   *      that needs to be used for accessing the hits.
    *        $blast_obj->hits_array
    *        $blast_obj->hits_array[$i]['arrowr_url']
    *        $blast_obj->hits_array[$i]['accession']
@@ -1013,8 +1019,8 @@ class BlastImporter extends ChadoImporterBase {
    *        $blast_obj->hits_array[$i]['percent_identity']
    *        $blast_obj->hits_array[$i]['description']
    *
-   *      The HSPs for a given hit. The variable $j indicates an index variable that
-   *      needs to be used for accessing the HSPs.
+   *      The HSPs for a given hit. The variable $j indicates an index
+   *      variable that needs to be used for accessing the HSPs.
    *        $blast_obj->hits_array[$i]['hsp'][$j]['query_frame']
    *        $blast_obj->hits_array[$i]['hsp'][$j]['hsp_num']
    *        $blast_obj->hits_array[$i]['hsp'][$j]['bit_score']
@@ -1099,22 +1105,15 @@ class BlastImporter extends ChadoImporterBase {
       $blast_object->title = $db_name;
     }
 
-    // Find entity id for the analysis.
-    # @todo
-    #if (module_exists('tripal_analysis')) {
-    #  $sql = "SELECT nid FROM {1:chado_analysis} WHERE analysis_id = :analysis_id";
-    #  $args = [':analysis_id' => $analysis->analysis_id];
-    #  $ana_nid = $this->connection->query($sql, $args)->fetchField();
-    #  $analysis->nid = $ana_nid;
-    #}
-
+    // @todo Find entity id for the analysis.
+    // Tripal 3 stored this node ID as $analysis->nid.
+    //
     // Load the file.  This XML file should be an extract
     // of the original XML file with only a single iteration.
     // An iteration is essentially all the hits for a single
     // query sequence.
     $xml = new \XMLReader();
     $xml->xml($xml_string);
-    $iteration = '';
 
     // Iterate though the child nodes of the <Iteration> tag.
     while ($xml->read()) {
@@ -1179,7 +1178,8 @@ class BlastImporter extends ChadoImporterBase {
                 }
               }
 
-              // If we're at the beginning of any other element then collect data.
+              // If we're at the beginning of any other element
+              // then collect data.
               if ($xml->nodeType == \XMLReader::ELEMENT) {
                 $hit_element_name = $xml->name;
                 $xml->read();
@@ -1229,7 +1229,8 @@ class BlastImporter extends ChadoImporterBase {
                     // Iterate through the HSP children.
                     while ($xml->read()) {
 
-                      // If we're at the beginning of a new element collect data.
+                      // If we're at the beginning of a new element
+                      // then collect data.
                       if ($xml->nodeType == \XMLReader::ELEMENT) {
                         $hsp_element_name = $xml->name;
                         $xml->read();
@@ -1318,11 +1319,13 @@ class BlastImporter extends ChadoImporterBase {
                           case 'Hsp_midline':
                             $hsp_midline = $hsp_info;
                             break;
-                        } // end switch ($hsp_element_name) { ...
-                      } //  end if ($xml->nodeType == \XMLReader::ELEMENT) { ...
-
+                        }
+                        // End switch ($hsp_element_name) { ...
+                      }
+                      // End if ($xml->nodeType == \XMLReader::ELEMENT) { ...
                       // If we're at the end of the HSP then set the values
-                      // that we gather through previous iterations in this while loop.
+                      // that we gather through previous iterations in this
+                      // while loop.
                       if ($xml->nodeType == \XMLReader::END_ELEMENT) {
                         if (strcmp($xml->name, 'Hsp') == 0) {
                           $hsp_content = [];
@@ -1350,12 +1353,16 @@ class BlastImporter extends ChadoImporterBase {
                         if (strcmp($xml->name, 'Hit_hsps') == 0) {
                           break;
                         }
-                      } // end if ($xml->nodeType == \XMLReader::END_ELEMENT) { ...
-                    } // end while ($xml->read()) { ...
+                      }
+                      // End if
+                      // ($xml->nodeType == \XMLReader::END_ELEMENT) { ...
+                    }
+                    // End while ($xml->read()) { ...
                     break;
-                } // end switch ($hit_element_name) { ...
-              } // end if ($xml->nodeType == \XMLReader::ELEMENT) {
-
+                }
+                // End switch ($hit_element_name) { ...
+              }
+              // End if ($xml->nodeType == \XMLReader::ELEMENT) { ...
               // If we're at the end of the <Hit> then add this hit to the
               // hits_array.
               if ($xml->nodeType == \XMLReader::END_ELEMENT) {
@@ -1407,16 +1414,21 @@ class BlastImporter extends ChadoImporterBase {
                   }
 
                   $hit_count++;
-                } // end if (strcmp($xml->name, 'Hit') == 0) { ...
-              }  // end if ($xml->nodeType == \XMLReader::END_ELEMENT) ...
-            } // end while ($xml->read()) { ...
+                }
+                // End if (strcmp($xml->name, 'Hit') == 0) { ...
+              }
+              // End if ($xml->nodeType == \XMLReader::END_ELEMENT) ...
+            }
+            // End while ($xml->read()) { ...
             // End case 'Iteration_hits': ...
             break;
 
-        } // end switch ($tag_name) { ...
-      } // end if ($xml->nodeType == \XMLReader::ELEMENT) { ...
-    } // end while ($xml->read()) { ...
-
+        }
+        // End switch ($tag_name) { ...
+      }
+      // End if ($xml->nodeType == \XMLReader::ELEMENT) { ...
+    }
+    // End while ($xml->read()) { ...
     $blast_object->number_hits = $number_hits;
     $blast_object->hits_array = $hits_array;
     return $blast_object;
