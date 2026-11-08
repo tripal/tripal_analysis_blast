@@ -10,11 +10,10 @@ nav = [
 #    "install/composer-install.md",
 #    "install/docker-demo.md",
 #  ] },
-#  { "Site Administration" = [
-#    "admin/config.md",
-#    "admin/blast-databases.md",
-#    "admin/running-jobs.md",
-#  ] },
+  { "Site Administration" = [
+    "admin/config.md",
+    "admin/importing.md",
+  ] },
 #  { "Guiding your Users" = [
 #    "users/submit-blast.md",
 #    "users/previous-requests.md",
