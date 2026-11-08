@@ -1,1 +1,15 @@
-# placeholder for 4.x workflow
+name: No-op Workflow for 7.x-3.x - will be implemented for documentation for 4.x
+
+on:
+  push:
+    branches: ["4.x"]
+  workflow_dispatch:
+
+jobs:
+  noop:
+    name: No-op Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Exit cleanly
+        run: |
+          echo "No-op: No action required for this event."
