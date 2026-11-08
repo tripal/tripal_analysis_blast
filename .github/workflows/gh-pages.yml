@@ -1,0 +1,36 @@
+name: Deploy Documentation using Zensical (Marketplace Action)
+
+on:
+  push:
+    branches: ["4.x"]
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.zensical.outputs.page_url }}
+
+    steps:
+      - name: Zensical Action
+        id: zensical
+        uses: cssnr/zensical-action@v1
