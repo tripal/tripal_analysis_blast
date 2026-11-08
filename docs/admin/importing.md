@@ -77,10 +77,11 @@ First navigate to the importer form **Tripal → Data Loaders → Chado BLAST XM
 There are multiple methods for providing the results file: via an upload interface,
 specifying a remote URL, or a file path that is local to the server.
 Most likely, you will upload or provide a remote URL.
-importer_1.png
+![First section of the importer form](importing_1.png)
 
-In the next section, 
 Upload your XML file here.
+
 Select the analysis you created.
+
 Select the database you created.
 
