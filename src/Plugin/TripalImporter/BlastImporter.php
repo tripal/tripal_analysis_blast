@@ -690,7 +690,7 @@ class BlastImporter extends ChadoImporterBase {
     string $no_parsed,
     string $blastfile_ext,
     string $query_re,
-    string $query_type_id,
+    ?string $query_type_id,
     int $query_uniquename,
     string $search_keywords,
     int $type_id,
@@ -883,7 +883,7 @@ class BlastImporter extends ChadoImporterBase {
               $query->execute();
 
               // Get the blast object.
-              $blast_obj = $this->getResultObject($xml_content, $blastdb_object, $feature_id, $analysis_object);
+              $blast_obj = self::getResultObject($this->connection, $xml_content, $blastdb_object, $feature_id, $analysis_object);
 
               // Iterate through the hits and add the records to the
               // blast_hit_data table.
@@ -957,6 +957,8 @@ class BlastImporter extends ChadoImporterBase {
    *
    * An object is returned containing the results.
    *
+   * @param ChadoConnection $chado_connection
+   *   The chado connection used to query chado.
    * @param string $xml_string
    *   The XML results for a single iteration. The XML should begin with the
    *   <Iteration> tag.
@@ -1015,7 +1017,8 @@ class BlastImporter extends ChadoImporterBase {
    *        $blast_obj->hits_array[$i]['hsp'][$j]['query_from']
    *        $blast_obj->hits_array[$i]['hsp'][$j]['query_to']
    */
-  protected function getResultObject(
+  protected static function getResultObject(
+    ChadoConnection $chado_connection,
     string $xml_string,
     object $db,
     string $feature_id,
@@ -1027,7 +1030,7 @@ class BlastImporter extends ChadoImporterBase {
 
     // Get the parser using db_id.
     $sql = "SELECT * FROM {0:tripal_analysis_blast} WHERE db_id = :db_id";
-    $parser = $this->connection->query($sql, [':db_id' => $db->db_id])->fetchObject();
+    $parser = $chado_connection->query($sql, [':db_id' => $db->db_id])->fetchObject();
 
     $db_name = '';
     $is_genbank = '';
@@ -1362,7 +1365,7 @@ class BlastImporter extends ChadoImporterBase {
                   else {
                     // Test if this is another feature in the database.
                     $sql = "SELECT feature_id FROM {1:feature} WHERE uniquename = :uniquename";
-                    $hit_feature_id = $this->connection->query($sql, [':uniquename' => $hit_name])->fetchField();
+                    $hit_feature_id = $chado_connection->query($sql, [':uniquename' => $hit_name])->fetchField();
                     // If it is, add link to that feature.
                     if ($hit_feature_id) {
                       $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
