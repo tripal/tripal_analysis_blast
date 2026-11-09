@@ -1017,7 +1017,7 @@ class BlastImporter extends ChadoImporterBase {
    *        $blast_obj->hits_array[$i]['hsp'][$j]['query_from']
    *        $blast_obj->hits_array[$i]['hsp'][$j]['query_to']
    */
-  protected static function getResultObject(
+  public static function getResultObject(
     ChadoConnection $chado_connection,
     string $xml_string,
     object $db,

@@ -2,8 +2,9 @@
 
 namespace Drupal\tripal_analysis_blast\Plugin\Field\FieldType;
 
-use Drupal\core\Field\FieldDefinitionInterface;
-use Drupal\core\Form\FormStateInterface;
+use Drupal\Component\Serialization\Json;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\tripal\TripalField\Attribute\TripalFieldType;
 use Drupal\tripal\Entity\TripalEntityType;
@@ -11,6 +12,7 @@ use Drupal\tripal_chado\TripalField\ChadoFieldItemBase;
 use Drupal\tripal_chado\TripalStorage\ChadoIntStoragePropertyType;
 use Drupal\tripal_chado\TripalStorage\ChadoTextStoragePropertyType;
 use Drupal\tripal_chado\TripalStorage\ChadoVarCharStoragePropertyType;
+use Drupal\tripal_analysis_blast\Plugin\TripalImporter\BlastImporter;
 
 /**
  * Plugin implementation of the blast results field type.
@@ -169,12 +171,102 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     $record_id = $values['record_id']['value']->getValue();
 
     // This will retrieve the blast hit data and convert to json format.
-    $chado = \Drupal::service('tripal_chado.database');
-#    $lookup_manager = \Drupal::service('tripal.tripal_entity.lookup');
-#    $phylotree = new ChadoPhylotree($chado, $lookup_manager);
-#    $json = $phylotree->getTreeNewick($record_id);
-$json = '{"item1": "value1", "item2": "value2"}';
+    $db_id = NULL;
+    $hits = self::tripalGetFeatureBlastResults($record_id, $db_id);
+    $json = Json::encode($hits);
     return $json;
+  }
+
+  /**
+   * Get a blast result from the chado.analysisfeature_prop table.
+   *
+   * @param int $feature_id
+   *   The feature_id of the feature
+   * @param int|null $db_id
+   *   Optional. Specify a database id. This is useful if a feature was
+   *   blast'ed against multipe databases and you only need to retrieve
+   *   results for a specific set.
+   *
+   * @return array
+   *   An array of blast hit objects.
+   */
+  protected static function tripalGetFeatureBlastResults(int $feature_id, ?int $db_id = NULL): array {
+
+    $chado_connection = \Drupal::service('tripal_chado.database');
+
+    // Get the blast results stored as XML from the analysisfeatureprop table.
+    // The type for the property is named 'analysis_blast_output_iteration_hits'
+    // and is found in the 'local' controlled vocabulary (in tripal3 it was the
+    // 'tripal' vocabulary. This CV term was added by this module.
+    $query1 = $chado_connection->select('1:analysisfeature', 'F');
+    $query1->join('1:analysisfeatureprop', 'P', '[F].feature_id = [P].analysisfeature_id');
+    $query1->join('1:cvterm', 'T', '[P].type_id = [T].cvterm_id');
+    $query1->join('1:cv', 'V', '[T].cv_id = [V].cv_id');
+    $query1->join('1:analysis', 'A', '[F].analysis_id = [A].analysis_id');
+    $query1->addField('F', 'analysis_id', 'analysis_id');
+    $query1->addField('P', 'analysisfeature_id', 'analysisfeature_id');
+    $query1->addField('P', 'value', 'value');
+    $query1->fields('A', ['name', 'description', 'program', 'programversion', 'algorithm', 'sourcename', 'sourceversion', 'sourceuri', 'timeexecuted']);
+    $query1->condition('T.name', 'analysis_blast_output_iteration_hits', '=');
+    $query1->condition('V.name', 'local', '=');
+    $query1->condition('F.feature_id', $feature_id, '=');
+    $blast_results = $query1->execute()->fetchAll();
+    if (!$blast_results) {
+      return [];
+    }
+
+    // Get the HTML content for viewing each of the XML files.
+    $blast_object_array = [];
+    $blast_object_counter = 0;
+    foreach ($blast_results as $analysisfeatureprop) {
+      // Get the blast XML for this feature.
+      $blast_xml = $analysisfeatureprop->value;
+      $analysisfeature_id = $analysisfeatureprop->analysisfeature_id;
+      $analysis_id = $analysisfeatureprop->analysis_id;
+
+      // Get the analysis object.
+      $query2 = $chado_connection->select('1:analysis', 'A');
+      $query2->fields('A', []);
+      $query2->condition('A.analysis_id', $analysis_id, '=');
+      $analysis_object = $query2->execute()->fetchObject();
+
+      // Get the blast_hit_data record for this analysis feature.
+      $query3 = $chado_connection->select('1:blast_hit_data', 'B');
+      $query3->fields('B', ['db_id']);
+      $query3->condition('B.analysisfeature_id', $analysisfeature_id, '=');
+      $blast_settings = $query3->execute()->fetchObject();
+
+      $adb_id = NULL;
+      if ($blast_settings) {
+        $adb_id = $blast_settings->db_id;
+      }
+
+      // If the callee specified a database to show then we want to check that
+      // with the database id of the analysis we're looking at. If they
+      // don't match then skip this blast. If a database id was not specified
+      // then continue.
+      if ($db_id && $adb_id != $db_id) {
+        continue;
+      }
+
+      // Analysis db will be null if no blast hits for this feature.
+      if ($adb_id) {
+        // Get the database object.
+        $query4 = $chado_connection->select('1:db', 'D');
+        $query4->fields('D', []);
+        $query4->condition('D.db_id', $adb_id, '=');
+        $db_object = $query4->execute()->fetchObject();
+
+        // Parse the XML and add it to the array of blast results to
+        // be returned.
+        $blast_object = BlastImporter::getResultObject($chado_connection, $blast_xml, $db_object, $feature_id, $analysis_object);
+        $blast_object->analysis = $analysis_object;
+        $blast_object_array[$blast_object_counter] = $blast_object;
+        $blast_object_counter++;
+      }
+    }
+
+    return $blast_object_array;
   }
 
 }
