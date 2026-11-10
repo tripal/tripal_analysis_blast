@@ -1,9 +1,23 @@
-tripal_analysis_blast.feature-viewer:
+feature-viewer:
   js:
     "https://d3js.org/d3.v6.min.js": { type: 'external', minified: true }
     "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js": { type: 'external', minified: true }
     "https://cdn.jsdelivr.net/gh/calipho-sib/feature-viewer@v1.1.0/dist/feature-viewer.bundle.js": { type: 'external', minified: true }
+    'js/tripal_analysis_blast.js': {}
+  css:
+    component:
+      'css/ChadoBlastResultsFormatterDefault.css': {}
   dependencies:
     - 'core/jquery'
     - 'core/drupal'
+    - 'core/once'
+blast-hit-popup:
+  css:
+    component:
+      'css/blast-hit-popup.css': {}
+  js:
+    'js/blast-hit-popup.js': {}
+  dependencies:
+    - 'core/drupal'
+    - 'core/drupal.dialog'
     - 'core/once'

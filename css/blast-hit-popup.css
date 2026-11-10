@@ -1,0 +1,35 @@
+.ui-dialog.blast-hit-popup .ui-dialog-titlebar {
+  padding: 6px 14px;
+  min-height: 0;
+  height: auto;
+  background-color: #dddddd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ui-dialog.blast-hit-popup h1.ui-dialog-title {
+  font-size: 1rem;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+  color: #000000;
+}
+
+.ui-dialog.blast-hit-popup .ui-dialog-titlebar-close {
+  position: static;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+}
+
+.ui-dialog.blast-hit-popup .ui-dialog-content > *:first-child {
+  margin-top: 0;
+}
+
+.ui-dialog.blast-hit-popup .ui-dialog-content pre.blast-align,
+.ui-dialog.blast-hit-popup .ui-dialog-content pre {
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
