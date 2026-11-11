@@ -42,11 +42,11 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
 
     $elements = parent::viewElements($items, $langcode);
 
-    // Attaches the js for visualization as defined in
+    // Attaches the javascrip for visualization as defined in
     // tripal_analysis_blast/tripal_analysis_blast.libraries.yml.
-    $elements['#attached']['library'][] = 'tripal_analysis_blast/feature-viewer';
+    $elements['#attached']['library'][] = 'tripal_analysis_blast/blast-hit-feature-viewer';
 
-    // Retrieve display settings.
+    // Retrieve display settings. Not used yet.
     $settings = $this->getSetting('todo');
 
     $num_results_per_page = 10;
@@ -61,7 +61,15 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
 
       // Retrieve the field data.
       $blast_results = Json::decode($item->get('hit_data')->getString());
+
+      // Each result here would be a query to a particular BLAST database.
+      $br_index = 0;
       foreach ($blast_results as $blast_result) {
+
+        // Adds the placeholder for the feature viewer visualization.
+        $elements[$delta]['feature_viewer'] = [
+          '#markup' => '<div class="feature-viewer-container" id="blast-hit-container-' . $delta . '-' . $br_index . '"></div>',
+        ];
 
         $hits_array = $blast_result['hits_array'];
         $db = $blast_result['db'];
@@ -100,6 +108,11 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
             }
           }
 
+          // Values that are used for all blast results.
+          if ($br_index == 0) {
+            $elements['#attached']['drupalSettings']['tripal_analysis_blast']['query_data']['residues'] = $blast_result['feature_residues'];
+          }
+
           // Provide a shortened description for table display.
           $full_description = $hit['description'] ?: $this->t('No description');
 if ($j == 2) { $full_description = 'Test of long description yes this is very long and not containing any information whatsoever'; }
@@ -130,7 +143,7 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
               '#attributes' => [
                 'type' => 'button',
                 'class' => ['tripal-analysis-blast-popup-trigger'],
-                'data-popup-message' => $this->buildPopup($blast_result, $hit),
+                'data-popup-message' => $this->buildPopupData($blast_result, $hit),
                 'id' => $row_id,
               ],
               '#attached' => [
@@ -140,6 +153,10 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
               ],
             ],
           ];
+
+          // Add the variables used by the javascript.
+          $elements['#attached']['drupalSettings']['tripal_analysis_blast']['hit_data'][$br_index]
+            = $this->buildJavascriptData($blast_result, $hit);
 
           // Add elements for this row to the table.
           $rows[] = [
@@ -163,14 +180,8 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
         ];
         $elements[$delta]['hit_table'] = $hit_table;
 
-        // Adds the placeholder for the blast hits.
-        $elements[$delta]['feature_viewer'] = [
-          '#markup' => '<div class="xxx-container" id="blast-hit-container"></div>',
-        ];
-
-        // Add the variables used by the javascript.
-#        $elements['#attached']['drupalSettings']['hitData'] = $hit_data;
-
+        // Increment the blast result index.
+        $br_index++;
       }
     }
 
@@ -179,16 +190,17 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
 
   /**
    * Builds the content for the popup window.
+   *
+   * @param array $blast_result
+   *   Nested array with all blast results for one subject.
+   * @param array $hit
+   *   Nested array with the current hit.
+   *
+   * @return string
+   *   HTML markup to display in the popup.
    */
-  protected function buildPopup(array $blast_result, array $hit): string {
-    $db_name = $blast_result['db']['name'];
-    $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $hit['description'] ?: $this->t('Name not specified');
-    $hit_description = $hit['description'] ? ' (' . $hit['description'] . ')' : '';
+  protected function buildPopupData(array $blast_result, array $hit): string {
     $hsps_array = $hit['hsp'] ?? [];
-
-    $content = '<strong>BLAST of ' . $blast_result['feature_name'] . ' vs. ' . $db_name . '</strong><br>';
-    $content .= 'Match: ' . $hit_name . $hit_description . '<br>';
-    $hsp_pos = [];
 
     // Find the number of digits in the largest coordinate.
     $ndigits = 1;
@@ -201,19 +213,52 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
       }
     }
     $sprintf_pattern = '%' . $ndigits . 'd';
-    $midline_fill = str_repeat(' ', 8 + $ndigits);
+    $midline_indent = str_repeat(' ', 8 + $ndigits);
+
+    // Prepare some variables.
+    $feature_name = $blast_result['feature_name'] ?? 'undefined';
+    $db_name = $blast_result['db']['name'] ?? 'undefined';
+    $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $hit['description'] ?: $this->t('Name not specified');
+    $hit_description = $hit['description'] ? ' (' . $hit['description'] . ')' : '';
+
+    // Build the HTML markup.
+    $markup = '<strong>BLAST of ' . $feature_name . ' vs. ' . $db_name . '</strong><br>';
+    $markup .= 'Match: ' . $hit_name . $hit_description . '<br>';
 
     foreach ($hsps_array AS $hsp) {
-      $content .= '<strong>HSP ' . $hsp['hsp_num'] . '</strong> Score: ' . $hsp['bit_score'] . ' bits (' . $hsp['score']
-      . '), Expect = ' . sprintf('%.3e', floatval($hsp['evalue'])) . '<br>'
-      . 'Identity = ' . sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100)
-      . ', Postives = ' . sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100)
-      . ', Query Frame = ' . $hsp['query_frame']
-      . '<pre class="blast_align">'
+      $markup .= '<strong>HSP ' . $hsp['hsp_num'] . '</strong>'
+      . ' Score: ' . $hsp['bit_score'] . ' bits (' . $hsp['score'] . '),'
+      . ' Expect = ' . sprintf('%.3e', floatval($hsp['evalue'])) . '<br>'
+      . 'Identity = ' . sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100) . ','
+      . ' Postives = ' . sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100) . ','
+      . ' Query Frame = ' . $hsp['query_frame']
+      . '<pre>'
       . 'Query: ' . sprintf($sprintf_pattern, $hsp['query_from']) . ' ' . $hsp['qseq'] . ' ' . sprintf("%d", $hsp['query_to']) . "\n"
-      . $midline_fill . $hsp['midline'] . "\n"
+      . $midline_indent . $hsp['midline'] . "\n"
       . 'Sbjct: ' . sprintf($sprintf_pattern, $hsp['hit_from']) . ' ' . $hsp['hseq'] . ' ' . sprintf("%d",$hsp['hit_to']) . '    '
       . '</pre>';
+    }
+
+    return $markup;
+  }
+
+  /**
+   * Builds the data array to pass to javascript.
+   *
+   * @param array $blast_result
+   *   Nested array with all blast results for one subject.
+   * @param array $hit
+   *   Nested array with the current hit.
+   *
+   * @return array
+   *   Data to pass to the javascript.
+   */
+  protected function buildJavascriptData(array $blast_result, array $hit): array {
+    $data = [];
+
+    $hsp_pos = [];
+    $hsps_array = $hit['hsp'] ?? [];
+    foreach ($hsps_array AS $hsp) {
       $hsp_pos[] = [
         'x' => intval($hsp['query_from']),
         'y' => intval($hsp['query_to']),
@@ -221,10 +266,16 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
       ];
     }
 
-    // In case the hitname is a long id, simplify it
-    $clean_hit_name = preg_replace("/^([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|$/", "$4", $hit['hit_name']);
+    // In case the hitname is a long id, simplify it.
+    $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $hit['description'] ?: $this->t('Name not specified');
+    $clean_hit_name = preg_replace("/^([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|$/", "$4", $hit_name);
 
-    return $content;
+    $hsp_pos_json = Json::encode($hsp_pos);
+
+    $data['hsp_pos'] = $hsp_pos_json;
+    $data['hit_name'] = $clean_hit_name;
+
+    return $data;
   }
 
 }

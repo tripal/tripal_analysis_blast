@@ -8,7 +8,7 @@
   justify-content: space-between;
 }
 
-.ui-dialog.blast-hit-popup h1.ui-dialog-title {
+.ui-dialog.blast-hit-popup .ui-dialog-titlebar h1.ui-dialog-title {
   font-size: 1rem;
   line-height: 1.2;
   margin: 0;
@@ -16,19 +16,33 @@
   color: #000000;
 }
 
-.ui-dialog.blast-hit-popup .ui-dialog-titlebar-close {
-  position: static;
-  width: 24px;
-  height: 24px;
+.ui-dialog.blast-hit-popup .ui-dialog-titlebar .ui-dialog-titlebar-close {
+  border-radius: 0;
+  border: none;
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  width: 36px;
+  height: 36px;
   margin: 0;
   padding: 0;
+  background: #transparent;
+}
+
+.ui-dialog.blast-hit-popup .ui-dialog-titlebar .ui-dialog-titlebar-close::before {
+  content: "×";
+  font-size: 2.5rem;
+  color: #000000;
+}
+
+.ui-dialog.blast-hit-popup .ui-dialog-titlebar .ui-dialog-titlebar-close:hover::before {
+  color: #F00;
 }
 
 .ui-dialog.blast-hit-popup .ui-dialog-content > *:first-child {
   margin-top: 0;
 }
 
-.ui-dialog.blast-hit-popup .ui-dialog-content pre.blast-align,
 .ui-dialog.blast-hit-popup .ui-dialog-content pre {
   font-size: 0.7rem;
   line-height: 1.2;

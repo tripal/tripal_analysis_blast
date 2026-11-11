@@ -213,6 +213,7 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     $query1->addField('P', 'value', 'value');
     $query1->addField('F', 'name', 'feature_name');
     $query1->addField('F', 'uniquename', 'feature_uniquename');
+    $query1->addField('F', 'residues', 'feature_residues');
     $query1->fields('A', ['name', 'description', 'program', 'programversion', 'algorithm', 'sourcename', 'sourceversion', 'sourceuri', 'timeexecuted']);
     $query1->condition('T.name', 'analysis_blast_output_iteration_hits', '=');
     $query1->condition('V.name', 'local', '=');
@@ -279,6 +280,7 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
         $blast_object->analysis = $analysis_object;
         $blast_object->feature_name = $analysisfeatureprop->feature_name;
         $blast_object->feature_uniquename = $analysisfeatureprop->feature_uniquename;
+        $blast_object->feature_residues = $analysisfeatureprop->feature_residues;
         $blast_object_array[$blast_object_counter] = $blast_object;
         $blast_object_counter++;
       }
