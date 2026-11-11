@@ -20,5 +20,4 @@ blast-hit-popup:
     'js/blast-hit-popup.js': {}
   dependencies:
     - 'core/drupal'
-    - 'core/drupal.dialog'
     - 'core/once'

@@ -1,33 +1,31 @@
 (function (Drupal, once) {
   Drupal.behaviors.tripalBlastPopup = {
     attach(context) {
-      const triggers = once(
+      once(
         'tripal-blast-popup',
         '.tripal-analysis-blast-popup-trigger',
         context
-      );
+      ).forEach((button) => {
 
-      triggers.forEach((button) => {
         button.addEventListener('click', () => {
-          const message = button.getAttribute('data-popup-message') || '';
+          const dialog = document.createElement('dialog');
 
-          const dialogContent = document.createElement('div');
-          dialogContent.innerHTML = message;
+          dialog.classList.add('blast-hit-popup');
 
-          const modal = Drupal.dialog(dialogContent, {
-            'title': Drupal.t('Blast Details'),
-            'width': 'fit-content',
-            'min-width': '600px',
-            'max-width': '98vw',
-            classes: {
-              'ui-dialog': 'blast-hit-popup',
-              'pre': 'blast-align',
-            },
-          });
+          dialog.innerHTML = `
+            <button type="button" class="blast-close"></button>
+            ${button.dataset.popupMessage || ''}
+          `;
 
-          modal.showModal();
+          document.body.appendChild(dialog);
+          dialog.querySelector('.blast-close')
+            .addEventListener('click', () => dialog.close());
+
+          dialog.addEventListener('close', () => dialog.remove());
+
+          dialog.showModal();
         });
       });
-    },
+    }
   };
 })(Drupal, once);

@@ -1,49 +1,30 @@
-.ui-dialog.blast-hit-popup .ui-dialog-titlebar {
-  padding: 6px 14px;
-  min-height: 0;
-  height: auto;
-  background-color: #dddddd;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.ui-dialog.blast-hit-popup .ui-dialog-titlebar h1.ui-dialog-title {
-  font-size: 1rem;
-  line-height: 1.2;
-  margin: 0;
-  padding: 0;
-  color: #000000;
-}
-
-.ui-dialog.blast-hit-popup .ui-dialog-titlebar .ui-dialog-titlebar-close {
-  border-radius: 0;
+dialog.blast-hit-popup {
+  width: max-content;
+  max-width: 95vw;
+  max-height: 95vh;
+  min-width: 600px;
+  overflow: auto;
+  padding: 1rem;
   border: none;
-  position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
-  width: 36px;
-  height: 36px;
-  margin: 0;
-  padding: 0;
-  background: #transparent;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgb(0 0 0 / 30%);
 }
 
-.ui-dialog.blast-hit-popup .ui-dialog-titlebar .ui-dialog-titlebar-close::before {
+dialog.blast-hit-popup::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+dialog.blast-hit-popup .blast-close {
+  float: right;
+  cursor: pointer;
+}
+
+dialog.blast-hit-popup .blast-close::before {
   content: "×";
-  font-size: 2.5rem;
-  color: #000000;
+  font-size: 1.5rem;
 }
 
-.ui-dialog.blast-hit-popup .ui-dialog-titlebar .ui-dialog-titlebar-close:hover::before {
-  color: #F00;
-}
-
-.ui-dialog.blast-hit-popup .ui-dialog-content > *:first-child {
-  margin-top: 0;
-}
-
-.ui-dialog.blast-hit-popup .ui-dialog-content pre {
-  font-size: 0.7rem;
+dialog.blast-hit-popup pre {
+  font-size: 0.65rem;
   line-height: 1.2;
 }
