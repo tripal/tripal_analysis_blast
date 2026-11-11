@@ -24,6 +24,11 @@ The command to run the BLAST search will use one of the
 See the [NCBI quick start page](https://www.ncbi.nlm.nih.gov/books/NBK569856/)
 for an overview of how to run these commands.
 
+For example:
+``` bash
+blastn -query my.genes.fna -db /blastdbs/nt -outfmt 5 -out my.blast.xml
+```
+
 !!! important Generate output in xml format
     This module requires that the blast output be in xml format.
     To do so, you will need to include this parameter when running your blast search: `-outfmt 5`.
