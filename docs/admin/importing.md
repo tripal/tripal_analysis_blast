@@ -14,12 +14,12 @@ program on your own computer. If you don't already have BLAST+ installed,
 
 There are two steps: creating the BLAST database, and performing the BLAST search.
 
-You can download existing compiled BLAST databases, ![for example from NCBI](https://www.ncbi.nlm.nih.gov/books/NBK569850/),
+You can download existing compiled BLAST databases, [for example from NCBI](https://www.ncbi.nlm.nih.gov/books/NBK569850/),
 or if you want to create your own database locally from your own FASTA file, 
 [NCBI has documentation here describing how to do this](https://www.ncbi.nlm.nih.gov/books/NBK569841/).
 
 The command to run the BLAST search will use one of the
-[blast commands as described here](https://www.ncbi.nlm.nih.gov/books/NBK569839/)).
+[blast commands as described here](https://www.ncbi.nlm.nih.gov/books/NBK569839/).
 
 See the [NCBI quick start page](https://www.ncbi.nlm.nih.gov/books/NBK569856/)
 for an overview of how to run these commands.
@@ -34,8 +34,8 @@ for an overview of how to run these commands.
     If they were compressed, you will have to temporarily uncompress them first.
     However, you can compress the xml output file with gzip if desired.
 
-Adding a BLAST Database to your site
-------------------------------------
+Adding a reference to a BLAST Database to your site
+---------------------------------------------------
 
 A BLAST analysis involves running the NCBI blast program using a set of sequences,
 and looking for matches in some database. A database is simply a collection of
@@ -60,6 +60,10 @@ We could then use the following values for adding the SwissProt database:
   | Database Description | A curated protein sequence database which strives to provide a high level of annotation, a minimal level of redundancy and high level of integration with other databases |
   | Database URL | https://expasy.org/sprot/ |
   | Database URL prefix | https://www.uniprot.org/uniprot/ |
+
+!!! note
+    The URL prefix is important here, as it will allow you to include links to the
+    hit (subject) sequences later.
 
 Adding a Database cross-reference record
 ----------------------------------------
@@ -98,20 +102,19 @@ then select **Analysis**. An example:
   | Data Source Version | | optional |
   | Data Source URI | optional, the next item will provide the link to Swiss-Prot |
   | Database Reference Annotations | ExPASy Swiss-Prot:Release 2026_03 | First select database, then select the accession |
-  | Relationship | Tripalus gene prediction analysis | An example. You should link to a separate analysis describing your genome assembly or gene prediction |
+  | Relationship | Tripalus gene prediction analysis | An example. You should link to a separate analysis describing your genome assembly or gene prediction. A possible vocabulary term to use would be `BLAST results (format:1333)`, and check the "Reverse" checkbox. |
 
 Import the BLAST XML results
 ----------------------------
 First navigate to the importer form **Tripal → Data Loaders → Chado BLAST XML results loader** and the importer page will be presented.
-The first part is where you upload your xml file.
+In the first section of this form you will provide the location of your xml file.
 There are multiple methods for providing the results file: via an upload interface,
 specifying a remote URL, or a file path that is local to the server.
-Most likely, you will upload or provide a remote URL.
 ![First section of the importer form](importing_1.png)
 
- 1. Upload your XML file here.
+Next, specify the analysis you created for this BLAST run.
 
- 2. Select the analysis you created.
+Then specify the database you created.
 
- 3. Select the database you created.
+
 
