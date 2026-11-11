@@ -203,7 +203,7 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     // and is found in the 'local' controlled vocabulary (in tripal3 it was the
     // 'tripal' vocabulary. This CV term was added by this module.
     $query1 = $chado_connection->select('1:analysisfeature', 'AF');
-    $query1->join('1:analysisfeatureprop', 'P', '[AF].feature_id = [P].analysisfeature_id');
+    $query1->join('1:analysisfeatureprop', 'P', '[AF].analysisfeature_id = [P].analysisfeature_id');
     $query1->join('1:cvterm', 'T', '[P].type_id = [T].cvterm_id');
     $query1->join('1:cv', 'V', '[T].cv_id = [V].cv_id');
     $query1->join('1:analysis', 'A', '[AF].analysis_id = [A].analysis_id');
