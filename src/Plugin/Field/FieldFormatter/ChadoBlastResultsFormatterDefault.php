@@ -45,6 +45,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
     // Attaches the javascrip for visualization as defined in
     // tripal_analysis_blast/tripal_analysis_blast.libraries.yml.
     $elements['#attached']['library'][] = 'tripal_analysis_blast/blast-hit-feature-viewer';
+    $elements['#attached']['library'][] = 'tripal_analysis_blast/blast-hit-popup';
 
     // Retrieve display settings. Not used yet.
     $settings = $this->getSetting('todo');
@@ -94,25 +95,14 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
         for ($hit_index = $offset; $hit_index < $offset + $num_results_per_page && $hit_index < $total_records; $hit_index++) {
           $row_id = 'hsp-link-' . $analysis['analysis_id'] . '-' . $hit_index;
           $hit = $hits_array[$hit_index];
-          $hit_name = $hit['hit_name'] ?: $hit['accession'];
-          $hit_url = $hit['hit_url'] ?? NULL;
-          if ($hit_url) {
-            // Catch exception in the event url is not valid.
-            try {
-              $hit_name = Link::fromTextAndUrl($hit_name, Url::fromUri($hit_url, []))->toString();
-            }
-            catch (\Exception $e) {
-              // For example, "InvalidArgumentException: The URI
-              // 'cv/lookup/{db}/{accession}' is invalid".
-              // In this case, leave hit name unchanged.
-            }
-          }
 
           // Values that are used for all blast results.
           if ($hit_index == $offset) {
-dpm("CPF8 add query data");
             $elements['#attached']['drupalSettings']['tripal_analysis_blast']['query_data']['residues'] = $blast_result['feature_residues'];
           }
+
+          // The hit name for table display, is a link if possible.
+          $hit_name = $this->makeHitLinkOut($hit);
 
           // Provide a shortened description for table display.
           $full_description = $hit['description'] ?: $this->t('No description');
@@ -156,7 +146,6 @@ if ($hit_index == 2) { $full_description = 'Test of long description yes this is
           ];
 
           // Add the variables used by the javascript.
-dpm("CPF7 Add hit data $hit_index");
           $elements['#attached']['drupalSettings']['tripal_analysis_blast']['hit_data'][$hit_index]
             = $this->buildJavascriptData($blast_result, $hit);
 
@@ -191,6 +180,48 @@ dpm("CPF7 Add hit data $hit_index");
   }
 
   /**
+   * Gets the name of the hit and links to external DB if possible.
+   *
+   * @param array $hit
+   *   One blast hit.
+   *
+   * @return string|Link
+   *   Hit name as string, or Drupal\Core\Link if linkout is possible.
+   */
+  protected function makeHitLinkOut(array $hit): string|Link {
+    // @todo use accession in preference? $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $this->t('no hit identifier');
+    $hit_name = $hit['accession'] ?: $hit['hit_name'] ?: $hit['description'] ?: $this->t('no hit identifier');
+    $hit_accession = $hit['accession'] ?? NULL;
+    $hit_url = $hit['hit_url'] ?? NULL;
+    // @todo db not yet implemented in hit array.
+    $hit_db = $hit['db'] ?? NULL;
+    if ($hit_url) {
+      if ($hit_db) {
+        $hit_url = preg_replace('/{db}/', $hit_db, $hit_url);
+      }
+      // If accession placeholder, substitute, otherwise append.
+      if ($hit_accession) {
+        $hit_url = preg_replace('/{accession}/', $hit_accession, $hit_url);
+      }
+      else {
+        $hit_url .= $hit_accession;
+      }
+      // Catch exception in the event url is not valid.
+      try {
+        $hit_name = Link::fromTextAndUrl($hit_name, Url::fromUri($hit_url, [])); #->toString();
+      }
+      catch (\Exception $e) {
+        // For example, "InvalidArgumentException: The URI
+        // 'cv/lookup/{db}/{accession}' is invalid".
+        // In this case, leave hit name unchanged.
+      }
+    }
+    else {
+    }
+    return $hit_name;
+  }
+
+  /**
    * Builds the content for the popup window.
    *
    * @param array $blast_result
@@ -220,7 +251,7 @@ dpm("CPF7 Add hit data $hit_index");
     // Prepare some variables.
     $feature_name = $blast_result['feature_name'] ?? 'undefined';
     $db_name = $blast_result['db']['name'] ?? 'undefined';
-    $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $hit['description'] ?: $this->t('Name not specified');
+    $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $hit['description'] ?: $this->t('no hit identifier');
     $hit_description = $hit['description'] ? ' (' . $hit['description'] . ')' : '';
 
     // Build the HTML markup.
@@ -269,7 +300,7 @@ dpm("CPF7 Add hit data $hit_index");
     }
 
     // In case the hitname is a long id, simplify it.
-    $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $hit['description'] ?: $this->t('Name not specified');
+    $hit_name = $hit['accession'] ?: $hit['hit_name'] ?: $hit['description'] ?: $this->t('Name not specified');
     $clean_hit_name = preg_replace("/^([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|$/", "$4", $hit_name);
 
     $hsp_pos_json = Json::encode($hsp_pos);
