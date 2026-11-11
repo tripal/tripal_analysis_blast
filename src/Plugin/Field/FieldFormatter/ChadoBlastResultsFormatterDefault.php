@@ -106,7 +106,6 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
 
           // Provide a shortened description for table display.
           $full_description = $hit['description'] ?: $this->t('No description');
-if ($hit_index == 2) { $full_description = 'Test of long description yes this is very long and not containing any information whatsoever'; } //;;;
           $short_description = substr($full_description, 0, 50);
           if (strlen($full_description) > 50) {
             $short_description .= "…";
