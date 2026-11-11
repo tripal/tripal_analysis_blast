@@ -51,7 +51,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
 
     $num_results_per_page = 10;
     $feature_pager_id = 15; // increment by 1 for each database.
-    $i = 0;
+    $pager_index = 0;
     $list_items = [];
 
     $current_page_num = 0;
@@ -74,7 +74,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
         $hits_array = $blast_result['hits_array'];
         $db = $blast_result['db'];
         $analysis = $blast_result['analysis'];
-        $pager_id = $feature_pager_id + $i;
+        $pager_id = $feature_pager_id + $pager_index;
         $total_records = count($hits_array ?? []);
 
         // Add this blast report to the list of available reports.
@@ -91,9 +91,9 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
         // Build the table of hits for the current page.
         $header = ['Match Name', 'Expect', 'Identity', 'Description', ''];
         $rows = [];
-        for ($j = $offset; $j < $offset + $num_results_per_page && $j < $total_records; $j++) {
-          $row_id = 'hsp-link-' . $analysis['analysis_id'] . '-' . $j;
-          $hit = $hits_array[$j];
+        for ($hit_index = $offset; $hit_index < $offset + $num_results_per_page && $hit_index < $total_records; $hit_index++) {
+          $row_id = 'hsp-link-' . $analysis['analysis_id'] . '-' . $hit_index;
+          $hit = $hits_array[$hit_index];
           $hit_name = $hit['hit_name'] ?: $hit['accession'];
           $hit_url = $hit['hit_url'] ?? NULL;
           if ($hit_url) {
@@ -109,13 +109,14 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
           }
 
           // Values that are used for all blast results.
-          if ($br_index == 0) {
+          if ($hit_index == $offset) {
+dpm("CPF8 add query data");
             $elements['#attached']['drupalSettings']['tripal_analysis_blast']['query_data']['residues'] = $blast_result['feature_residues'];
           }
 
           // Provide a shortened description for table display.
           $full_description = $hit['description'] ?: $this->t('No description');
-if ($j == 2) { $full_description = 'Test of long description yes this is very long and not containing any information whatsoever'; }
+if ($hit_index == 2) { $full_description = 'Test of long description yes this is very long and not containing any information whatsoever'; } //;;;
           $short_description = substr($full_description, 0, 50);
           if (strlen($full_description) > 50) {
             $short_description .= "…";
@@ -155,7 +156,8 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
           ];
 
           // Add the variables used by the javascript.
-          $elements['#attached']['drupalSettings']['tripal_analysis_blast']['hit_data'][$br_index]
+dpm("CPF7 Add hit data $hit_index");
+          $elements['#attached']['drupalSettings']['tripal_analysis_blast']['hit_data'][$hit_index]
             = $this->buildJavascriptData($blast_result, $hit);
 
           // Add elements for this row to the table.
@@ -273,7 +275,7 @@ if ($j == 2) { $full_description = 'Test of long description yes this is very lo
     $hsp_pos_json = Json::encode($hsp_pos);
 
     $data['hsp_pos'] = $hsp_pos_json;
-    $data['hit_name'] = $clean_hit_name;
+    $data['clean_name'] = $clean_hit_name;
 
     return $data;
   }

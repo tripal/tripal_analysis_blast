@@ -1,3 +1,6 @@
+/**
+ * Feature Viewer from https://github.com/calipho-sib/feature-viewer
+ */
 (function (Drupal, once) {
   Drupal.behaviors.blastHitFeatureViewer = {
     attach(context, settings) {
@@ -6,27 +9,34 @@
         if (!el || !el.id) {
           return;
         }
-        // This is the array of items passed from the tripal_analysis_blast formatter.
-        const hit_data = settings.tripal_analysis_blast.hit_data;
-  console.log("CP07 hit_data", hit_data);
+        // This is the data passed from the tripal_analysis_blast formatter.
         const query_data = settings.tripal_analysis_blast.query_data;
-  console.log("CP08 query_data", query_data);
+        const hit_data = settings.tripal_analysis_blast.hit_data;
         // Initialize the feature viewer.
         var options = {
           showAxis: true,
           showSequence: true,
           brushActive: true,
-          toolbar:true,
-          bubbleHelp: true,
-          zoomMax:20
+          toolbar: true,
+          bubbleHelp: false,
+          zoomMax: 3
         };
         var ft = new FeatureViewer.createFeature(
           query_data.residues,
           "#" + el.id,
           options
         );
+        for (let i = 0; i < hit_data.length; i++) {
+          const hit = hit_data[i];
+          ft.addFeature({
+            data: JSON.parse(hit.hsp_pos),
+            name: hit.clean_name,
+            className: "blast_match", // Can be used for styling.
+            color: "#0F8292",
+            type: "rect"
+          });
+        };
       });
     },
   };
 })(Drupal, once);
-
