@@ -50,13 +50,11 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
     // Retrieve display settings. Not used yet.
     $settings = $this->getSetting('todo');
 
+    // @todo Make this value configurable.
     $num_results_per_page = 10;
-    $feature_pager_id = 15; // increment by 1 for each database.
+    # $feature_pager_id = 15; // increment by 1 for each database.
     $pager_index = 0;
-    $list_items = [];
-
-    $current_page_num = 0;
-    $offset = $num_results_per_page * $current_page_num;
+    # $list_items = [];
 
     foreach ($items as $delta => $item) {
 
@@ -64,32 +62,52 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
       $blast_results = Json::decode($item->get('hit_data')->getString());
 
       // Each result here would be a query to a particular BLAST database.
-      $br_index = 0;
       foreach ($blast_results as $blast_result) {
-
-        // Adds the placeholder for the feature viewer visualization.
-        $elements[$delta]['feature_viewer'] = [
-          '#markup' => '<div class="feature-viewer-container" id="blast-hit-container-' . $delta . '-' . $br_index . '"></div>',
-        ];
 
         $hits_array = $blast_result['hits_array'];
         $db = $blast_result['db'];
         $analysis = $blast_result['analysis'];
-        $pager_id = $feature_pager_id + $pager_index;
         $total_records = count($hits_array ?? []);
 
-        // Add this blast report to the list of available reports.
-        // If the linked analysis is published, make this clickable.
+        // Set up a pager for this blast result.
+        $pager = $pager_manager->createPager($total_records, $num_results_per_page, $pager_index);
+        $current_page_num = $pager->getCurrentPage();
+        $offset = $num_results_per_page * $current_page_num;
+
+        // Result title. If the linked analysis is published, make it clickable.
         $result_name = 'BLAST of ' . $blast_result['feature_name'] . ' vs. ' . $db['name'];
         if ($analysis['entity_id']) {
           $analysis_url = 'base://bio_data/' . $analysis['entity_id'];
           $result_name = Link::fromTextAndUrl($result_name, Url::fromUri($analysis_url, []))->toString();
         }
+        $result_description = '<br>Analysis Date: '
+          . preg_replace("/^(\d+-\d+-\d+) .*/", "$1", $analysis['timeexecuted'])
+          . '<br>Total hits: '
+          . number_format($total_records);
 
-        // Set up a pager.
-        $pager = $pager_manager->createPager($total_records, $num_results_per_page);
+        // Add a form element for the title and description.
+        $elements[$delta]['description'] = [
+          '#type' => 'container',
+          '#attributes' => [
+            '#id' => $analysis['analysis_id'],
+          ],
+          'body' => [
+            '#markup' => '<strong>' . $result_name . '</strong>' . $result_description,
+          ],
+        ];
 
-        // Build the table of hits for the current page.
+        // Adds the placeholder for the feature viewer visualization.
+        // The element identifier is based on $delta.
+        $el_id = 'blast-hit-container-' . $delta;
+        $elements[$delta]['feature_viewer'] = [
+          '#type' => 'container',
+          '#attributes' => [
+            'class' => 'feature-viewer-container',
+            'id' => $el_id,
+          ],
+        ];
+
+        // Build the table of hits for the current page of the pager.
         $header = ['Match Name', 'Expect', 'Identity', 'Description', ''];
         $rows = [];
         for ($hit_index = $offset; $hit_index < $offset + $num_results_per_page && $hit_index < $total_records; $hit_index++) {
@@ -101,13 +119,14 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
             $elements['#attached']['drupalSettings']['tripal_analysis_blast']['query_data']['residues'] = $blast_result['feature_residues'];
           }
 
-          // The hit name for table display, is a link if possible.
+          // The hit name for table display, this is a link when possible.
           $hit_name = $this->makeHitLinkOut($hit);
 
           // Provide a shortened description for table display.
           $full_description = $hit['description'] ?: $this->t('No description');
-          $short_description = substr($full_description, 0, 50);
-          if (strlen($full_description) > 50) {
+          $description_trim_length = 50;
+          $short_description = substr($full_description, 0, $description_trim_length);
+          if (strlen($full_description) > $description_trim_length) {
             $short_description .= "…";
           }
           // We want a tooltip if the user mouses-over an abbreviated
@@ -123,7 +142,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
           $evalue = sprintf("%.3e", $hit['best_evalue']);
           $pid = $hit['percent_identity'] ?? '';
 
-          // The details link is a button that will trigger javascript
+          // The details button will trigger javascript
           // to display a popup with more information.
           $details_link = [
             'data' => [
@@ -144,8 +163,9 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
             ],
           ];
 
-          // Add the variables used by the javascript.
-          $elements['#attached']['drupalSettings']['tripal_analysis_blast']['hit_data'][$hit_index]
+          // Add the variables used by the feature viewer javascript,
+          // under an element identifier based on $delta.
+          $elements['#attached']['drupalSettings']['tripal_analysis_blast']['hit_data'][$el_id][$hit_index]
             = $this->buildJavascriptData($blast_result, $hit);
 
           // Add elements for this row to the table.
@@ -169,9 +189,13 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
           '#empty' => $this->t('There are no BLAST results for this feature.'),
         ];
         $elements[$delta]['hit_table'] = $hit_table;
+        $elements[$delta]['pager'] = [
+          '#type' => 'pager',
+          '#element' => $pager_index,
+        ];
 
-        // Increment the blast result index.
-        $br_index++;
+        // Increment the pager index.
+        $pager_index++;
       }
     }
 
@@ -188,18 +212,17 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
    *   Hit name as string, or Drupal\Core\Link if linkout is possible.
    */
   protected function makeHitLinkOut(array $hit): string|Link {
-    // @todo use accession in preference? $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $this->t('no hit identifier');
-    $hit_name = $hit['accession'] ?: $hit['hit_name'] ?: $hit['description'] ?: $this->t('no hit identifier');
-    $hit_accession = $hit['accession'] ?? NULL;
+    $hit_name = $this->getHitName($hit);
     $hit_url = $hit['hit_url'] ?? NULL;
+    $hit_accession = $hit['accession'] ?? NULL;
     // @todo db not yet implemented in hit array.
     $hit_db = $hit['db'] ?? NULL;
-    if ($hit_url) {
+    if ($hit_url && $hit_accession) {
       if ($hit_db) {
         $hit_url = preg_replace('/{db}/', $hit_db, $hit_url);
       }
-      // If accession placeholder, substitute, otherwise append.
-      if ($hit_accession) {
+      // If accession placeholder is present, substitute, otherwise append.
+      if (preg_match('/{accession}/', $hit_accession)) {
         $hit_url = preg_replace('/{accession}/', $hit_accession, $hit_url);
       }
       else {
@@ -214,8 +237,6 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
         // 'cv/lookup/{db}/{accession}' is invalid".
         // In this case, leave hit name unchanged.
       }
-    }
-    else {
     }
     return $hit_name;
   }
@@ -250,6 +271,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
     // Prepare some variables.
     $feature_name = $blast_result['feature_name'] ?? 'undefined';
     $db_name = $blast_result['db']['name'] ?? 'undefined';
+    // @todo Make priority of hit name or accession configurable.
     $hit_name = $hit['hit_name'] ?: $hit['accession'] ?: $hit['description'] ?: $this->t('no hit identifier');
     $hit_description = $hit['description'] ? ' (' . $hit['description'] . ')' : '';
 
@@ -290,7 +312,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
 
     $hsp_pos = [];
     $hsps_array = $hit['hsp'] ?? [];
-    foreach ($hsps_array AS $hsp) {
+    foreach ($hsps_array as $hsp) {
       $hsp_pos[] = [
         'x' => intval($hsp['query_from']),
         'y' => intval($hsp['query_to']),
@@ -298,16 +320,32 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
       ];
     }
 
-    // In case the hitname is a long id, simplify it.
     $hit_name = $hit['accession'] ?: $hit['hit_name'] ?: $hit['description'] ?: $this->t('Name not specified');
-    $clean_hit_name = preg_replace("/^([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|$/", "$4", $hit_name);
 
-    $hsp_pos_json = Json::encode($hsp_pos);
+    // In case the hitname is a long id, simplify it.
+    $hit_clean_name = preg_replace("/^([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|([a-zA-Z0-9._-]+)\|$/", "$4", $hit_name);
 
-    $data['hsp_pos'] = $hsp_pos_json;
-    $data['clean_name'] = $clean_hit_name;
+    $data['hsp_pos'] = $hsp_pos;
+    $data['clean_name'] = $hit_clean_name;
+    // @todo Make color configurable.
+    $data['color'] = "#0F8292";
 
     return $data;
+  }
+
+  /**
+   * Get the preferred hit name.
+   *
+   * @param array $hit
+   *   A single blast hit array.
+   *
+   * @return string
+   *   The name of the hit.
+   */
+  protected function getHitName(array $hit): string {
+    // @todo Make priority of hit_name or accession configurable.
+    $hit_name = $hit['accession'] ?: $hit['hit_name'] ?: $hit['description'] ?: $this->t('no hit id!');
+    return $hit_name;
   }
 
 }

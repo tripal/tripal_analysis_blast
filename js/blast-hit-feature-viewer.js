@@ -9,9 +9,11 @@
         if (!el || !el.id) {
           return;
         }
-        // This is the data passed from the tripal_analysis_blast formatter.
+
+        // This is the data passed from the tripal_analysis_blast formatter,
+        // and el.id is based on the drupal field delta value.
         const query_data = settings.tripal_analysis_blast.query_data;
-        const hit_data = settings.tripal_analysis_blast.hit_data;
+        const hit_data = settings.tripal_analysis_blast.hit_data[el.id];
         // Initialize the feature viewer.
         var options = {
           showAxis: true,
@@ -29,10 +31,11 @@
         for (let i = 0; i < hit_data.length; i++) {
           const hit = hit_data[i];
           ft.addFeature({
-            data: JSON.parse(hit.hsp_pos),
+            data: hit.hsp_pos,
             name: hit.clean_name,
-            className: "blast_match", // Can be used for styling.
-            color: "#0F8292",
+            // To allow styling if needed.
+            className: "blast_match",
+            color: hit.color,
             type: "rect"
           });
         };
