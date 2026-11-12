@@ -1,4 +1,4 @@
-![alt tag](https://raw.githubusercontent.com/tripal/tripal/7.x-3.x/tripal/theme/images/tripal_logo.png)
+![alt tag](https://raw.githubusercontent.com/tripal/tripal/4.x/tripal/theme/images/tripal_logo.png)
 
 # Overview
 The Tripal Analysis BLAST module extends Tripal for display of BLAST local alignments on gene,
@@ -7,7 +7,7 @@ This module is designed for Tripal v4. It provides:
 
 1. An importer for loading BLAST XML results created using the NCBI blast program.
    Data is loaded into Chado and BLAST results are automatically associated with
-   genes, mRNA (transcripts) or proteins.
+   genes, mRNA (transcripts), or proteins.
 2. Blast results appear on each feature page via an interactive viewer and a
    tabular list (see screenshot for example).
 
@@ -27,12 +27,13 @@ transcript or protein pages to provide functional annotations.
 
 # Documentation
 
-Installation and usage instructions are are provided in the Tripal User's Guide. 
+Installation and usage instructions for each version of this module.
 
-1. [Documentation for Tripal v3](https://tripal.readthedocs.io/en/latest/user_guide/example_genomics/func_annots.html).
-2. [Documentation for Tripal v2](http://tripal.info/node/106)
+1. [Documentation for Tripal v4](https://tripal.github.io/tripal_analysis_blast).
+2. [Documentation for Tripal v3](https://tripal.readthedocs.io/en/latest/user_guide/example_genomics/func_annots.html).
+3. [Documentation for Tripal v2](http://tripal.info/node/106)
 
 
 # Screenshot
 
-![alt tag](https://raw.githubusercontent.com/tripal/tripal_analysis_blast/7.x-3.x/files/tripal-analysis-blast-screenshot.png)
+![alt tag](https://raw.githubusercontent.com/tripal/tripal_analysis_blast/4.x/files/tripal-analysis-blast-screenshot.png)
