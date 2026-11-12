@@ -31,7 +31,7 @@ Installation and usage instructions for each version of this module.
 
 1. [Documentation for Tripal v4](https://tripal.github.io/tripal_analysis_blast).
 2. [Documentation for Tripal v3](https://tripal.readthedocs.io/en/latest/user_guide/example_genomics/func_annots.html).
-3. [Documentation for Tripal v2](http://tripal.info/node/106)
+3. [Documentation for Tripal v2](http://tripal.info/node/106).
 
 
 # Screenshot
