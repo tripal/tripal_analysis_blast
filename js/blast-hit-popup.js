@@ -18,8 +18,25 @@
           `;
 
           document.body.appendChild(dialog);
+
+          // Close in the [x] area is clicked.
           dialog.querySelector('.blast-close')
             .addEventListener('click', () => dialog.close());
+
+          // Close if anywhere outside the dialog is clicked.
+          dialog.addEventListener('click', (event) => {
+            const rect = dialog.getBoundingClientRect();
+
+            const clickedInDialog =
+              event.clientY >= rect.top &&
+              event.clientY <= rect.bottom &&
+              event.clientX >= rect.left &&
+              event.clientX <= rect.right;
+
+             if (!clickedInDialog) {
+               dialog.close();
+             }
+           });
 
           dialog.addEventListener('close', () => dialog.remove());
 
