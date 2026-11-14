@@ -198,10 +198,11 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     $chado_connection = \Drupal::service('tripal_chado.database');
     $entity_lookup_manager = \Drupal::service('tripal.tripal_entity.lookup');
 
-    // Get the blast results stored as XML from the analysisfeatureprop table.
-    // The type for the property is named 'analysis_blast_output_iteration_hits'
-    // and is found in the 'local' controlled vocabulary (in tripal3 it was the
-    // 'tripal' vocabulary. This CV term was added by this module.
+    // Get the blast results stored as XML from the chado.analysisfeatureprop
+    // table. The type for the property is named
+    // 'analysis_blast_output_iteration_hits' and is found in the 'local'
+    // controlled vocabulary (in tripal3 it was in the 'tripal' vocabulary).
+    // This CV term was added by this module.
     $query1 = $chado_connection->select('1:analysisfeature', 'AF');
     $query1->join('1:analysisfeatureprop', 'P', '[AF].analysisfeature_id = [P].analysisfeature_id');
     $query1->join('1:cvterm', 'T', '[P].type_id = [T].cvterm_id');
@@ -210,7 +211,7 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     $query1->join('1:feature', 'F', '[AF].feature_id = [F].feature_id');
     $query1->addField('AF', 'analysis_id', 'analysis_id');
     $query1->addField('P', 'analysisfeature_id', 'analysisfeature_id');
-    $query1->addField('P', 'value', 'value');
+    $query1->addField('P', 'value', 'blast_xml');
     $query1->addField('F', 'name', 'feature_name');
     $query1->addField('F', 'uniquename', 'feature_uniquename');
     $query1->addField('F', 'residues', 'feature_residues');
@@ -218,21 +219,21 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     $query1->condition('T.name', 'analysis_blast_output_iteration_hits', '=');
     $query1->condition('V.name', 'local', '=');
     $query1->condition('AF.feature_id', $feature_id, '=');
-    $blast_results = $query1->execute()->fetchAll();
-    if (!$blast_results) {
+    $analysisfeatures = $query1->execute()->fetchAll();
+    if (!$analysisfeatures) {
       return [];
     }
 
     // Retrieve the data to be provided to the formatter.
     $blast_object_array = [];
     $blast_object_counter = 0;
-    foreach ($blast_results as $analysisfeatureprop) {
-      // Get the blast XML for this feature.
-      $blast_xml = $analysisfeatureprop->value;
-      $analysisfeature_id = $analysisfeatureprop->analysisfeature_id;
-      $analysis_id = $analysisfeatureprop->analysis_id;
+    foreach ($analysisfeatures as $analysisfeature) {
+      // Values from query1 that we will need.
+      $blast_xml = $analysisfeature->blast_xml;
+      $analysisfeature_id = $analysisfeature->analysisfeature_id;
+      $analysis_id = $analysisfeature->analysis_id;
 
-      // Get the analysis object.
+      // Get the complete analysis object.
       $query2 = $chado_connection->select('1:analysis', 'A');
       $query2->fields('A', []);
       $query2->condition('A.analysis_id', $analysis_id, '=');
@@ -247,26 +248,26 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
       );
       $analysis_object->entity_id = $analysis_entity_id;
 
-      // Get the blast_hit_data record for this analysis feature.
+      // Get the blast_hit_data record for this analysisfeature record.
       $query3 = $chado_connection->select('1:blast_hit_data', 'B');
       $query3->fields('B', ['db_id']);
       $query3->condition('B.analysisfeature_id', $analysisfeature_id, '=');
       $blast_settings = $query3->execute()->fetchObject();
-
       $adb_id = NULL;
       if ($blast_settings) {
         $adb_id = $blast_settings->db_id;
       }
 
-      // If the callee specified a database to show then we want to check that
-      // with the database id of the analysis we're looking at. If they
-      // don't match then skip this blast. If a database id was not specified
-      // then continue.
+      // If the calling function specified a database to show then we want to
+      // check that with the database id of the analysis we're looking at. If
+      // they don't match then skip this blast.
+      // @todo This currently never happens, so evaluate if we still need this.
       if ($db_id && $adb_id != $db_id) {
         continue;
       }
 
-      // Analysis db will be null if no blast hits for this feature.
+      // Analysis db ($adb_id) will be null when there are no blast hits for
+      // this feature.
       if ($adb_id) {
         // Get the database object.
         $query4 = $chado_connection->select('1:db', 'D');
@@ -274,13 +275,17 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
         $query4->condition('D.db_id', $adb_id, '=');
         $db_object = $query4->execute()->fetchObject();
 
-        // Parse the XML and add it to the array of blast results to
-        // be returned.
+        // Parse the BLAST XML.
         $blast_object = BlastImporter::getResultObject($chado_connection, $blast_xml, $db_object, $feature_id, $analysis_object);
+
+        // Add other information that we will need.
         $blast_object->analysis = $analysis_object;
-        $blast_object->feature_name = $analysisfeatureprop->feature_name;
-        $blast_object->feature_uniquename = $analysisfeatureprop->feature_uniquename;
-        $blast_object->feature_residues = $analysisfeatureprop->feature_residues;
+        $blast_object->feature_name = $analysisfeature->feature_name;
+        $blast_object->feature_uniquename = $analysisfeature->feature_uniquename;
+        $blast_object->feature_residues = $analysisfeature->feature_residues;
+
+        // Add everything to the array of blast results that will be
+        // returned by this function.
         $blast_object_array[$blast_object_counter] = $blast_object;
         $blast_object_counter++;
       }
