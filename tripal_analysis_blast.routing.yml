@@ -1,0 +1,16 @@
+# Configuration dashboard.
+tripal_analysis_blast.dashboard:
+  path: 'admin/tripal/extension/tripal_analysis_blast'
+  defaults:
+    _title: 'Tripal Analysis Blast'
+    _controller: '\Drupal\system\Controller\SystemController::systemAdminMenuBlockPage'
+  requirements:
+    _permission: 'administer tripal'
+
+tripal_analysis_blast.configuration:
+  path: '/admin/tripal/extension/tripal_analysis_blast/configuration'
+  defaults:
+    _title: 'Tripal Analysis Blast: Configuration'
+    _form: '\Drupal\tripal_analysis_blast\Form\TripalAnalysisBlastConfigurationForm'
+  requirements:
+    _permission: 'administer tripal'

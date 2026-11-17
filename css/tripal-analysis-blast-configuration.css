@@ -1,0 +1,10 @@
+/*
+ * @file
+ * Style Tripal Analysis Blast Configuration page:
+ */
+ 
+.tripal-analysis-blast-configuration-sequence textarea {
+  font-family: monospace, monospace;
+  font-size: 12px;
+  line-height: 1.1;
+}

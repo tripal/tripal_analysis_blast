@@ -21,3 +21,10 @@ blast-hit-popup:
   dependencies:
     - 'core/drupal'
     - 'core/once'
+
+# Library used in BLAST configuration page.
+tripal-analysis-blast-configuration:
+  version: 1.x
+  css:
+    theme:
+      css/tripal-analysis-blast-configuration.css: {}

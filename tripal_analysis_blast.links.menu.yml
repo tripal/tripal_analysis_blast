@@ -1,0 +1,15 @@
+# Menu - Configuring Tripal BLAST.
+# Group in admin/tripal/extension
+tripal_analysis_blast.menu:
+  title: 'Tripal Analysis Blast'
+  description: 'Access configuration for the Tripal Analysis Blast module.'
+  route_name: 'tripal_analysis_blast.dashboard'
+  parent: 'tripal.extension'
+  weight: 0
+
+tripal_analysis_blast.configuration:
+  title: 'Tripal Analysis Blast: Configuration'
+  description: 'Configuration settings for the Tripal Analysis Blast module.'
+  route_name: 'tripal_analysis_blast.configuration'
+  parent: 'tripal_analysis_blast.menu'
+  weight: 1
