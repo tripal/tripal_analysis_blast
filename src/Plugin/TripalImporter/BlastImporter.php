@@ -210,10 +210,10 @@ class BlastImporter extends ChadoImporterBase {
       '#description' => $this->t('Enter the regular expression that will extract the
       feature name from the query line in the blast results.
       This should be the same as the definition line in the query FASTA file.
-      For example, to retrieve the first word use %regex
+      For example, to retrieve the first word enter %regex here.
       This option is is only required when the query does not identically match a feature
       in the database.',
-      ['%regex' => '^(\S+)']),
+      ['%regex' => '/^(\S+)/']),
       '#default_value' => $query_re,
     ];
 
@@ -262,8 +262,7 @@ class BlastImporter extends ChadoImporterBase {
     }
 
     $add_db_page = Link::fromTextAndUrl($this->t('add the database'), Url::fromUri('base://admin/tripal/terms/chado_db'))->toString();
-    // @todo /admin/tripal/extension/tripal_blast_analysis
-    $settings_page = Link::fromTextAndUrl($this->t('settings page'), Url::fromUri('base://@todo'))->toString();
+    $settings_page = Link::fromTextAndUrl($this->t('settings page'), Url::fromUri('base://admin/tripal/extension/tripal_analysis_blast/configuration'))->toString();
     $element = [
       '#title' => $this->t('Database'),
       '#type' => 'select',
@@ -292,8 +291,21 @@ class BlastImporter extends ChadoImporterBase {
    */
   public function formValidate($form, &$form_state) {
     $values = $form_state->getValues();
+
+    // Validate the file extension.
     if ($values['blastfile_ext'] && !preg_match('/^[A-Za-z]+$/', $values['blastfile_ext'])) {
-      $form_state->setErrorByName('blastfile_ext', 'The extension should consist of only letters');
+      $form_state->setErrorByName('blastfile_ext', 'The extension should consist of only letters.');
+    }
+
+    // Validate the query regular expression.
+    if ($values['query_re']) {
+      $result = @preg_match($values['query_re'], '');
+      if ($result === FALSE) {
+        $form_state->setErrorByName('query_re', 'The regular expression is not valid.');
+      }
+      elseif (!preg_match('/.\(.+\)./', $values['query_re'])) {
+        $form_state->setErrorByName('query_re', 'The regular expression must contain parentheses to capture a value.');
+      }
     }
   }
 
@@ -724,7 +736,7 @@ class BlastImporter extends ChadoImporterBase {
 
             // If the user provided a query RE to extract the feature name
             // then use that now.
-            if ($query_re and preg_match("/$query_re/", $value, $matches)) {
+            if ($query_re and preg_match($query_re, $value, $matches)) {
               $feature = $matches[1];
             }
             // If not a query RE or match then use the default word before
