@@ -218,15 +218,17 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
         '#default_value' => $hit_organism_re,
       ];
 
-      // Get the organism select element or auto-complete element.
-      $form['databases']['database_settings']['database_genbank_style']['organism_id'] = ChadoOrganismFormElementController::getFormElement([], 0, []);
+      // Get the organism select element or auto-complete element and
+      // its validator.
+      $form['databases']['database_settings']['database_genbank_style']['organism_id'] = ChadoOrganismFormElementController::getFormElement([], $hit_organism, []);
       $form['databases']['database_settings']['database_genbank_style']['organism_id']['#title'] = t('Organism');
       $form['databases']['database_settings']['database_genbank_style']['organism_id']['#description'] = $this->t(
         'If the organism for the match cannot be determined using a regular
         expression but the database only contains a single organism, then
         you may specify the organism here. If the organism cannot be
         determined using a regular expression then leave this field blank.');
-      $form['databases']['database_settings']['database_genbank_style']['organism_id']['#default_value'] = $hit_organism;
+      $form['databases']['database_settings']['database_genbank_style']['organism_id']['#element_validate']
+        = [[ChadoOrganismFormElementController::class, 'validateAutocomplete']];
     }
 
     return parent::buildForm($form, $form_state);
@@ -257,7 +259,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     // Validate the regular expressions.
     $fields = ['hit_id', 'hit_def', 'hit_accession', 'hit_organism_re'];
     foreach ($fields as $field) {
-      if ($values[$field]) {
+      if ($values[$field] ?? '') {
         $result = @preg_match($values[$field], '');
         if ($result === FALSE) {
           $form_state->setErrorByName($field, 'The regular expression is not valid.');
@@ -266,11 +268,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
           $form_state->setErrorByName($field, 'The regular expression must contain parentheses to capture a value.');
         }
       }
-    }
-
-    // Validate the organism.
-    if (!preg_match('/\(\d+\)/', $values['organism_id'])) {
-      $form_state->setErrorByName('organism_id', 'The organism should include its ID value in parentheses as provided by the autocomplete.');
     }
   }
 
@@ -296,7 +293,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
         'regex_hit_def' => $values['hit_def'],
         'regex_hit_accession' => $values['hit_accession'],
         'regex_hit_organism' => $values['hit_organism_re'],
-        'hit_organism' => ChadoOrganismFormElementController::getPkeyId($values['organism_id']),
+        'hit_organism' => $values['organism_id'],
         'genbank_style' => $values['gb_style_parser'],
       ];
       $this->upsertTripalAnalysisBlast($tripal_analysis_blast_values);
@@ -308,13 +305,13 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
   /**
    * Retrieves one record from public.tripal_analysis_blast.
    *
-   * @param int $db_id
+   * @param int|string $db_id
    *   The db_id value for the desired record. Might be zero.
    *
    * @return array
    *   The retrieved record, or empty array if no record matches.
    */
-  protected function selectTripalAnalysisBlast(int $db_id): array {
+  protected function selectTripalAnalysisBlast(int|string $db_id): array {
     $result = [];
     if ($db_id) {
       $query = $this->chado_connection->select('0:tripal_analysis_blast', 'B');
@@ -331,8 +328,10 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    *
    * @param array $values
    *   An array of values with keys matching the table column names.
-   *   If the record matching $values['db_id'] exists, it is updated,
-   *   otherwise a new record is inserted.
+   *   If no record matching $values['db_id'] exists, it is inserted,
+   *   otherwise the record is updated, except in the case where all
+   *   fields other than db_id are empty, in which case the record is
+   *   deleted.
    *
    * @return void
    *   No return value.
@@ -341,12 +340,26 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     $db_id = $values['db_id'];
     $existing = $this->selectTripalAnalysisBlast($db_id);
     if ($existing) {
-      // Update existing record.
-      unset($values['db_id']);
-      $query = $this->chado_connection->update('0:tripal_analysis_blast');
-      $query->fields($values);
-      $query->condition('db_id', $db_id, '=');
-      $query->execute();
+      $has_data = FALSE;
+      foreach ($values as $key => $value) {
+        if ($value && ($key != 'db_id')) {
+          $has_data = TRUE;
+        }
+      }
+      if ($has_data) {
+        // Update existing record.
+        unset($values['db_id']);
+        $query = $this->chado_connection->update('0:tripal_analysis_blast');
+        $query->fields($values);
+        $query->condition('db_id', $db_id, '=');
+        $query->execute();
+      }
+      else {
+        // Drop existing record.
+        $query = $this->chado_connection->delete('0:tripal_analysis_blast');
+        $query->condition('db_id', $db_id, '=');
+        $query->execute();
+      }
     }
     else {
       // Insert new record.
@@ -359,22 +372,35 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
   /**
    * Generates a list of chado databases suitable for a select element.
    *
+   * Databases configured for this module will be listed first, with
+   * a "[configured]" suffix.
+   *
    * @return array
    *   The list of databases suitable to use as values for a form select.
    */
   protected function getDatabases(): array {
-    $query = $this->chado_connection->select('1:db', 'db');
-    $query->fields('db', ['db_id', 'name']);
-    $query->condition('[db].urlprefix', '', '!=');
-    $query->isNotNull('[db].urlprefix');
-    $query->orderBy('db.name');
+    $query = $this->chado_connection->select('1:db', 'D');
+    $query->leftJoin('0:tripal_analysis_blast', 'B', '[D].db_id=[B].db_id');
+    $query->addField('D', 'db_id', 'db_db_id');
+    $query->addField('D', 'name', 'name');
+    $query->addField('B', 'db_id', 'configured');
+    $query->condition('[D].urlprefix', '', '!=');
+    $query->isNotNull('[D].urlprefix');
+    $query->orderBy('D.name');
     $results = $query->execute();
+    $configured_arr = [];
     $select_arr = [];
     foreach ($results as $result) {
-      $name_with_id = $result->name . ' (' . $result->db_id . ')';
-      $select_arr[$result->db_id] = $name_with_id;
+      $name = $result->name;
+      if ($result->configured) {
+        $name .= $this->t(' [configured]');
+        $configured_arr[$result->db_db_id] = $name;
+      }
+      else {
+        $select_arr[$result->db_db_id] = $name;
+      }
     }
-    return $select_arr;
+    return $configured_arr + $select_arr;
   }
 
 }

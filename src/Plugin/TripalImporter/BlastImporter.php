@@ -1060,6 +1060,7 @@ class BlastImporter extends ChadoImporterBase {
       $regex_hit_def = $parser->regex_hit_def;
       $regex_hit_organism = $parser->regex_hit_organism;
       $regex_hit_accession = $parser->regex_hit_accession;
+      // @todo this will be of the format "Genus species (123)".
       $db_organism = $parser->hit_organism;
     }
 
