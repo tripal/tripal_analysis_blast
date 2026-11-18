@@ -218,19 +218,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
         '#default_value' => $hit_organism_re,
       ];
 
-      // @todo use organism autocomplete instead
-      $form['databases']['database_settings']['database_genbank_style']['hit_organism'] = [
-        '#type' => 'textfield',
-        '#title' => $this->t('Organism Name'),
-        '#description' => $this->t('If the organism for the match cannot be determined using
-          a regular expression but the database only contains a single organism, then
-          you may specify the organism here. Be sure to include the genus, species,
-          subspeices, cultivar, etc., to properly identify the organism. If the organism
-          cannot be determined using a regular expression or is not unique in the database
-          then leave this field blank.'),
-        '#default_value' => $hit_organism,
-      ];
-
       // Get the organism select element or auto-complete element.
       $form['databases']['database_settings']['database_genbank_style']['organism_id'] = ChadoOrganismFormElementController::getFormElement([], 0, []);
       $form['databases']['database_settings']['database_genbank_style']['organism_id']['#title'] = t('Organism');
@@ -300,14 +287,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     $config->save();
 
     if ($values['database']) {
-      // Extract organism_id numeric value.
-      $organism_id = NULL;
-      if ($values['organism_id']) {
-        if (preg_match('/\((\d+)\)/', $values['organism_id'], $matches)) {
-          $organism_id = $matches[1];
-        }
-      }
-
       // Assemble the database config into an array matching the db table
       // public.tripal_analysis_blast and save it there.
       $tripal_analysis_blast_values = [
@@ -317,7 +296,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
         'regex_hit_def' => $values['hit_def'],
         'regex_hit_accession' => $values['hit_accession'],
         'regex_hit_organism' => $values['hit_organism_re'],
-        'hit_organism' => $organism_id,
+        'hit_organism' => ChadoOrganismFormElementController::getPkeyId($values['organism_id']),
         'genbank_style' => $values['gb_style_parser'],
       ];
       $this->upsertTripalAnalysisBlast($tripal_analysis_blast_values);
