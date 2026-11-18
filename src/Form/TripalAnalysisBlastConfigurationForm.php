@@ -4,6 +4,7 @@ namespace Drupal\tripal_analysis_blast\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\tripal_chado\Controller\ChadoOrganismFormElementController;
 use Drupal\tripal_chado\Database\ChadoConnection;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -229,6 +230,16 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
           then leave this field blank.'),
         '#default_value' => $hit_organism,
       ];
+
+      // Get the organism select element or auto-complete element.
+      $form['databases']['database_settings']['database_genbank_style']['organism_id'] = ChadoOrganismFormElementController::getFormElement([], 0, []);
+      $form['databases']['database_settings']['database_genbank_style']['organism_id']['#title'] = t('Organism');
+      $form['databases']['database_settings']['database_genbank_style']['organism_id']['#description'] = $this->t(
+        'If the organism for the match cannot be determined using a regular
+        expression but the database only contains a single organism, then
+        you may specify the organism here. If the organism cannot be
+        determined using a regular expression then leave this field blank.');
+      $form['databases']['database_settings']['database_genbank_style']['organism_id']['#default_value'] = $hit_organism;
     }
 
     return parent::buildForm($form, $form_state);
@@ -254,6 +265,26 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
+    $values = $form_state->getValues();
+
+    // Validate the regular expressions.
+    $fields = ['hit_id', 'hit_def', 'hit_accession', 'hit_organism_re'];
+    foreach ($fields as $field) {
+      if ($values[$field]) {
+        $result = @preg_match($values[$field], '');
+        if ($result === FALSE) {
+          $form_state->setErrorByName($field, 'The regular expression is not valid.');
+        }
+        elseif (!preg_match('/.\(.+\)./', $values[$field])) {
+          $form_state->setErrorByName($field, 'The regular expression must contain parentheses to capture a value.');
+        }
+      }
+    }
+
+    // Validate the organism.
+    if (!preg_match('/\(\d+\)/', $values['organism_id'])) {
+      $form_state->setErrorByName('organism_id', 'The organism should include its ID value in parentheses as provided by the autocomplete.');
+    }
   }
 
   /**
@@ -268,19 +299,29 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     $config->set('tripal_analysis_blast_config_display.formatter_pager_items', $formatter_pager_items);
     $config->save();
 
-    // Assemble the database config into an array matching the db table
-    // public.tripal_analysis_blast and save it there.
-    $tripal_analysis_blast_values = [
-      'db_id' =>$values['database'],
-      'displayname' => $values['displayname'],
-      'regex_hit_id' => $values['hit_id'],
-      'regex_hit_def' => $values['hit_def'],
-      'regex_hit_accession' => $values['hit_accession'],
-      'regex_hit_organism' => $values['hit_organism_re'],
-      'hit_organism' => $values['hit_organism'],
-      'genbank_style' => $values['gb_style_parser'],
-    ];
-    $this->upsertTripalAnalysisBlast($tripal_analysis_blast_values);
+    if ($values['database']) {
+      // Extract organism_id numeric value.
+      $organism_id = NULL;
+      if ($values['organism_id']) {
+        if (preg_match('/\((\d+)\)/', $values['organism_id'], $matches)) {
+          $organism_id = $matches[1];
+        }
+      }
+
+      // Assemble the database config into an array matching the db table
+      // public.tripal_analysis_blast and save it there.
+      $tripal_analysis_blast_values = [
+        'db_id' => $values['database'],
+        'displayname' => $values['displayname'],
+        'regex_hit_id' => $values['hit_id'],
+        'regex_hit_def' => $values['hit_def'],
+        'regex_hit_accession' => $values['hit_accession'],
+        'regex_hit_organism' => $values['hit_organism_re'],
+        'hit_organism' => $organism_id,
+        'genbank_style' => $values['gb_style_parser'],
+      ];
+      $this->upsertTripalAnalysisBlast($tripal_analysis_blast_values);
+    }
 
     return parent::submitForm($form, $form_state);
   }
@@ -312,30 +353,27 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    * @param array $values
    *   An array of values with keys matching the table column names.
    *   If the record matching $values['db_id'] exists, it is updated,
-   *   otherwise a new record is inserted. If db_id is not set, then
-   *   this function does nothing.
+   *   otherwise a new record is inserted.
    *
    * @return void
    *   No return value.
    */
   protected function upsertTripalAnalysisBlast(array $values): void {
     $db_id = $values['db_id'];
-    if ($db_id) {
-      $existing = $this->selectTripalAnalysisBlast($db_id);
-      if ($existing) {
-        // Update existing record.
-        unset($values['db_id']);
-        $query = $this->chado_connection->update('0:tripal_analysis_blast');
-        $query->fields($values);
-        $query->condition('db_id', $db_id, '=');
-        $query->execute();
-      }
-      else {
-        // Insert new record.
-        $query = $this->chado_connection->insert('0:tripal_analysis_blast');
-        $query->fields($values);
-        $query->execute();
-      }
+    $existing = $this->selectTripalAnalysisBlast($db_id);
+    if ($existing) {
+      // Update existing record.
+      unset($values['db_id']);
+      $query = $this->chado_connection->update('0:tripal_analysis_blast');
+      $query->fields($values);
+      $query->condition('db_id', $db_id, '=');
+      $query->execute();
+    }
+    else {
+      // Insert new record.
+      $query = $this->chado_connection->insert('0:tripal_analysis_blast');
+      $query->fields($values);
+      $query->execute();
     }
   }
 
