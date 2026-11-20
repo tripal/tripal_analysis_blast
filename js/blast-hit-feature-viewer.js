@@ -16,11 +16,11 @@
         const hit_data = settings.tripal_analysis_blast.hit_data[el.id];
         // Initialize the feature viewer.
         var options = {
-          showAxis: true,
-          showSequence: true,
-          brushActive: true,
-          toolbar: true,
-          bubbleHelp: false,
+          showAxis: TRUE,
+          showSequence: TRUE,
+          brushActive: TRUE,
+          toolbar: TRUE,
+          bubbleHelp: FALSE,
           zoomMax: 3
         };
         var ft = new FeatureViewer.createFeature(

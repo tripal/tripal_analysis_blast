@@ -73,8 +73,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    // Configuration/module variables.
-    $config = $this->config(static::SETTINGS);
 
     // Attach css for this form.
     $form['#attached']['library'][] = 'tripal_analysis_blast/tripal-analysis-blast-configuration';
@@ -130,7 +128,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
           to the site user. Select a database from the list to show the customizable fields.
           The fields specify how to extract hit names, descriptions, database accessions, and
           organisms from the blast results. Previously configured databases are listed first.
-          On a separate page you can ' . $db_page . '.'),
+          On a separate page you can @db_page.', ['@db_page' => $db_page]),
       '#open' => TRUE,
     ];
 
@@ -161,8 +159,8 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
         '#title' => $this->t('URL Prefix'),
         '#default_value' => $urlprefix ? $urlprefix : '[no url prefix]',
         '#description' => $this->t('The url prefix specifies how to link blast hits back
-        to the corresponding database. If you need to change the url prefix, you can '
-        . $db_page . '.'),
+        to the corresponding database. If you need to change the url prefix, you can
+        @db_page.', ['@db_page' => $db_page]),
         '#disabled' => TRUE,
       ];
 
@@ -221,7 +219,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
       // Get the organism select element or auto-complete element and
       // its validator.
       $form['databases']['database_settings']['database_genbank_style']['organism_id'] = ChadoOrganismFormElementController::getFormElement([], $hit_organism, []);
-      $form['databases']['database_settings']['database_genbank_style']['organism_id']['#title'] = t('Organism');
+      $form['databases']['database_settings']['database_genbank_style']['organism_id']['#title'] = $this->t('Organism');
       $form['databases']['database_settings']['database_genbank_style']['organism_id']['#description'] = $this->t(
         'If the organism for the match cannot be determined using a regular
         expression but the database only contains a single organism, then
@@ -414,7 +412,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     foreach ($results as $result) {
       $name = $result->name;
       if ($result->configured) {
-        $name .= $this->t(' [configured]');
+        $name .= ' ' . $this->t('[configured]');
         $configured_arr[$result->db_db_id] = $name;
       }
       else {

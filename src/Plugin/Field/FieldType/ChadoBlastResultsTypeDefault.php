@@ -8,11 +8,9 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\tripal\TripalField\Attribute\TripalFieldType;
 use Drupal\tripal\Entity\TripalEntityType;
-use Drupal\tripal_chado\Plugin\TripalStorage\ChadoStorage;
 use Drupal\tripal_chado\TripalField\ChadoFieldItemBase;
 use Drupal\tripal_chado\TripalStorage\ChadoIntStoragePropertyType;
 use Drupal\tripal_chado\TripalStorage\ChadoTextStoragePropertyType;
-use Drupal\tripal_chado\TripalStorage\ChadoVarCharStoragePropertyType;
 use Drupal\tripal_analysis_blast\Plugin\TripalImporter\BlastImporter;
 
 /**
@@ -98,7 +96,6 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     $entity_type_id = $field_definition->getTargetEntityTypeId();
     $storage_settings = $field_definition->getSetting('storage_plugin_settings');
     $base_table = $storage_settings['base_table'] ?? 'feature';
-    $base_column = $storage_settings['base_column'] ?? 'feature_id';
 
     // This field only supports one table, so many items can be hardcoded.
     $base_pkey_col = 'feature_id';
@@ -182,7 +179,7 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
    * Get a blast result from the chado.analysisfeature_prop table.
    *
    * @param int $feature_id
-   *   The feature_id of the feature
+   *   The feature_id of the feature.
    * @param array $context
    *   The context array originally passed to the callback.
    * @param int|null $db_id
@@ -215,7 +212,10 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
     $query1->addField('F', 'name', 'feature_name');
     $query1->addField('F', 'uniquename', 'feature_uniquename');
     $query1->addField('F', 'residues', 'feature_residues');
-    $query1->fields('A', ['name', 'description', 'program', 'programversion', 'algorithm', 'sourcename', 'sourceversion', 'sourceuri', 'timeexecuted']);
+    $query1->fields('A', [
+      'name', 'description', 'program', 'programversion', 'algorithm',
+      'sourcename', 'sourceversion', 'sourceuri', 'timeexecuted',
+    ]);
     $query1->condition('T.name', 'analysis_blast_output_iteration_hits', '=');
     $query1->condition('V.name', 'local', '=');
     $query1->condition('AF.feature_id', $feature_id, '=');

@@ -16,7 +16,7 @@ use Drupal\tripal_chado\TripalField\ChadoFormatterBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Plugin implementation of the 'format_blast_results_formatter' field formatter.
+ * Plugin implementation of the 'format_blast_results_formatter'.
  */
 #[TripalFieldFormatter(
   id: 'chado_blast_results_formatter_default',
@@ -119,15 +119,11 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase implements Co
     $elements['#attached']['library'][] = 'tripal_analysis_blast/blast-hit-feature-viewer';
     $elements['#attached']['library'][] = 'tripal_analysis_blast/blast-hit-popup';
 
-    // Retrieve display settings. Not used yet.
-    $settings = $this->getSetting('todo');
-
     // Retrieve pager size from formatter settings.
     $num_results_per_page = $this->getSetting('pager_items');
 
-    # $feature_pager_id = 15; // increment by 1 for each database.
+    // Initialization for the pager.
     $pager_index = 0;
-    # $list_items = [];
 
     foreach ($items as $delta => $item) {
 
@@ -303,7 +299,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase implements Co
       }
       // Catch exception in the event url is not valid.
       try {
-        $hit_name = Link::fromTextAndUrl($hit_name, Url::fromUri($hit_url, [])); #->toString();
+        $hit_name = Link::fromTextAndUrl($hit_name, Url::fromUri($hit_url, []));
       }
       catch (\Exception $e) {
         // For example, "InvalidArgumentException: The URI
@@ -330,7 +326,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase implements Co
 
     // Find the number of digits in the largest coordinate.
     $ndigits = 1;
-    foreach ($hsps_array AS $hsp) {
+    foreach ($hsps_array as $hsp) {
       if (strlen($hsp['query_from']) > $ndigits) {
         $ndigits = strlen($hsp['query_from']);
       }
@@ -352,17 +348,17 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase implements Co
     $markup = '<strong>BLAST of ' . $feature_name . ' vs. ' . $db_name . '</strong><br>';
     $markup .= 'Match: ' . $hit_name . $hit_description . '<br>';
 
-    foreach ($hsps_array AS $hsp) {
+    foreach ($hsps_array as $hsp) {
       $markup .= '<strong>HSP ' . $hsp['hsp_num'] . '</strong>'
       . ' Score: ' . $hsp['bit_score'] . ' bits (' . $hsp['score'] . '),'
       . ' Expect = ' . sprintf('%.3e', floatval($hsp['evalue'])) . '<br>'
-      . 'Identity = ' . sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity']/$hsp['align_len']*100) . ','
-      . ' Postives = ' . sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive']/$hsp['align_len']*100) . ','
+      . 'Identity = ' . sprintf("%d/%d (%.2f%%)", $hsp['identity'], $hsp['align_len'], $hsp['identity'] / $hsp['align_len'] * 100) . ','
+      . ' Postives = ' . sprintf("%d/%d (%.2f%%)", $hsp['positive'], $hsp['align_len'], $hsp['positive'] / $hsp['align_len'] * 100) . ','
       . ' Query Frame = ' . $hsp['query_frame']
       . '<pre>'
       . 'Query: ' . sprintf($sprintf_pattern, $hsp['query_from']) . ' ' . $hsp['qseq'] . ' ' . sprintf("%d", $hsp['query_to']) . "\n"
       . $midline_indent . $hsp['midline'] . "\n"
-      . 'Sbjct: ' . sprintf($sprintf_pattern, $hsp['hit_from']) . ' ' . $hsp['hseq'] . ' ' . sprintf("%d",$hsp['hit_to']) . '    '
+      . 'Sbjct: ' . sprintf($sprintf_pattern, $hsp['hit_from']) . ' ' . $hsp['hseq'] . ' ' . sprintf("%d", $hsp['hit_to']) . '    '
       . '</pre>';
     }
 

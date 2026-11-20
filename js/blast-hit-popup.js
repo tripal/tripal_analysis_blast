@@ -13,7 +13,7 @@
           dialog.classList.add('blast-hit-popup');
 
           dialog.innerHTML = `
-            <button type="button" class="blast-close"></button>
+            < button type = "button" class = "blast-close" > < / button >
             ${button.dataset.popupMessage || ''}
           `;
 

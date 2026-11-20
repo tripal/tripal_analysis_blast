@@ -28,7 +28,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
   description: new TranslatableMarkup('Import a BLAST XML file into Chado'),
   file_types: [
     'xml',
-    'gz',
   ],
   upload_description: new TranslatableMarkup('Please provide the XML file.'),
   upload_title: new TranslatableMarkup('XML FILE'),
@@ -80,8 +79,10 @@ class BlastImporter extends ChadoImporterBase {
    * Temporary files used during import.
    *
    * @var array
+   *
+   * @todo remove, the parent class will declare this after PR #2610.
    */
-  protected array $temp_files = [];
+  protected array $temporary_files = [];
 
   /**
    * Implements ContainerFactoryPluginInterface->create().
@@ -543,7 +544,7 @@ class BlastImporter extends ChadoImporterBase {
     // If the file is a set of concatenated files then this will split
     // them so that we can process each one separately.
     $this->splitXml($blastfile);
-    foreach ($this->temp_files as $file) {
+    foreach ($this->temporary_files as $file) {
       $this->logger->notice('T_blastXML_load: Parsing file "' . $file . '" from "' . $blastfile . '"');
 
       $blastoutput = new \XMLReader();
@@ -607,10 +608,10 @@ class BlastImporter extends ChadoImporterBase {
    * @return bool
    *   TRUE for success, FALSE for error.
    *   The file system real paths to the temporary files are stored
-   *   in the class variable $this->temp_files.
+   *   in the class variable $this->temporary_files.
    */
   protected function splitXml(string $blastfile): bool {
-    $this->cleanTempFiles();
+    $this->cleanFile();
     $header = '';
     $saving_header = TRUE;
     $out_fh = NULL;
@@ -624,9 +625,9 @@ class BlastImporter extends ChadoImporterBase {
       if ($line) {
         if (preg_match("/<BlastOutput>/", $line)) {
           $saving_header = FALSE;
-          $temp_name = 'temporary://tripal_analysis_blast_temp_' . getmypid() . '_' . count($this->temp_files) . '.xml';
+          $temp_name = 'temporary://tripal_analysis_blast_temp_' . getmypid() . '_' . count($this->temporary_files) . '.xml';
           $real_path = $this->file_system->realpath($temp_name);
-          $this->temp_files[] = $real_path;
+          $this->temporary_files[] = $real_path;
           $out_fh = fopen($real_path, 'w');
           fwrite($out_fh, $header);
         }
@@ -637,7 +638,7 @@ class BlastImporter extends ChadoImporterBase {
             $this->logger->error('T_blastXML_load: The file "' . $blastfile . '" does not contain valid blast XML');
             fclose($in_fh);
             fclose($out_fh);
-            $this->cleanTempFiles();
+            $this->cleanFile();
             return FALSE;
           }
           $header .= $line . "\n";
@@ -648,7 +649,7 @@ class BlastImporter extends ChadoImporterBase {
           if (!$out_fh) {
             $this->logger->error('T_blastXML_load: The file "' . $blastfile . '" does not contain valid blast XML');
             fclose($in_fh);
-            $this->cleanTempFiles();
+            $this->cleanFile();
             return FALSE;
           }
           fwrite($out_fh, $line . "\n");
@@ -662,12 +663,12 @@ class BlastImporter extends ChadoImporterBase {
       }
     }
     fclose($in_fh);
-    if (!$this->temp_files || $out_fh) {
+    if (!$this->temporary_files || $out_fh) {
       $this->logger->error('T_blastXML_load: The file "' . $blastfile . '" does not contain valid blast XML');
       if ($out_fh) {
         fclose($out_fh);
       }
-      $this->cleanTempFiles();
+      $this->cleanFile();
       return FALSE;
     }
     return TRUE;
@@ -676,16 +677,18 @@ class BlastImporter extends ChadoImporterBase {
   /**
    * Removes any temporary files created during import.
    *
+   * @todo can remove as the parent class defines this function after PR #2610.
+   *
    * @return void
    *   No return value.
    */
-  protected function cleanTempFiles(): void {
-    foreach ($this->temp_files as $file) {
-      if (file_exists($file)) {
-        unlink($file);
+  protected function cleanFile() {
+    foreach ($this->temporary_files as $temporary_file) {
+      if (file_exists($temporary_file)) {
+        unlink($temporary_file);
       }
     }
-    $this->temp_files = [];
+    $this->temporary_files = [];
   }
 
   /**
@@ -969,7 +972,7 @@ class BlastImporter extends ChadoImporterBase {
    *
    * An object is returned containing the results.
    *
-   * @param ChadoConnection $chado_connection
+   * @param Drupal\tripal_chado\Database\ChadoConnection $chado_connection
    *   The chado connection used to query chado.
    * @param string $xml_string
    *   The XML results for a single iteration. The XML should begin with the
