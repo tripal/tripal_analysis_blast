@@ -4,6 +4,8 @@ namespace Drupal\tripal_analysis_blast\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
 use Drupal\tripal_chado\Controller\ChadoOrganismFormElementController;
 use Drupal\tripal_chado\Database\ChadoConnection;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -77,6 +79,9 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     // Attach css for this form.
     $form['#attached']['library'][] = 'tripal_analysis_blast/tripal-analysis-blast-configuration';
 
+    // A link to manage chado databases.
+    $db_page = Link::fromTextAndUrl($this->t('manage databases'), Url::fromUri('base://admin/tripal/terms/chado_db'))->toString();
+
     // If the database select has changed values, clear
     // existing values in that part of the form.
     // We can't do this in the ajax callback.
@@ -104,6 +109,9 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     // Get default values for the form elements.
     $database = $form_state->getValue('database', 0);
 
+    // If a database is selected, git its urlprefix for display.
+    $urlprefix = $this->getUrlPrefix($database);
+
     // Values stored in the public.tripal_analysis_blast table.
     $stored_values = $this->selectTripalAnalysisBlast($database);
     $gb_style_parser = $form_state->getValue('gb_style_parser', $stored_values['genbank_style'] ?? 0);
@@ -119,9 +127,10 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
       '#type' => 'details',
       '#title' => $this->t('Databases'),
       '#description' => $this->t('You may customize how blast results are parsed and displayed
-          to the end-user. Select a database from the list to show the customizable fields.
+          to the site user. Select a database from the list to show the customizable fields.
           The fields specify how to extract hit names, descriptions, database accessions, and
-          organisms from the blast results.'),
+          organisms from the blast results. Previously configured databases are listed first.
+          On a separate page you can ' . $db_page . '.'),
       '#open' => TRUE,
     ];
 
@@ -147,6 +156,16 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     ];
 
     if (!empty($database)) {
+      $form['databases']['database_settings']['urlprefix'] = [
+        '#type' => 'textfield',
+        '#title' => $this->t('URL Prefix'),
+        '#default_value' => $urlprefix ? $urlprefix : '[no url prefix]',
+        '#description' => $this->t('The url prefix specifies how to link blast hits back
+        to the corresponding database. If you need to change the url prefix, you can '
+        . $db_page . '.'),
+        '#disabled' => TRUE,
+      ];
+
       $form['databases']['database_settings']['displayname'] = [
         '#type' => 'textfield',
         '#title' => $this->t('Title for the blast analysis'),
@@ -206,7 +225,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
       $form['databases']['database_settings']['database_genbank_style']['organism_id']['#description'] = $this->t(
         'If the organism for the match cannot be determined using a regular
         expression but the database only contains a single organism, then
-        you may specify the organism here. If the organism cannot be
+        you may specify the organism here. If the organism can be
         determined using a regular expression then leave this field blank.');
       $form['databases']['database_settings']['database_genbank_style']['organism_id']['#element_validate']
         = [[ChadoOrganismFormElementController::class, 'validateAutocomplete']];
@@ -250,6 +269,11 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
         }
       }
     }
+
+    // Should not specify both organism regex and organism.
+    if ($values['hit_organism_re'] && $values['organism_id']) {
+      $form_state->setErrorByName('organism_id', 'Do not set both "Regular expression for Organism" and "Organism" at the same time');
+    }
   }
 
   /**
@@ -275,6 +299,28 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     }
 
     return parent::submitForm($form, $form_state);
+  }
+
+  /**
+   * Retrieves the urlprefix for the specified database.
+   *
+   * @param string $database
+   *   The database_id value, can be an empty string.
+   *
+   * @return mixed
+   *   The urlprefix for the specified database, or empty string
+   *   if database not specified, or FALSE if invalid database,
+   *   or NULL if the urlprefix is NULL.
+   */
+  protected function getUrlPrefix(string $database): mixed {
+    $urlprefix = '';
+    if ($database) {
+      $query = $this->chado_connection->select('1:db', 'D');
+      $query->condition('D.db_id', $database, '=');
+      $query->addField('D', 'urlprefix', 'urlprefix');
+      $urlprefix = $query->execute()->fetchField();
+    }
+    return $urlprefix;
   }
 
   /**
