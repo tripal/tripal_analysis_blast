@@ -13,11 +13,14 @@
           dialog.classList.add('blast-hit-popup');
 
           dialog.innerHTML = `
-            < button type = "button" class = "blast-close" > < / button >
+            <button type = "button" class = "blast-close"> </button>
             ${button.dataset.popupMessage || ''}
           `;
 
           document.body.appendChild(dialog);
+console.log(dialog.outerHTML);
+console.log(dialog.querySelector('.blast-close'));
+console.log(dialog.querySelectorAll('.blast-close'));
 
           // Close in the [x] area is clicked.
           dialog.querySelector('.blast-close')
