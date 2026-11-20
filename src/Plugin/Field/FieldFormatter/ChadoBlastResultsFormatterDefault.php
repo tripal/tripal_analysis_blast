@@ -3,9 +3,12 @@
 namespace Drupal\tripal_analysis_blast\Plugin\Field\FieldFormatter;
 
 use Drupal\Component\Serialization\Json;
+use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Pager\PagerManagerInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\tripal\TripalField\Attribute\TripalFieldFormatter;
@@ -23,14 +26,85 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
     'chado_blast_results',
   ],
 )]
-class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
+class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase implements ContainerFactoryPluginInterface {
+
+  /**
+   * The pager manager service.
+   *
+   * @var Drupal\Core\Pager\PagerManagerInterface
+   */
+  protected PagerManagerInterface $pagerManager;
+
+  /**
+   * Constructs a ChadoBlastResultsFormatterDefault object.
+   *
+   * @param string $plugin_id
+   *   The plugin ID for the formatter.
+   * @param mixed $plugin_definition
+   *   The plugin definition.
+   * @param \Drupal\Core\Field\FieldDefinitionInterface $field_definition
+   *   The field definition.
+   * @param array $settings
+   *   The formatter settings.
+   * @param string $label
+   *   The label display setting.
+   * @param string $view_mode
+   *   The view mode.
+   * @param array $third_party_settings
+   *   Any third-party settings.
+   * @param \Drupal\Core\Pager\PagerManagerInterface $pager_manager
+   *   The pager manager service.
+   */
+  public function __construct(
+    string $plugin_id,
+    mixed $plugin_definition,
+    FieldDefinitionInterface $field_definition,
+    array $settings,
+    string $label,
+    string $view_mode,
+    array $third_party_settings,
+    PagerManagerInterface $pager_manager,
+  ) {
+    parent::__construct(
+      $plugin_id,
+      $plugin_definition,
+      $field_definition,
+      $settings,
+      $label,
+      $view_mode,
+      $third_party_settings,
+    );
+
+    $this->pagerManager = $pager_manager;
+  }
 
   /**
    * {@inheritdoc}
    */
-  public static function defaultSettings() {
+  public static function create(
+    ContainerInterface $container,
+    array $configuration,
+    $plugin_id,
+    $plugin_definition,
+  ): static {
+    return new static(
+      $plugin_id,
+      $plugin_definition,
+      $configuration['field_definition'],
+      $configuration['settings'],
+      $configuration['label'],
+      $configuration['view_mode'],
+      $configuration['third_party_settings'],
+      $container->get('pager.manager'),
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function defaultSettings(): array {
     $settings = parent::defaultSettings();
-    $settings['todo'] = '@todo';
+    $settings['pager_items'] = 10;
     return $settings;
   }
 
@@ -38,8 +112,6 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
    * {@inheritdoc}
    */
   public function viewElements(FieldItemListInterface $items, $langcode) {
-    $pager_manager = \Drupal::service('pager.manager');
-
     $elements = parent::viewElements($items, $langcode);
 
     // Attaches the javascrip for visualization as defined in
@@ -50,8 +122,9 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
     // Retrieve display settings. Not used yet.
     $settings = $this->getSetting('todo');
 
-    // @todo Make this value configurable.
-    $num_results_per_page = 10;
+    // Retrieve pager size from formatter settings.
+    $num_results_per_page = $this->getSetting('pager_items');
+
     # $feature_pager_id = 15; // increment by 1 for each database.
     $pager_index = 0;
     # $list_items = [];
@@ -70,7 +143,7 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
         $total_records = count($hits_array ?? []);
 
         // Set up a pager for this blast result.
-        $pager = $pager_manager->createPager($total_records, $num_results_per_page, $pager_index);
+        $pager = $this->pagerManager->createPager($total_records, $num_results_per_page, $pager_index);
         $current_page_num = $pager->getCurrentPage();
         $offset = $num_results_per_page * $current_page_num;
 
@@ -346,6 +419,38 @@ class ChadoBlastResultsFormatterDefault extends ChadoFormatterBase {
     // @todo Make priority of hit_name or accession configurable.
     $hit_name = $hit['accession'] ?: $hit['hit_name'] ?: $hit['description'] ?: $this->t('no hit id!');
     return $hit_name;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function settingsForm(array $form, FormStateInterface $form_state): array {
+    $form = parent::settingsForm($form, $form_state);
+
+    $form['pager_items'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Results per page'),
+      '#description' => $this->t('Number of BLAST hits displayed on each page.'),
+      '#default_value' => $this->getSetting('pager_items'),
+      '#min' => 1,
+      '#required' => TRUE,
+    ];
+
+    return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function settingsSummary(): array {
+    $summary = parent::settingsSummary();
+
+    $summary[] = $this->t(
+      'Results per page: @count',
+      ['@count' => $this->getSetting('pager_items')]
+    );
+
+    return $summary;
   }
 
 }

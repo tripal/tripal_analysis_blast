@@ -102,8 +102,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     }
 
     // Get default values for the form elements.
-    // Values stored in configuration.
-    $formatter_pager_items = $form_state->getValue('formatter_pager_items', $config->get('tripal_analysis_blast_config_display.formatter_pager_items') ?? 10);
     $database = $form_state->getValue('database', 0);
 
     // Values stored in the public.tripal_analysis_blast table.
@@ -115,23 +113,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     $hit_accession = $form_state->getValue('hit_accession', $stored_values['regex_hit_accession'] ?? '');
     $hit_organism_re = $form_state->getValue('hit_organism_re', $stored_values['regex_hit_organism'] ?? '');
     $hit_organism = $form_state->getValue('hit_organism', $stored_values['hit_organism'] ?? '');
-
-    // Formatter configurations.
-    $form['display'] = [
-      '#type' => 'details',
-      '#title' => $this->t('Display'),
-      '#description' => $this->t('Settings for how blast results are displayed'),
-      '#open' => TRUE,
-    ];
-
-    $form['display']['formatter_pager_items'] = [
-      '#type' => 'number',
-      '#title' => $this->t('Blast hits per page'),
-      '#min' => 1,
-      '#description' => $this->t('The number of blast hits to show at one time.
-          If there are more than this number, then a pager is used.'),
-      '#default_value' => $formatter_pager_items,
-    ];
 
     // Database import configurations.
     $form['databases'] = [
@@ -276,12 +257,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
-    $config = $this->configFactory->getEditable(static::SETTINGS);
-
-    // Display configurations.
-    $formatter_pager_items = $values['formatter_pager_items'];
-    $config->set('tripal_analysis_blast_config_display.formatter_pager_items', $formatter_pager_items);
-    $config->save();
 
     if ($values['database']) {
       // Assemble the database config into an array matching the db table
