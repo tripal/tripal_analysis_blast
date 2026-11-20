@@ -682,7 +682,7 @@ class BlastImporter extends ChadoImporterBase {
    * @return void
    *   No return value.
    */
-  protected function cleanFile() {
+  public function cleanFile() {
     foreach ($this->temporary_files as $temporary_file) {
       if (file_exists($temporary_file)) {
         unlink($temporary_file);
