@@ -94,6 +94,13 @@ class BlastImporter extends ChadoImporterBase {
   protected array $temporary_files = [];
 
   /**
+   * Verbose flag used for debugging.
+   *
+   * @var bool
+   */
+  protected bool $debug = FALSE;
+
+  /**
    * Implements ContainerFactoryPluginInterface->create().
    *
    * We are injecting additional dependencies here beyond the
@@ -169,7 +176,6 @@ class BlastImporter extends ChadoImporterBase {
 
     // The parent adds a chado schema select element.
     $form = parent::form($form, $form_state);
-
     // Get the sequence ontology cv_id.
     $cv_records = $this->cvterm_buddy->getCv(['cv.name' => 'sequence'], []);
     if (count($cv_records) != 1) {
@@ -244,6 +250,14 @@ class BlastImporter extends ChadoImporterBase {
       '#default_value' => $query_uniquename,
     ];
 
+    $form['advanced']['debug'] = [
+      '#title' => $this->t('Verbose debug output'),
+      '#type' => 'checkbox',
+      '#description' => $this->t('Select this checkbox to output detailed progress
+      messages for debugging problems with the importer.'),
+      '#default_value' => 0,
+    ];
+
     return $form;
   }
 
@@ -299,7 +313,6 @@ class BlastImporter extends ChadoImporterBase {
    */
   public function formValidate($form, &$form_state) {
     $values = $form_state->getValues();
-dpm($values, "CP1 formValidate values "); //;;;
 
     // Validate the file extension.
     if ($values['blastfile_ext'] && !preg_match('/^[A-Za-z]+$/', $values['blastfile_ext'])) {
@@ -346,7 +359,8 @@ dpm($values, "CP1 formValidate values "); //;;;
    */
   public function run() {
     $arguments = $this->arguments['run_args'];
-print "CP2 run() arguments: ";var_dump($arguments);//;;;
+    $this->debug = $arguments['debug'] ?? FALSE;
+    $this->debugMsg('run() arguments', $arguments);
     $analysis_id = (int) $arguments['analysis_id'];
     $blastdb_id = (int) $arguments['blastdb_id'];
     $blastfile = trim($this->arguments['files'][0]['file_path']);
@@ -455,6 +469,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
           return;
         }
       }
+      $this->debugMsg('list of files to import', $files_to_parse);
 
       $total_files = count($files_to_parse);
       $no_file = 0;
@@ -467,7 +482,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
             ['@no_file' => $no_file, '@total_files' => $total_files, '@file' => basename($file)]);
         }
         $success = $this->parseXML($analysis_id, $blastdb_id, $file,
-          $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
+          $no_parsed, $blastfile_ext, $query_re, $query_type_id, $query_uniquename,
           $search_keywords, $show_progress);
         $this->setItemsHandled($no_file);
         if (!$success) {
@@ -548,6 +563,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
       return FALSE;
     }
     $type_id = $cvterm_records[0]->getValue('cvterm.cvterm_id');
+    $this->debugMsg('cvterm_id for analysis_blast_output_iteration_hits', $type_id);
 
     // Retrieve the blast database object.
     $query = $this->connection->select('1:db', 'D');
@@ -743,6 +759,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
     int $type_id,
   ): bool {
 
+    $this->debugMsg('handleIteration');
     $feature_id = 0;
     $analysisfeature_id = 0;
     $iteration_tags_xml = '';
@@ -794,27 +811,31 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
             // Now find the feature in chado.
             $query = $this->connection->select('1:feature', 'F');
             $query->addField('F', 'feature_id', 'feature_id');
+            $suffix = '';
             if ($query_uniquename) {
               $query->condition('F.uniquename', $feature, '=');
+              $suffix .= ' in the "uniquename" column';
             }
             else {
               $query->condition('F.name', $feature, '=');
+              $suffix .= ' in the "name" column';
             }
             if ($query_type_id) {
               $query->condition('F.type_id', $query_type_id, '=');
+              $suffix .= " using type_id $query_type_id";
             }
             $feature_arr = $query->execute()->fetchAll();
-            $suffix = $query_type_id ? ' using type_id ' . $query_type_id : '';
             if (!$feature_arr) {
-              $this->logger->error("T_blastXML_load: Database query failed when searching for feature '$value'$suffix.");
+              $this->logger->error("T_blastXML_load: Database query failed when searching for feature \"$value\"$suffix.");
               return FALSE;
             }
             if (count($feature_arr) > 1) {
-              $this->logger->error("T_blastXML_load: Ambiguous: '$feature' matches more than one feature$suffix and is being skipped");
+              $this->logger->error("T_blastXML_load: Ambiguous: Feature \"$feature\" matches more than one feature$suffix and is being skipped");
               continue 2;
             }
+            // @todo this one never happens? Caught above.
             if (count($feature_arr) == 0) {
-              $this->logger->error("T_blastXML_load: Failed: '$feature' cannot find a matching feature in the database$suffix.");
+              $this->logger->error("T_blastXML_load: Failed: Feature \"$feature\" cannot find a matching feature in the database$suffix.");
               continue 2;
             }
             $feature_id = $feature_arr[0]->feature_id;
@@ -887,10 +908,15 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
                 $this->logger->error("T_blastXML_load: Cannot add analysis feature record for $feature.");
                 continue 2;
               }
+              $this->debugMsg('inserted analysisfeature_id', $analysisfeature_id);
+            }
+            else {
+              $this->debugMsg('existing analysisfeature_id', $analysisfeature_id);
             }
 
             // If the analysisfeatureprop record exists then update it.
             if ($analysisfeatureprop) {
+              $this->debugMsg('updating analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
               $sql = "UPDATE {1:analysisfeatureprop}
               SET value = :xml_content
               WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
@@ -920,6 +946,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
                 $this->logger->error("T_blastXML_load: Cannot add analysis feature property record.");
                 continue 2;
               }
+              $this->debugMsg('inserted analysisfeatureprop_id', $analysisfeatureprop_id);
             }
             // If the user wants to store the keywords then do so.
             if ($search_keywords) {
@@ -940,6 +967,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
                 // first check to make sure it doesn't already exist.
                 // Note that this is not connected to chado.organism_id.
                 $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
+$this->debugMsg('hit_organism', $blast_org_name);
                 if ($blast_org_name) {
                   $query = $this->connection->select('1:blast_organisms', 'O');
                   $query->addField('O', 'blast_org_id', 'blast_org_id');
@@ -947,6 +975,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
                   $blast_org_id = $query->execute()->fetchField();
                   // If this organism doesn't exist then add it.
                   if (!$blast_org_id) {
+                    $this->debugMsg('inserting into blast_organisms table', $blast_org_name);
                     $query = $this->connection->insert('1:blast_organisms');
                     $query->fields(['blast_org_name' => $blast_org_name]);
                     $blast_org_id = $query->execute();
@@ -973,6 +1002,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
                   'hit_best_score' => $blast_obj->hits_array[$i]['best_score'],
                   'hit_pid' => $blast_obj->hits_array[$i]['percent_identity'],
                 ];
+                $this->debugMsg('inserting into analysisfeature table hit #', $i + 1);
                 $query = $this->connection->insert('1:blast_hit_data');
                 $query->fields($values);
                 // Because this table has no primary key, we have no return
@@ -1103,23 +1133,11 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
     if (!$regex_hit_id) {
       $regex_hit_id = '/^(.*?)\s.*$/';
     }
-    else {
-      $regex_hit_id = '/' . $regex_hit_id . '/';
-    }
     if (!$regex_hit_def) {
       $regex_hit_def = '/^.*?\s(.*)$/';
     }
-    else {
-      $regex_hit_def = '/' . $regex_hit_def . '/';
-    }
     if (!$regex_hit_accession) {
       $regex_hit_accession = '/^(.*?)\s.*$/';
-    }
-    else {
-      $regex_hit_accession = '/' . $regex_hit_accession . '/';
-    }
-    if ($regex_hit_organism) {
-      $regex_hit_organism = '/' . $regex_hit_organism . '/';
     }
 
     // Get analysis information.
@@ -1461,6 +1479,32 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
     $blast_object->number_hits = $number_hits;
     $blast_object->hits_array = $hits_array;
     return $blast_object;
+  }
+
+  /**
+   * Prints debug messages if debug flag is set.
+   *
+   * @param string $message
+   *   A message to give context to the variable.
+   * @param mixed $variable
+   *   An optional variable to print with print_r.
+   *
+   * @return void
+   *   No return value.
+   */
+  protected function debugMsg(string $message, mixed $variable = '*nodisplay*'): void {
+    if ($this->debug) {
+      // Support omitting the variable when calling this function.
+      if (is_string($variable) && $variable == '*nodisplay*') {
+        $output = '';
+      }
+      else {
+        ob_start();
+        var_dump($variable);
+        $output = ': ' . rtrim(ob_get_clean());
+      }
+      $this->logger->info('T_blastXML_debug: ' . $message . $output);
+    }
   }
 
 }
