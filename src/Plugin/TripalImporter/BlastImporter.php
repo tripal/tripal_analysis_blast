@@ -42,6 +42,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
     'bundle' => [],
   ],
 )]
+// @todo add when available after PR #2610:  file_seekable: TRUE, but prob not needed because of splitxml?
 class BlastImporter extends ChadoImporterBase {
 
   use StringTranslationTrait;
@@ -87,13 +88,9 @@ class BlastImporter extends ChadoImporterBase {
   /**
    * Implements ContainerFactoryPluginInterface->create().
    *
-   * We are injecting an additional dependency here, the
-   * ChadoBuddyPluginManager.
-   *
-   * Since we have implemented the ContainerFactoryPluginInterface this static
-   * function will be called behind the scenes when a Plugin Manager uses
-   * createInstance(). Specifically this method is used to determine the
-   * parameters to pass to the constructor.
+   * We are injecting additional dependencies here beyond the
+   * parent class: ChadoBuddyPluginManager, FileRepositoryInterface,
+   * and FileSystemInterface.
    *
    * @param Symfony\Component\DependencyInjection\ContainerInterface $container
    *   The container.
@@ -213,8 +210,8 @@ class BlastImporter extends ChadoImporterBase {
       This should be the same as the definition line in the query FASTA file.
       For example, to retrieve the first word enter %regex here.
       This option is is only required when the query does not identically match a feature
-      in the database.',
-      ['%regex' => '/^(\S+)/']),
+      in the database. If not specified, then %default is used.',
+      ['%regex' => '/^(\S+)/', '%default' => '/^(.*?)\s.*$/']),
       '#default_value' => $query_re,
     ];
 
@@ -223,7 +220,8 @@ class BlastImporter extends ChadoImporterBase {
       '#type' => 'textfield',
       '#description' => $this->t('Please enter the Sequence Ontology term that describes
       the query sequences used for blasting.
-      This is only necessary if two or more sequences have the same name.'),
+      This is only necessary if two or more sequences in the chado feature table
+      have the same name.'),
       '#default_value' => $query_type,
       '#autocomplete_route_name' => 'tripal_chado.cvterm_autocomplete',
       '#autocomplete_route_parameters' => ['count' => 5, 'cv_id' => $sequence_cv_id],
@@ -233,7 +231,7 @@ class BlastImporter extends ChadoImporterBase {
       '#title' => $this->t('Use Unique Name'),
       '#type' => 'checkbox',
       '#description' => $this->t('Select this checkbox if the query name in the blast file
-      matches the uniquename of the feature. By default, the blast results will be
+      matches the "uniquename" of the feature. By default, the blast results will be
       mapped to the "name" of the feature.'),
       '#default_value' => $query_uniquename,
     ];
@@ -244,13 +242,13 @@ class BlastImporter extends ChadoImporterBase {
   /**
    * Generates the database select form element.
    *
-   * @param int|null $blastdb_id
+   * @param int|string|null $blastdb_id
    *   The default db_id value for the select element.
    *
    * @return array
    *   The element render array.
    */
-  protected function getDbSelectElement(?int $blastdb_id): array {
+  protected function getDbSelectElement(int|string|null $blastdb_id): array {
     // Get the case-insensitive sorted list of databases.
     $query = $this->connection->select('1:db', 'D');
     $query->fields('D', ['db_id', 'name']);
@@ -281,7 +279,8 @@ class BlastImporter extends ChadoImporterBase {
           '@settings_page' => $settings_page,
         ]),
       '#options' => $dbs,
-      '#default_value' => $blastdb_id,
+      '#default_value' => $blastdb_id ?: '',
+      '#required' => TRUE,
     ];
     return $element;
 
@@ -292,6 +291,7 @@ class BlastImporter extends ChadoImporterBase {
    */
   public function formValidate($form, &$form_state) {
     $values = $form_state->getValues();
+dpm($values, "CP1 formValidate values "); //;;;
 
     // Validate the file extension.
     if ($values['blastfile_ext'] && !preg_match('/^[A-Za-z]+$/', $values['blastfile_ext'])) {
@@ -315,8 +315,9 @@ class BlastImporter extends ChadoImporterBase {
    */
   public function run() {
     $arguments = $this->arguments['run_args'];
+print "CP2 run() arguments: ";var_dump($arguments);//;;;
     $analysis_id = $arguments['analysis_id'];
-    $blastdb_id = $arguments['blastdb_id'];
+    $blastdb_id = (int) $arguments['blastdb_id'];
     $blastfile = trim($this->arguments['files'][0]['file_path']);
     $blastfile_ext = trim($arguments['blastfile_ext']);
     $no_parsed = $arguments['no_parsed'];
@@ -341,8 +342,7 @@ class BlastImporter extends ChadoImporterBase {
   /**
    * {@inheritdoc}
    */
-  public function formSubmit($form, &$form_state) {
-  }
+  public function formSubmit($form, &$form_state) {}
 
   /**
    * This function is a wrapper for the parseXml() function.
@@ -398,11 +398,10 @@ class BlastImporter extends ChadoImporterBase {
     string $search_keywords,
   ): int {
     try {
+      $files_to_parse = [];
       // If user supplied a single file (e.g. blast.xml).
       if (is_file($blastfile)) {
-        $this->parseXml($analysis_id, $blastdb_id, $blastfile,
-          $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-          $search_keywords);
+        $files_to_parse[] = $blastfile;
       }
       // Otherwise, $blastfile is a directory. Iterate through all
       // of the xml files in it.
@@ -412,35 +411,49 @@ class BlastImporter extends ChadoImporterBase {
         }
 
         // Parsing all files in the directory.
-        $dir_handle = @opendir($blastfile) or die("Unable to open $blastfile");
+        $dir_handle = @opendir($blastfile);
+        if (!$dir_handle) {
+          $this->logger->error('T_blastXML_load: Unable to open directory "@blastfile"',
+            ['@blastfile' => $blastfile]);
+          return 0;
+        }
         $files_to_parse = [];
         while ($file = readdir($dir_handle)) {
           if (preg_match("/^.*\.$blastfile_ext/i", $file)) {
-            $files_to_parse[] = $file;
+            $files_to_parse[] = $blastfile . '/' . $file;
           }
         }
-
-        $no_file = 0;
         $total_files = count($files_to_parse);
-        $this->setTotalItems($total_files);
-        foreach ($files_to_parse as $file) {
-          $no_file++;
-          $this->logger->notice(
-            $this->t('T_blastXML_load: File @no_file of @total_files: @file',
-            ['@no_file' => $no_file, '@total_files' => $total_files, '@file' => $file])
-          );
-          $this->parseXML($analysis_id, $blastdb_id, "$blastfile/$file",
-            $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
-            $search_keywords, FALSE);
-          $this->setItemsHandled($no_file);
+        if (!$total_files) {
+          $this->logger->error('T_blastXML_load: No valid files found in directory "@blastfile"',
+            ['@blastfile' => $blastfile]);
+          return 0;
+        }
+      }
+
+      $no_file = 0;
+      $this->setTotalItems($total_files);
+      foreach ($files_to_parse as $file) {
+        $no_file++;
+        $show_progress = ($total_files == 1) ? TRUE : FALSE;
+        if (!$show_progress) {
+          $this->logger->notice('T_blastXML_load: File @no_file of @total_files: @file',
+            ['@no_file' => $no_file, '@total_files' => $total_files, '@file' => basename($file)]);
+        }
+        $result = $this->parseXML($analysis_id, $blastdb_id, $file,
+          $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
+          $search_keywords, $show_progress);
+        $this->setItemsHandled($no_file);
+        if (!$result) {
+          return 0;
         }
       }
     }
     catch (Exception $e) {
-      $this->logger->error("T_blastXML_load: Error parsing XML file $blastfile");
+      $this->logger->error('T_blastXML_load: Exception parsing "@blastfile"',
+        ['@blastfile' => $blastfile]);
       return 0;
     }
-    $this->logger->notice("T_blastXML_load: Completed parsing XML file $blastfile");
     return 1;
   }
 
@@ -452,18 +465,18 @@ class BlastImporter extends ChadoImporterBase {
    *
    * @param int $analysis_id
    *   The analysis ID that the blast results belong to.
-   * @param int|null $blastdb_id
+   * @param int $blastdb_id
    *   The database blasted against.
    * @param string $blastfile
-   *   The directory path containing a collection of blast XML files or a the
-   *   path to a single XML file.  If a directory is provided the function will
+   *   The directory path containing a collection of blast XML files or a
+   *   path to a single XML file. If a directory is provided the function will
    *   iterate through all of the files with the extension provided by the
    *   $blast_ext argument and extract results.
    * @param string $no_parsed
    *   The number of hits to keep.
    * @param string $blastfile_ext
    *   If the $blastfile argument is a directory path rather than a file then
-   *   this function willlook for files with the extension provided.
+   *   this function will look for files with the extension provided.
    * @param string $query_re
    *   The regular expression that can uniquely identify the query name.
    *   This parameter is required if the feature name is not the
@@ -475,7 +488,7 @@ class BlastImporter extends ChadoImporterBase {
    *   If 1, match to the feature uniquename. If 0, match to the feature name.
    * @param string $search_keywords
    *   The list of fields to extract from the blast results and store as
-   *   a separate entry in the analysisfeatureprop table.  Th list should be
+   *   a separate entry in the analysisfeatureprop table. The list should be
    *   a single string with elements separated with a bar '|'. The valid values
    *   include: 'blast_match_name', 'blast_match_description',
    *   'blast_match_organism', 'blast_match_accession', 'blast_database',
@@ -488,7 +501,7 @@ class BlastImporter extends ChadoImporterBase {
    */
   protected function parseXml(
     int $analysis_id,
-    ?int $blastdb_id,
+    int $blastdb_id,
     string $blastfile,
     string $no_parsed,
     string $blastfile_ext,
@@ -527,6 +540,9 @@ class BlastImporter extends ChadoImporterBase {
     $query->fields('D');
     $query->condition('D.db_id', $blastdb_id, '=');
     $blastdb_object = $query->execute()->fetchObject();
+    if (!$blastdb_object) {
+      throw new \Exception("Error, could not retrieve blast database from db_id=$blastdb_id");
+    }
 
     // Retrieve the analysis object.
     $query = $this->connection->select('1:analysis', 'A');
@@ -1104,7 +1120,7 @@ class BlastImporter extends ChadoImporterBase {
     // @todo Find entity id for the analysis.
     // Tripal 3 stored this node ID as $analysis->nid.
     //
-    // Load the file.  This XML file should be an extract
+    // Load the file. This XML file should be an extract
     // of the original XML file with only a single iteration.
     // An iteration is essentially all the hits for a single
     // query sequence.
@@ -1370,8 +1386,8 @@ class BlastImporter extends ChadoImporterBase {
                   $hits_array[$hit_count]['hit_name'] = $hit_name;
 
                   if ($accession && $db->urlprefix) {
-                    // Replace {accession} placeholder with accession if
-                    // present, otherwise append accession to url.
+                    // Replace {accession} placeholder with accession if this
+                    // placeholder is present, otherwise append accession to url.
                     $hit_url = $db->urlprefix;
                     if (!preg_replace('/{accession}/', $accession, $hit_url)) {
                       $hit_url .= $accession;
