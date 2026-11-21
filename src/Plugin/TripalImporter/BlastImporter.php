@@ -19,6 +19,7 @@ use Drupal\tripal_chado\Database\ChadoConnection;
 use Drupal\tripal_chado\TripalImporter\ChadoImporterBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
+// @todo add when available after PR #2610:  file_seekable: TRUE, but prob not needed because of splitxml?
 /**
  * Blast result importer implementation of the TripalImporterBase.
  */
@@ -42,25 +43,30 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
     'bundle' => [],
   ],
 )]
-// @todo add when available after PR #2610:  file_seekable: TRUE, but prob not needed because of splitxml?
 class BlastImporter extends ChadoImporterBase {
 
   use StringTranslationTrait;
 
   /**
    * Used to store the manager so we can create various buddies.
+   *
+   * @var Drupal\tripal_chado\ChadoBuddy\PluginManagers\ChadoBuddyPluginManager
    */
-  protected object $buddy_manager;
+  protected ChadoBuddyPluginManager $buddy_manager;
 
   /**
    * Provide the dbxref buddy instance.
+   *
+   * @var \Drupal\tripal_chado\Plugin\ChadoBuddy\ChadoDbxrefBuddy
    */
-  protected object $dbxref_buddy;
+  protected ChadoDbxrefBuddy $dbxref_buddy;
 
   /**
    * Provide the cvterm buddy instance.
+   *
+   * @var \Drupal\tripal_chado\Plugin\ChadoBuddy\ChadoCvtermBuddy
    */
-  protected object $cvterm_buddy;
+  protected ChadoCvtermBuddy $cvterm_buddy;
 
   /**
    * Drupal file repository service.
@@ -218,7 +224,7 @@ class BlastImporter extends ChadoImporterBase {
     $form['query_type'] = [
       '#title' => $this->t('Query Type'),
       '#type' => 'textfield',
-      '#description' => $this->t('Please enter the Sequence Ontology term that describes
+      '#description' => $this->t('Please select the Sequence Ontology term that describes
       the query sequences used for blasting.
       This is only necessary if two or more sequences in the chado feature table
       have the same name.'),
@@ -313,6 +319,11 @@ dpm($values, "CP1 formValidate values "); //;;;
   /**
    * {@inheritdoc}
    */
+  public function formSubmit($form, &$form_state) {}
+
+  /**
+   * {@inheritdoc}
+   */
   public function run() {
     $arguments = $this->arguments['run_args'];
 print "CP2 run() arguments: ";var_dump($arguments);//;;;
@@ -338,11 +349,6 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
       $search_keywords,
     );
   }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function formSubmit($form, &$form_state) {}
 
   /**
    * This function is a wrapper for the parseXml() function.
@@ -383,8 +389,8 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
    *   'blast_match_organism', 'blast_match_accession', 'blast_database',
    *   'blast_evalue', 'blast_score'.
    *
-   * @return int
-   *   Returns 1 for success, 0 for failure.
+   * @return void
+   *   No return value, sends status to logger.
    */
   protected function parseXmlFile(
     int $analysis_id,
@@ -396,7 +402,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
     string $query_type,
     int $query_uniquename,
     string $search_keywords,
-  ): int {
+  ): void {
     try {
       $files_to_parse = [];
       // If user supplied a single file (e.g. blast.xml).
@@ -415,7 +421,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
         if (!$dir_handle) {
           $this->logger->error('T_blastXML_load: Unable to open directory "@blastfile"',
             ['@blastfile' => $blastfile]);
-          return 0;
+          return;
         }
         $files_to_parse = [];
         while ($file = readdir($dir_handle)) {
@@ -427,7 +433,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
         if (!$total_files) {
           $this->logger->error('T_blastXML_load: No valid files found in directory "@blastfile"',
             ['@blastfile' => $blastfile]);
-          return 0;
+          return;
         }
       }
 
@@ -440,21 +446,20 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
           $this->logger->notice('T_blastXML_load: File @no_file of @total_files: @file',
             ['@no_file' => $no_file, '@total_files' => $total_files, '@file' => basename($file)]);
         }
-        $result = $this->parseXML($analysis_id, $blastdb_id, $file,
+        $success = $this->parseXML($analysis_id, $blastdb_id, $file,
           $no_parsed, $blastfile_ext, $query_re, $query_type, $query_uniquename,
           $search_keywords, $show_progress);
         $this->setItemsHandled($no_file);
-        if (!$result) {
-          return 0;
+        if (!$success) {
+          // Do not process more files if there was an error.
+          break;
         }
       }
     }
     catch (Exception $e) {
       $this->logger->error('T_blastXML_load: Exception parsing "@blastfile"',
         ['@blastfile' => $blastfile]);
-      return 0;
     }
-    return 1;
   }
 
   /**
@@ -1387,7 +1392,8 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
 
                   if ($accession && $db->urlprefix) {
                     // Replace {accession} placeholder with accession if this
-                    // placeholder is present, otherwise append accession to url.
+                    // placeholder is present, otherwise append the accession
+                    // to the url.
                     $hit_url = $db->urlprefix;
                     if (!preg_replace('/{accession}/', $accession, $hit_url)) {
                       $hit_url .= $accession;
