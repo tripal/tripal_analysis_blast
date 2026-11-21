@@ -16,6 +16,8 @@ use Drupal\tripal\TripalBackendPublish\PluginManager\TripalBackendPublishManager
 use Drupal\tripal_chado\ChadoBuddy\PluginManagers\ChadoBuddyPluginManager;
 use Drupal\tripal_chado\Controller\ChadoCVTermAutocompleteController;
 use Drupal\tripal_chado\Database\ChadoConnection;
+use Drupal\tripal_chado\Plugin\ChadoBuddy\ChadoCvtermBuddy;
+use Drupal\tripal_chado\Plugin\ChadoBuddy\ChadoDbxrefBuddy;
 use Drupal\tripal_chado\TripalImporter\ChadoImporterBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -314,12 +316,30 @@ dpm($values, "CP1 formValidate values "); //;;;
         $form_state->setErrorByName('query_re', 'The regular expression must contain parentheses to capture a value.');
       }
     }
+
+    // Validate the query type, if specified.
+    if ($values['query_type']) {
+      $cv_autocomplete = new ChadoCVTermAutocompleteController();
+      $query_type_id = $cv_autocomplete->getCVtermId($values['query_type'], 'sequence');
+      if (!$query_type_id) {
+        $form_state->setErrorByName('query_type', 'The query type is not valid. Let the autocomplete add the ID in parentheses.');
+      }
+    }
   }
 
   /**
    * {@inheritdoc}
    */
-  public function formSubmit($form, &$form_state) {}
+  public function formSubmit($form, &$form_state) {
+    // Extract the query cvterm_id from the string from the form
+    // query_type field. This should never fail as it was validated.
+    $query_type = $form_state->getValue('query_type');
+    if ($query_type) {
+      $cv_autocomplete = new ChadoCVTermAutocompleteController();
+      $query_type_id = $cv_autocomplete->getCVtermId($query_type, 'sequence');
+      $form_state->setValue('query_type', $query_type_id);
+    }
+  }
 
   /**
    * {@inheritdoc}
@@ -327,13 +347,13 @@ dpm($values, "CP1 formValidate values "); //;;;
   public function run() {
     $arguments = $this->arguments['run_args'];
 print "CP2 run() arguments: ";var_dump($arguments);//;;;
-    $analysis_id = $arguments['analysis_id'];
+    $analysis_id = (int) $arguments['analysis_id'];
     $blastdb_id = (int) $arguments['blastdb_id'];
     $blastfile = trim($this->arguments['files'][0]['file_path']);
     $blastfile_ext = trim($arguments['blastfile_ext']);
     $no_parsed = $arguments['no_parsed'];
     $query_re = trim($arguments['query_re']);
-    $query_type = trim($arguments['query_type']);
+    $query_type_id = $arguments['query_type'];
     $query_uniquename = $arguments['query_uniquename'];
     // @todo search_keywords is treated as a boolean, not a list.
     $search_keywords = 1;
@@ -344,7 +364,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
       $no_parsed,
       $blastfile_ext,
       $query_re,
-      $query_type,
+      $query_type_id,
       $query_uniquename,
       $search_keywords,
     );
@@ -376,9 +396,9 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
    *   The regular expression that can uniquely identify the query name.
    *   This parameter is required if the feature name is not the
    *   first word in the blast query name.
-   * @param string $query_type
-   *   The feature type (e.g. 'gene', 'mRNA', 'contig') of the query. It must
-   *   be a valid Sequence Ontology term.
+   * @param int|string $query_type_id
+   *   The pkey of the feature type (e.g. 'gene', 'mRNA', 'contig') of the query.
+   *   It must be a valid Sequence Ontology term. Empty string if not supplied.
    * @param int $query_uniquename
    *   If 1, match to the feature uniquename. If 0, match to the feature name.
    * @param string $search_keywords
@@ -399,7 +419,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
     string $no_parsed,
     string $blastfile_ext,
     string $query_re,
-    string $query_type,
+    int|string $query_type_id,
     int $query_uniquename,
     string $search_keywords,
   ): void {
@@ -429,14 +449,14 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
             $files_to_parse[] = $blastfile . '/' . $file;
           }
         }
-        $total_files = count($files_to_parse);
-        if (!$total_files) {
+        if (!$files_to_parse) {
           $this->logger->error('T_blastXML_load: No valid files found in directory "@blastfile"',
             ['@blastfile' => $blastfile]);
           return;
         }
       }
 
+      $total_files = count($files_to_parse);
       $no_file = 0;
       $this->setTotalItems($total_files);
       foreach ($files_to_parse as $file) {
@@ -486,9 +506,9 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
    *   The regular expression that can uniquely identify the query name.
    *   This parameter is required if the feature name is not the
    *   first word in the blast query name.
-   * @param string $query_type
+   * @param int|string $query_type_id
    *   The feature type (e.g. 'gene', 'mRNA', 'contig') of the query. It must
-   *   be a valid Sequence Ontology term.
+   *   be a valid Sequence Ontology term. Empty string if not supplied.
    * @param int $query_uniquename
    *   If 1, match to the feature uniquename. If 0, match to the feature name.
    * @param string $search_keywords
@@ -511,7 +531,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
     string $no_parsed,
     string $blastfile_ext,
     string $query_re,
-    string $query_type,
+    int|string $query_type_id,
     string $query_uniquename,
     string $search_keywords,
     bool $progress = TRUE,
@@ -528,17 +548,6 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
       return FALSE;
     }
     $type_id = $cvterm_records[0]->getValue('cvterm.cvterm_id');
-
-    // Get the query cvterm_id from the form query_type field.
-    $query_type_id = NULL;
-    if ($query_type) {
-      $cv_autocomplete = new ChadoCVTermAutocompleteController();
-      $query_type_id = $cv_autocomplete->getCVtermId($query_type, 'sequence');
-      if (!$query_type_id) {
-        $this->logger->error("T_blastXML_load: Invalid cv term supplied for query type: \"$query_type\".");
-        return FALSE;
-      }
-    }
 
     // Retrieve the blast database object.
     $query = $this->connection->select('1:db', 'D');
@@ -715,6 +724,8 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
   /**
    * Process one <Iteration> element.
    *
+   * @todo add docblock
+   *
    * @return bool
    *   TRUE for success, FALSE if error.
    */
@@ -726,7 +737,7 @@ print "CP2 run() arguments: ";var_dump($arguments);//;;;
     string $no_parsed,
     string $blastfile_ext,
     string $query_re,
-    ?string $query_type_id,
+    int|string $query_type_id,
     int $query_uniquename,
     string $search_keywords,
     int $type_id,
