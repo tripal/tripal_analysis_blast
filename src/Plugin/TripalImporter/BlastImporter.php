@@ -369,7 +369,7 @@ class BlastImporter extends ChadoImporterBase {
   public function run() {
     $arguments = $this->arguments['run_args'];
     self::$debug = $arguments['debug'] ?? FALSE;
-self::$debug = TRUE;
+self::$debug = TRUE; //;;;
     self::debugMsg('run() arguments', $arguments);
     $analysis_id = (int) $arguments['analysis_id'];
     $blastdb_id = (int) $arguments['blastdb_id'];
@@ -421,8 +421,9 @@ self::$debug = TRUE;
    *   This parameter is required if the feature name is not the
    *   first word in the blast query name.
    * @param int|string $query_type_id
-   *   The pkey of the feature type (e.g. 'gene', 'mRNA', 'contig') of the query.
-   *   It must be a valid Sequence Ontology term. Empty string if not supplied.
+   *   The pkey of the feature type (e.g. 'gene', 'mRNA', 'contig') of the
+   *   query. It must be a valid Sequence Ontology term. This will be an
+   *   empty string if it was not supplied.
    * @param int $query_uniquename
    *   If 1, match to the feature uniquename. If 0, match to the feature name.
    * @param string $search_keywords
@@ -573,7 +574,7 @@ self::$debug = TRUE;
       return FALSE;
     }
     $type_id = $cvterm_records[0]->getValue('cvterm.cvterm_id');
-    self::debugMsg('cvterm_id for analysis_blast_output_iteration_hits', $type_id);
+    self::debugMsg('cvterm_id retrieved for analysis_blast_output_iteration_hits', $type_id);
 
     // Retrieve the blast database object.
     $query = $this->connection->select('1:db', 'D');
@@ -800,16 +801,19 @@ self::$debug = TRUE;
             // then use that now.
             if ($query_re and preg_match($query_re, $value, $matches)) {
               $feature = $matches[1];
+              self::debugMsg('Iteration_query-def, retrieved feature using user regex ' . $query_re . ' from ' . $value, $feature);
             }
             // If not a query RE or match then use the default word before
             // a space as the feature name.
             elseif (preg_match('/^(.*?)\s.*$/', $value, $matches)) {
               $feature = $matches[1];
+              self::debugMsg('Iteration_query-def, retrieved feature using default regex /^(.*?)\s.*$/ from ' . $value, $feature);
             }
             // If no match up to the first space then just use the entire
             // string.
             else {
               $feature = $value;
+              self::debugMsg('Iteration_query-def, no regex match for feature, use entire value', $feature);
             }
 
             if (!$feature and $query_re) {
@@ -849,6 +853,7 @@ self::$debug = TRUE;
               continue 2;
             }
             $feature_id = $feature_arr[0]->feature_id;
+            self::debugMsg('Iteration_query-def, looked up feature_id for feature ' . $feature, $feature_id);
             break;
 
           // If the node is <Iteration_hits>.
@@ -918,15 +923,15 @@ self::$debug = TRUE;
                 $this->logger->error("T_blastXML_load: Cannot add analysis feature record for $feature.");
                 continue 2;
               }
-              self::debugMsg('inserted analysisfeature_id', $analysisfeature_id);
+              self::debugMsg('Iteration_hits, inserted analysisfeature_id', $analysisfeature_id);
             }
             else {
-              self::debugMsg('existing analysisfeature_id', $analysisfeature_id);
+              self::debugMsg('Iteration_hits, existing analysisfeature_id', $analysisfeature_id);
             }
 
             // If the analysisfeatureprop record exists then update it.
             if ($analysisfeatureprop) {
-              self::debugMsg('updating analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
+              self::debugMsg('Iteration_hits, updating analysisfeatureprop record for analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
               $sql = "UPDATE {1:analysisfeatureprop}
               SET value = :xml_content
               WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
@@ -941,6 +946,7 @@ self::$debug = TRUE;
             }
             // If the analyisfeatureprop record doesn't exist then add it.
             else {
+              self::debugMsg('Iteration_hits, adding analysisfeatureprop record for analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
 
               // Add the analysisfeatureprop record.
               $values = [
@@ -956,12 +962,13 @@ self::$debug = TRUE;
                 $this->logger->error("T_blastXML_load: Cannot add analysis feature property record.");
                 continue 2;
               }
-              self::debugMsg('inserted analysisfeatureprop_id', $analysisfeatureprop_id);
             }
             // If the user wants to store the keywords then do so.
+            // @todo currently search_keywords is hardcoded as "1".
             if ($search_keywords) {
 
               // Remove any existing entries. we'll replace them.
+              self::debugMsg('removing existing blast_hit_data records for analysis_feature_id', $analysisfeature_id);
               $query = $this->connection->delete('1:blast_hit_data');
               $query->condition('analysisfeature_id', $analysisfeature_id, '=');
               $query->execute();
@@ -971,13 +978,11 @@ self::$debug = TRUE;
 
               // Iterate through the hits and add the records to the
               // blast_hit_data table.
-              $failed = 0;
               for ($i = 0; $i < $blast_obj->number_hits; $i++) {
                 // Add the organism to the blast_organisms table, but
                 // first check to make sure it doesn't already exist.
                 // Note that this is not connected to chado.organism_id.
                 $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
-self::debugMsg('hit_organism', $blast_org_name);
                 if ($blast_org_name) {
                   $query = $this->connection->select('1:blast_organisms', 'O');
                   $query->addField('O', 'blast_org_id', 'blast_org_id');
@@ -985,7 +990,7 @@ self::debugMsg('hit_organism', $blast_org_name);
                   $blast_org_id = $query->execute()->fetchField();
                   // If this organism doesn't exist then add it.
                   if (!$blast_org_id) {
-                    self::debugMsg('inserting into blast_organisms table', $blast_org_name);
+                    self::debugMsg('inserting new organism into blast_organisms table', $blast_org_name);
                     $query = $this->connection->insert('1:blast_organisms');
                     $query->fields(['blast_org_name' => $blast_org_name]);
                     $blast_org_id = $query->execute();
@@ -1012,7 +1017,13 @@ self::debugMsg('hit_organism', $blast_org_name);
                   'hit_best_score' => $blast_obj->hits_array[$i]['best_score'],
                   'hit_pid' => $blast_obj->hits_array[$i]['percent_identity'],
                 ];
-                self::debugMsg('inserting into analysisfeature table hit #', $i + 1);
+                // Full debug only on the first hit to reduce amount of output.
+                if ($i == 0) {
+                  self::debugMsg('inserting into blast_hit_data table hit # ' . ($i + 1), $values);
+                }
+                else {
+                  self::debugMsg('inserting into blast_hit_data table hit # ' . ($i + 1));
+                }
                 $query = $this->connection->insert('1:blast_hit_data');
                 $query->fields($values);
                 // Because this table has no primary key, we have no return
@@ -1021,12 +1032,9 @@ self::debugMsg('hit_organism', $blast_org_name);
                   $query->execute();
                 }
                 catch (\Throwable $e) {
-                  $failed = 1;
+                  $this->logger->error("T_blastXML_load: Failed to add keywords for searching: '$feature': " . $e->getMessage());
+                  return FALSE;
                 }
-              }
-              if ($failed) {
-                $this->logger->error("T_blastXML_load: Failed to add keywords for searching: '$feature'");
-                return FALSE;
               }
             } // end if ($search_keywords) ...
             break;
@@ -1076,7 +1084,7 @@ self::debugMsg('hit_organism', $blast_org_name);
    *        $blast_obj->title        (the database name, or analysis if
    *                                  no dbname)
    *
-   *      The hits array. The variable $i is indicate an index variable
+   *      The hits array. The variable $i indicates an index variable
    *      that needs to be used for accessing the hits.
    *        $blast_obj->hits_array
    *        $blast_obj->hits_array[$i]['arrowr_url']
@@ -1105,7 +1113,7 @@ self::debugMsg('hit_organism', $blast_org_name);
    *        $blast_obj->hits_array[$i]['hsp'][$j]['align_len']
    *        $blast_obj->hits_array[$i]['hsp'][$j]['positive']
    *        $blast_obj->hits_array[$i]['hsp'][$j]['query_from']
-   *        $blast_obj->hits_array[$i]['hsp'][$j]['query_to']
+   *        $blast_obj->hits_array[$i]['hsp'][$j]['query_to'].
    */
   public static function getResultObject(
     ChadoConnection $chado_connection,
