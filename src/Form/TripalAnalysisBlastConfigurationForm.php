@@ -212,7 +212,8 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
 
       $form['databases']['database_settings']['database_genbank_style']['hit_organism_re'] = [
         '#type' => 'textfield',
-        '#title' => $this->t('Regular expression for Organism'),
+        '#title' => $this->t('Regular expression for Organism. For Genbank style parser this is %gbstyle',
+          ['%gbstyle' => '/^.*\[(.*?)\].*$/']),
         '#default_value' => $hit_organism_re,
       ];
 
