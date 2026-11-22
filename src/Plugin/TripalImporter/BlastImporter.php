@@ -36,7 +36,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
   upload_title: new TranslatableMarkup('XML FILE'),
   use_analysis: TRUE,
   require_analysis: TRUE,
-  button_text: new TranslatableMarkup('Import Blast file'),
+  button_text: new TranslatableMarkup('Import Blast XML file'),
   file_upload: TRUE,
   file_local: TRUE,
   file_remote: TRUE,
@@ -220,9 +220,10 @@ class BlastImporter extends ChadoImporterBase {
 
     $form['no_parsed'] = [
       '#title' => $this->t('Number of hits to be parsed'),
-      '#type' => 'textfield',
-      '#description' => $this->t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match. \"All\" is also supported."),
+      '#type' => 'number',
+      '#description' => $this->t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10' in this field. Enter a value of zero to parse all hits. Default is to parse only the top 25 hits per match."),
       '#default_value' => '25',
+      '#min' => 0,
     ];
 
     $form['query_re'] = [
@@ -882,7 +883,7 @@ self::$debug = TRUE; //;;;
               if ($blastoutput->nodeType == \XMLReader::ELEMENT) {
                 if (strcmp($blastoutput->name, 'Hit') == 0) {
                   // Parse only the hits requested to parse.
-                  if ($no_parsed == 'all' or $num_hits <= $no_parsed) {
+                  if ($no_parsed == 0 or $num_hits <= $no_parsed) {
                     // Don't need ending \n as it's included in readInnerXML().
                     $xml_content .= "<Hit>";
                     $xml_content .= $blastoutput->readInnerXML();
