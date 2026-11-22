@@ -94,11 +94,20 @@ class BlastImporter extends ChadoImporterBase {
   protected array $temporary_files = [];
 
   /**
+   * Cached records from the public.tripal_analysis_blast table.
+   *
+   * Array key is db_id.
+   *
+   * @var array
+   */
+  protected static array $parsers = [];
+
+  /**
    * Verbose flag used for debugging.
    *
    * @var bool
    */
-  protected bool $debug = FALSE;
+  protected static bool $debug = FALSE;
 
   /**
    * Implements ContainerFactoryPluginInterface->create().
@@ -359,8 +368,9 @@ class BlastImporter extends ChadoImporterBase {
    */
   public function run() {
     $arguments = $this->arguments['run_args'];
-    $this->debug = $arguments['debug'] ?? FALSE;
-    $this->debugMsg('run() arguments', $arguments);
+    self::$debug = $arguments['debug'] ?? FALSE;
+self::$debug = TRUE;
+    self::debugMsg('run() arguments', $arguments);
     $analysis_id = (int) $arguments['analysis_id'];
     $blastdb_id = (int) $arguments['blastdb_id'];
     $blastfile = trim($this->arguments['files'][0]['file_path']);
@@ -469,7 +479,7 @@ class BlastImporter extends ChadoImporterBase {
           return;
         }
       }
-      $this->debugMsg('list of files to import', $files_to_parse);
+      self::debugMsg('list of files to import', $files_to_parse);
 
       $total_files = count($files_to_parse);
       $no_file = 0;
@@ -563,7 +573,7 @@ class BlastImporter extends ChadoImporterBase {
       return FALSE;
     }
     $type_id = $cvterm_records[0]->getValue('cvterm.cvterm_id');
-    $this->debugMsg('cvterm_id for analysis_blast_output_iteration_hits', $type_id);
+    self::debugMsg('cvterm_id for analysis_blast_output_iteration_hits', $type_id);
 
     // Retrieve the blast database object.
     $query = $this->connection->select('1:db', 'D');
@@ -759,7 +769,7 @@ class BlastImporter extends ChadoImporterBase {
     int $type_id,
   ): bool {
 
-    $this->debugMsg('handleIteration');
+    self::debugMsg('handleIteration');
     $feature_id = 0;
     $analysisfeature_id = 0;
     $iteration_tags_xml = '';
@@ -908,15 +918,15 @@ class BlastImporter extends ChadoImporterBase {
                 $this->logger->error("T_blastXML_load: Cannot add analysis feature record for $feature.");
                 continue 2;
               }
-              $this->debugMsg('inserted analysisfeature_id', $analysisfeature_id);
+              self::debugMsg('inserted analysisfeature_id', $analysisfeature_id);
             }
             else {
-              $this->debugMsg('existing analysisfeature_id', $analysisfeature_id);
+              self::debugMsg('existing analysisfeature_id', $analysisfeature_id);
             }
 
             // If the analysisfeatureprop record exists then update it.
             if ($analysisfeatureprop) {
-              $this->debugMsg('updating analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
+              self::debugMsg('updating analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
               $sql = "UPDATE {1:analysisfeatureprop}
               SET value = :xml_content
               WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
@@ -946,7 +956,7 @@ class BlastImporter extends ChadoImporterBase {
                 $this->logger->error("T_blastXML_load: Cannot add analysis feature property record.");
                 continue 2;
               }
-              $this->debugMsg('inserted analysisfeatureprop_id', $analysisfeatureprop_id);
+              self::debugMsg('inserted analysisfeatureprop_id', $analysisfeatureprop_id);
             }
             // If the user wants to store the keywords then do so.
             if ($search_keywords) {
@@ -967,7 +977,7 @@ class BlastImporter extends ChadoImporterBase {
                 // first check to make sure it doesn't already exist.
                 // Note that this is not connected to chado.organism_id.
                 $blast_org_name = $blast_obj->hits_array[$i]['hit_organism'];
-$this->debugMsg('hit_organism', $blast_org_name);
+self::debugMsg('hit_organism', $blast_org_name);
                 if ($blast_org_name) {
                   $query = $this->connection->select('1:blast_organisms', 'O');
                   $query->addField('O', 'blast_org_id', 'blast_org_id');
@@ -975,7 +985,7 @@ $this->debugMsg('hit_organism', $blast_org_name);
                   $blast_org_id = $query->execute()->fetchField();
                   // If this organism doesn't exist then add it.
                   if (!$blast_org_id) {
-                    $this->debugMsg('inserting into blast_organisms table', $blast_org_name);
+                    self::debugMsg('inserting into blast_organisms table', $blast_org_name);
                     $query = $this->connection->insert('1:blast_organisms');
                     $query->fields(['blast_org_name' => $blast_org_name]);
                     $blast_org_id = $query->execute();
@@ -1002,7 +1012,7 @@ $this->debugMsg('hit_organism', $blast_org_name);
                   'hit_best_score' => $blast_obj->hits_array[$i]['best_score'],
                   'hit_pid' => $blast_obj->hits_array[$i]['percent_identity'],
                 ];
-                $this->debugMsg('inserting into analysisfeature table hit #', $i + 1);
+                self::debugMsg('inserting into analysisfeature table hit #', $i + 1);
                 $query = $this->connection->insert('1:blast_hit_data');
                 $query->fields($values);
                 // Because this table has no primary key, we have no return
@@ -1033,6 +1043,9 @@ $this->debugMsg('hit_organism', $blast_org_name);
    * Parses the BLAST XML for a single iteration (feature matches).
    *
    * An object is returned containing the results.
+   *
+   * This function is static because it is also called from the callback
+   * for the field type ChadoBlastResultsTypeDefault.
    *
    * @param Drupal\tripal_chado\Database\ChadoConnection $chado_connection
    *   The chado connection used to query chado.
@@ -1106,11 +1119,20 @@ $this->debugMsg('hit_organism', $blast_org_name);
     $blast_object->xml = $xml_string;
 
     // Get the parser using db_id.
-    // @todo Could this be cached? Can't be loaded earlier because
-    // this function is also used by the field.
-    // Create a getParser($db_id) function.
-    $sql = "SELECT * FROM {0:tripal_analysis_blast} WHERE db_id = :db_id";
-    $parser = $chado_connection->query($sql, [':db_id' => $db->db_id])->fetchObject();
+    // This parser is cached in a class variable.
+    if (array_key_exists($db->db_id, self::$parsers)) {
+      $parser = self::$parsers[$db->db_id];
+    }
+    else {
+      // Static function so no service injection.
+      $drupal_connection = \Drupal::service('database');
+      $query = $drupal_connection->select('tripal_analysis_blast', 'T');
+      $query->condition('T.db_id', $db->db_id, '=');
+      $query->fields('T', []);
+      $parser = $query->execute()->fetchObject();
+      self::$parsers[$db->db_id] = $parser;
+      self::debugMsg('Retrieved parser for db_id=' . $db->db_id, $parser);
+    }
 
     $db_name = '';
     $is_genbank = '';
@@ -1132,7 +1154,7 @@ $this->debugMsg('hit_organism', $blast_org_name);
       $db_organism = $parser->hit_organism;
     }
 
-    // Set default if regular expressions have not been specified.
+    // Set default regular expressions if none have been specified.
     if (!$regex_hit_id) {
       $regex_hit_id = '/^(.*?)\s.*$/';
     }
@@ -1154,13 +1176,9 @@ $this->debugMsg('hit_organism', $blast_org_name);
       $blast_object->title = $db_name;
     }
 
-    // @todo Find entity id for the analysis.
-    // Tripal 3 stored this node ID as $analysis->nid.
-    //
-    // Load the file. This XML file should be an extract
-    // of the original XML file with only a single iteration.
-    // An iteration is essentially all the hits for a single
-    // query sequence.
+    // Load the XML. This XML is an extract of the original XML
+    // file with only a single iteration. An iteration is
+    // essentially all the hits for a single query sequence.
     $xml = new \XMLReader();
     $xml->xml($xml_string);
 
@@ -1488,6 +1506,9 @@ $this->debugMsg('hit_organism', $blast_org_name);
   /**
    * Prints debug messages if debug flag is set.
    *
+   * This function is static so that we can call it from
+   * static function getResultObject().
+   *
    * @param string $message
    *   A message to give context to the variable.
    * @param mixed $variable
@@ -1496,18 +1517,22 @@ $this->debugMsg('hit_organism', $blast_org_name);
    * @return void
    *   No return value.
    */
-  protected function debugMsg(string $message, mixed $variable = '*nodisplay*'): void {
-    if ($this->debug) {
-      // Support omitting the variable when calling this function.
-      if (is_string($variable) && $variable == '*nodisplay*') {
+  protected static function debugMsg(string $message, mixed $variable = '*omitted*'): void {
+    if (self::$debug) {
+      // The $variable parameter can be omitted.
+      if (is_string($variable) && $variable == '*omitted*') {
         $output = '';
       }
       else {
+        // I prefer var_dump over print_r for this because
+        // it includes variable type.
         ob_start();
         var_dump($variable);
         $output = ': ' . rtrim(ob_get_clean());
       }
-      $this->logger->info('T_blastXML_debug: ' . $message . $output);
+      // Static function so no service injection.
+      $logger = \Drupal::service('tripal.logger');
+      $logger->info('T_blastXML_debug: ' . $message . $output);
     }
   }
 
