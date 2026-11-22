@@ -1101,11 +1101,14 @@ $this->debugMsg('hit_organism', $blast_org_name);
     string $feature_id,
     object $analysis,
   ): ?object {
+    // Initialize the object that we will return.
     $blast_object = new \stdClass();
-
     $blast_object->xml = $xml_string;
 
     // Get the parser using db_id.
+    // @todo Could this be cached? Can't be loaded earlier because
+    // this function is also used by the field.
+    // Create a getParser($db_id) function.
     $sql = "SELECT * FROM {0:tripal_analysis_blast} WHERE db_id = :db_id";
     $parser = $chado_connection->query($sql, [':db_id' => $db->db_id])->fetchObject();
 
@@ -1435,6 +1438,7 @@ $this->debugMsg('hit_organism', $blast_org_name);
                     $hit_feature_id = $chado_connection->query($sql, [':uniquename' => $hit_name])->fetchField();
                     // If it is, add link to that feature.
                     if ($hit_feature_id) {
+                      // @todo check this, seems odd.
                       $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
                     }
                     else {
