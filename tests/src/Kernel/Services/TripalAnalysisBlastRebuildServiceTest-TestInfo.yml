@@ -10,9 +10,34 @@ scenarios:
       - module: 'tripal'
         type: 'tripal_content_terms'
         name: 'tripal_analysis_blast_content_terms'
-#      - module: 'tripal'
-#        type: 'tripalfield_collection'
-#        name: 'general_chado'
-#      - module: 'tripal_chado'
-#        type: 'chado_term_mapping'
-#        name: 'core_mapping'
+    expected_drupal_tables:
+      - name: 'tripal_analysis_blast'
+    expected_chado_tables:
+      - name: 'blast_organisms'
+        before:
+          exists: false
+        after:
+          exists: true
+          columns:
+            blast_org_name: true
+            blast_org_id: true
+      - name: 'blast_hit_data'
+        before:
+          exists: false
+        after:
+          exists: true
+          columns:
+            analysisfeature_id: true
+            analysis_id: true
+            feature_id: true
+            db_id: true
+            hit_num: true
+            hit_name: true
+            hit_url: true
+            hit_description: true
+            hit_organism: true
+            blast_org_id: true
+            hit_accession: true
+            hit_best_eval: true
+            hit_best_score: true
+            hit_pid: true

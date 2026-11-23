@@ -15,7 +15,8 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 /**
  * Tests the form + form-related functionality of the Blast XML Importer.
  */
-#[Group('blastXmlImporter')]
+#[Group('tripal-importer')]
+#[Group('tripal-analysis-blast')]
 #[RunTestsInSeparateProcesses]
 class BlastXmlImporterFormTest extends ChadoTestKernelBase {
 
