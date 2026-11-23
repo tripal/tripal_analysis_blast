@@ -1,0 +1,18 @@
+system-under-test:
+  comment: 'no specialized testing environment needed'
+scenarios:
+  - label: 'Unaltered call to TripalAnalysisBlast Rebuild service'
+    expected_modules:
+      - 'tripal'
+      - 'tripal_chado'
+      - 'tripal_analysis_blast'
+    expected_config_entities:
+      - module: 'tripal'
+        type: 'tripal_content_terms'
+        name: 'tripal_analysis_blast_content_terms'
+#      - module: 'tripal'
+#        type: 'tripalfield_collection'
+#        name: 'general_chado'
+#      - module: 'tripal_chado'
+#        type: 'chado_term_mapping'
+#        name: 'core_mapping'
