@@ -3,7 +3,7 @@
 namespace Drupal\Tests\tripal\Kernel\Services;
 
 use Drupal\Core\Entity\EntityTypeManager;
-use Drupal\Core\Extension\ModuleInstaller;
+use Drupal\Core\Extension\ModuleInstallerInterface;
 use Drupal\Core\Extension\ModuleHandler;
 use Drupal\pgsql\Driver\Database\pgsql\Connection;
 use Drupal\Tests\tripal_chado\Kernel\ChadoTestKernelBase;
@@ -29,9 +29,9 @@ class TripalAnalysisBlastRebuildServiceTest extends ChadoTestKernelBase {
   /**
    * Module installer (and uninstaller) service.
    *
-   * @var Drupal\Core\Extension\ModuleInstaller
+   * @var Drupal\Core\Extension\ModuleInstallerInterface
    */
-  protected ModuleInstaller $module_installer;
+  protected ModuleInstallerInterface $module_installer;
 
   /**
    * Module handler service.
