@@ -107,7 +107,7 @@ class BlastImporter extends ChadoImporterBase {
    *
    * @var array
    */
-  protected array $statistics = ['files' => 0, 'queries' => 0, 'hits' => 0];
+  protected array $statistics = ['files' => 0, 'iterations' => 0, 'hits' => 0];
 
   /**
    * Verbose flag used for debugging.
@@ -401,7 +401,7 @@ class BlastImporter extends ChadoImporterBase {
     );
     $file_suffix = $this->formatPlural($this->statistics['files'], '', 's');
     $this->logger->notice('T_blastXML_summary: Processed ' . $this->statistics['files'] . ' XML file' . $file_suffix . '.');
-    $this->logger->notice('T_blastXML_summary: The file' . $file_suffix . ' contained ' . $this->statistics['queries'] . ' query sequences.');
+    $this->logger->notice('T_blastXML_summary: The file' . $file_suffix . ' contained ' . $this->statistics['iterations'] . ' query sequences.');
     $this->logger->notice('T_blastXML_summary: Stored ' . $this->statistics['hits'] . ' individual blast hits.');
   }
 
@@ -495,24 +495,22 @@ class BlastImporter extends ChadoImporterBase {
 
       $total_files = count($files_to_parse);
       $this->statistics['files'] = $total_files;
+
+      // Determines the number of <Iteration> elements in all files.
+      // This will be used to show percent progress.
+      $this->statistics['iterations'] = $this->countIterations($files_to_parse);
+      $this->setTotalItems($this->statistics['iterations']);
+
       $no_file = 0;
-      $this->setTotalItems($total_files);
       foreach ($files_to_parse as $file) {
         $no_file++;
-        // If there is more than one file, the progress is based
-        // on the number of files. If there is only one file, the
-        // progress is based on the number of hits.
-        $show_progress = ($total_files == 1) ? TRUE : FALSE;
-        if (!$show_progress) {
+        if ($total_files > 1) {
           $this->logger->notice('T_blastXML_load: File @no_file of @total_files: @file',
             ['@no_file' => $no_file, '@total_files' => $total_files, '@file' => basename($file)]);
         }
         $success = $this->parseXML($analysis_id, $blastdb_id, $file,
           $no_parsed, $blastfile_ext, $query_re, $query_type_id, $query_uniquename,
-          $search_keywords, $show_progress);
-        if (!$show_progress) {
-          $this->setItemsHandled($no_file);
-        }
+          $search_keywords);
         if (!$success) {
           // Do not process more files if there was an error.
           break;
@@ -523,6 +521,29 @@ class BlastImporter extends ChadoImporterBase {
       $this->logger->error('T_blastXML_load: Exception parsing "@blastfile"',
         ['@blastfile' => $blastfile]);
     }
+  }
+
+  /**
+   * Rapid search for <Iteration> elements in a list of files.
+   *
+   * This is used to allow us to show progress. XML is not parsed,
+   * we just use str_contains which is faster than preg_match.
+   *
+   * @return int
+   *   A count of how many were found.
+   */
+  protected function countIterations(array $files_to_parse): int {
+    $iterations = 0;
+    foreach ($files_to_parse as $file) {
+      $handle = fopen($file, 'r');
+      while (($line = fgets($handle)) !== FALSE) {
+        if (str_contains($line, '<Iteration>')) {
+          $iterations++;
+        }
+      }
+      fclose($handle);
+    }
+    return $iterations;
   }
 
   /**
@@ -561,8 +582,6 @@ class BlastImporter extends ChadoImporterBase {
    *   include: 'blast_match_name', 'blast_match_description',
    *   'blast_match_organism', 'blast_match_accession', 'blast_database',
    *   'blast_evalue', 'blast_score'.
-   * @param bool $progress
-   *   Show progress messages during import. Defaults to TRUE.
    *
    * @return bool
    *   TRUE for success or FALSE for error.
@@ -577,7 +596,6 @@ class BlastImporter extends ChadoImporterBase {
     int|string $query_type_id,
     string $query_uniquename,
     string $search_keywords,
-    bool $progress = TRUE,
   ): bool {
 
     // Get the cvterm_id for 'analysis_blast_output_iteration_hits' which
@@ -618,31 +636,17 @@ class BlastImporter extends ChadoImporterBase {
     // If the file is a set of concatenated files then this will split
     // them so that we can process each one separately.
     $this->splitXml($blastfile);
+    if (count($this->temporary_files) > 1) {
+      $progress = FALSE;
+      $this->setTotalItems(count($this->temporary_files));
+    }
     foreach ($this->temporary_files as $file) {
       $this->logger->notice('T_blastXML_load: Parsing file "' . $file . '" from "' . $blastfile . '"');
 
-      $blastoutput = new \XMLReader();
-
-      // Parse the file initially to get the number of blast
-      // iterations elements so that we can display progress.
-      $iteration_count = 0;
-      if ($progress) {
-        $blastoutput->open($file);
-        while ($blastoutput->read()) {
-          if ($blastoutput->nodeType == \XMLReader::ELEMENT) {
-            if (strcmp($blastoutput->name, 'Iteration') == 0) {
-              $iteration_count++;
-            }
-          }
-        }
-        $blastoutput->close();
-        $this->setTotalItems($iteration_count);
-      }
-
-      // Reopen the file and iterate through the nodes until we
+      // Open the file and iterate through the nodes until we
       // get to the BlastOutput_iterations section.
+      $blastoutput = new \XMLReader();
       $blastoutput->open($file);
-      $num_read = 0;
       while ($blastoutput->read()) {
         if ($blastoutput->nodeType == \XMLReader::ELEMENT) {
           if (strcmp($blastoutput->name, 'BlastOutput_iterations') == 0) {
@@ -657,11 +661,7 @@ class BlastImporter extends ChadoImporterBase {
                 if (!$success) {
                   return FALSE;
                 }
-                $num_read++;
-                $this->statistics['queries']++;
-                if ($progress) {
-                  $this->setItemsHandled($num_read);
-                }
+                $this->addItemsHandled(1);
               }
             }
           }
@@ -687,8 +687,6 @@ class BlastImporter extends ChadoImporterBase {
    */
   protected function splitXml(string $blastfile): bool {
     $this->cleanFile();
-    $header = '';
-    $saving_header = TRUE;
     $out_fh = NULL;
 
     // @todo use $this->tripalFopen() to support .gz files
@@ -696,39 +694,15 @@ class BlastImporter extends ChadoImporterBase {
     $in_fh = fopen($blastfile, "r");
     while (!feof($in_fh)) {
       $line = fgets($in_fh);
-      $line = trim($line);
-      if ($line) {
-        if (preg_match("/<BlastOutput>/", $line)) {
-          $saving_header = FALSE;
+      // This skips blank lines.
+      if (trim($line)) {
+        if (!$out_fh) {
           $temp_name = 'temporary://tripal_analysis_blast_temp_' . getmypid() . '_' . count($this->temporary_files) . '.xml';
           $real_path = $this->file_system->realpath($temp_name);
           $this->temporary_files[] = $real_path;
           $out_fh = fopen($real_path, 'w');
-          fwrite($out_fh, $header);
         }
-        if ($saving_header) {
-          // In the event that this is not a valid blast XML file, we
-          // want to avoid loading the entire file into memory.
-          if (strlen($header) > 10000) {
-            $this->logger->error('T_blastXML_load: The file "' . $blastfile . '" does not contain valid blast XML');
-            fclose($in_fh);
-            fclose($out_fh);
-            $this->cleanFile();
-            return FALSE;
-          }
-          $header .= $line . "\n";
-        }
-        else {
-          // This would trigger if there is anything other than white
-          // space outside the <BlastOutput> element.
-          if (!$out_fh) {
-            $this->logger->error('T_blastXML_load: The file "' . $blastfile . '" does not contain valid blast XML');
-            fclose($in_fh);
-            $this->cleanFile();
-            return FALSE;
-          }
-          fwrite($out_fh, $line . "\n");
-        }
+        fwrite($out_fh, $line . "\n");
       }
       // If the line ended a set of blast output XML then
       // close the current temporary file.
@@ -1063,6 +1037,7 @@ class BlastImporter extends ChadoImporterBase {
         }
       }
     }
+    return FALSE;
   }
 
   /**
