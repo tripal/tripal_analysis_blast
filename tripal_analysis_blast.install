@@ -22,10 +22,10 @@ use Drupal\tripal_chado\Services\ChadoTermsInit;
 function tripal_analysis_blast_requirements($phase) {
   $requirements = [];
   if ($phase == 'install') {
-    if (version_compare(\Drupal::VERSION, 10.6) < 0) {
+    if (version_compare(\Drupal::VERSION, 11.4) < 0) {
       $requirements['tripal_analysis_blast'] = [
         'title' => 'tripal_analysis_blast',
-        'value' => 'ERROR: You must have Drupal version 10.6 or higher installed to use this module.',
+        'value' => 'ERROR: You must have Drupal version 11.4 or higher installed to use this module.',
         'severity' => REQUIREMENT_ERROR,
       ];
     }
