@@ -103,6 +103,13 @@ class BlastImporter extends ChadoImporterBase {
   protected static array $parsers = [];
 
   /**
+   * Summary statistics.
+   *
+   * @var array
+   */
+  protected array $statistics = ['files' => 0, 'queries' => 0, 'hits' => 0];
+
+  /**
    * Verbose flag used for debugging.
    *
    * @var bool
@@ -392,6 +399,10 @@ class BlastImporter extends ChadoImporterBase {
       $query_uniquename,
       $search_keywords,
     );
+    $file_suffix = $this->formatPlural($this->statistics['files'], '', 's');
+    $this->logger->notice('T_blastXML_summary: Processed ' . $this->statistics['files'] . ' XML file' . $file_suffix . '.');
+    $this->logger->notice('T_blastXML_summary: The file' . $file_suffix . ' contained ' . $this->statistics['queries'] . ' query sequences.');
+    $this->logger->notice('T_blastXML_summary: Stored ' . $this->statistics['hits'] . ' individual blast hits.');
   }
 
   /**
@@ -483,6 +494,7 @@ class BlastImporter extends ChadoImporterBase {
       self::debugMsg('list of files to import', $files_to_parse);
 
       $total_files = count($files_to_parse);
+      $this->statistics['files'] = $total_files;
       $no_file = 0;
       $this->setTotalItems($total_files);
       foreach ($files_to_parse as $file) {
@@ -646,6 +658,7 @@ class BlastImporter extends ChadoImporterBase {
                   return FALSE;
                 }
                 $num_read++;
+                $this->statistics['queries']++;
                 if ($progress) {
                   $this->setItemsHandled($num_read);
                 }
@@ -894,6 +907,7 @@ class BlastImporter extends ChadoImporterBase {
                     // Don't need spacing before tag as it's included
                     // in readInnerXML().
                     $xml_content .= "</Hit>\n";
+                    $this->statistics['hits']++;
                   }
                 }
                 $num_hits++;
