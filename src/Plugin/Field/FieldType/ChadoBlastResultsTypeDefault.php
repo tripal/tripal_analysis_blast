@@ -128,9 +128,11 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
   public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
     $values = [];
 
-    // Generate a random value to use as a sample.
-    $values['record_id'] = 1;
-    $values['hit_data'] = '';
+    // Generate a generic empty value to use as a sample.
+    $values[0] = [
+      'record_id' => 1,
+      'hit_data' => '',
+    ];
 
     return $values;
   }
