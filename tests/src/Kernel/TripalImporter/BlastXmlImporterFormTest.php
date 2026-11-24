@@ -81,20 +81,6 @@ class BlastXmlImporterFormTest extends ChadoTestKernelBase {
   protected int $protein_cvterm_id;
 
   /**
-   * Saves details regarding the config.
-   *
-   * @var array
-   */
-  protected array $cvdbon;
-
-  /**
-   * The terms required by this module mapped to the cvterm_ids they are set to.
-   *
-   * @var array
-   */
-  protected array $terms;
-
-  /**
    * A default listing of annotations associated with our importer.
    *
    * @var array
@@ -107,8 +93,8 @@ class BlastXmlImporterFormTest extends ChadoTestKernelBase {
       'file_types' => ['xml'],
       'use_analysis' => TRUE,
       'require_analysis' => TRUE,
-      'upload_title' => 'Phenotypic Trait Data File*',
-      'upload_description' => 'This should not be visible!',
+      'upload_title' => 'XML FILE',
+      'upload_description' => 'Please provide the XML file.',
       'button_text' => 'Import Blast XML file',
       'file_upload' => TRUE,
       'file_local' => TRUE,
@@ -149,21 +135,6 @@ class BlastXmlImporterFormTest extends ChadoTestKernelBase {
     $this->installSchema('tripal', ['tripal_import', 'tripal_jobs']);
     // Create and log-in a user.
     $this->setUpCurrentUser();
-
-    // We need to mock the logger to test the progress reporting.
-    $container = \Drupal::getContainer();
-    $mock_logger = $this->getMockBuilder(TripalLogger::class)
-      ->onlyMethods(['error'])
-      ->getMock();
-    $mock_logger->method('error')
-      ->willReturnCallback(function ($message, $context, $options) {
-        // @todo Revisit print out of log messages, but perhaps setting an option
-        // for log messages to not print to the UI?
-        // print str_replace(array_keys($context), $context, $message);
-        return NULL;
-      });
-
-    $container->set('tripal.logger', $mock_logger);
 
     $this->module_path = $this->container->get('module_handler')
       ->getModule('tripal_analysis_blast')
