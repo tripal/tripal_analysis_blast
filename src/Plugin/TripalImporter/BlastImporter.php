@@ -370,7 +370,6 @@ class BlastImporter extends ChadoImporterBase {
   public function run() {
     $arguments = $this->arguments['run_args'];
     self::$debug = $arguments['debug'] ?? FALSE;
-self::$debug = TRUE; //;;;
     self::debugMsg('run() arguments', $arguments);
     $analysis_id = (int) $arguments['analysis_id'];
     $blastdb_id = (int) $arguments['blastdb_id'];
@@ -488,6 +487,9 @@ self::$debug = TRUE; //;;;
       $this->setTotalItems($total_files);
       foreach ($files_to_parse as $file) {
         $no_file++;
+        // If there is more than one file, the progress is based
+        // on the number of files. If there is only one file, the
+        // progress is based on the number of hits.
         $show_progress = ($total_files == 1) ? TRUE : FALSE;
         if (!$show_progress) {
           $this->logger->notice('T_blastXML_load: File @no_file of @total_files: @file',
@@ -496,7 +498,9 @@ self::$debug = TRUE; //;;;
         $success = $this->parseXML($analysis_id, $blastdb_id, $file,
           $no_parsed, $blastfile_ext, $query_re, $query_type_id, $query_uniquename,
           $search_keywords, $show_progress);
-        $this->setItemsHandled($no_file);
+        if (!$show_progress) {
+          $this->setItemsHandled($no_file);
+        }
         if (!$success) {
           // Do not process more files if there was an error.
           break;
@@ -932,7 +936,6 @@ self::$debug = TRUE; //;;;
 
             // If the analysisfeatureprop record exists then update it.
             if ($analysisfeatureprop) {
-              self::debugMsg('Iteration_hits, updating analysisfeatureprop record for analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
               $sql = "UPDATE {1:analysisfeatureprop}
               SET value = :xml_content
               WHERE analysisfeatureprop_id = :analysisfeatureprop_id";
@@ -940,6 +943,7 @@ self::$debug = TRUE; //;;;
                 ':xml_content' => $xml_content,
                 'analysisfeatureprop_id' => $analysisfeatureprop->analysisfeatureprop_id,
               ]);
+              self::debugMsg('Iteration_hits, updated analysisfeatureprop record for analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
               if (!$success) {
                 $this->logger->error("T_blastXML_load: Cannot update analysis feature property record for $feature.");
                 continue 2;
@@ -947,8 +951,6 @@ self::$debug = TRUE; //;;;
             }
             // If the analyisfeatureprop record doesn't exist then add it.
             else {
-              self::debugMsg('Iteration_hits, adding analysisfeatureprop record for analysisfeatureprop_id', $analysisfeatureprop->analysisfeatureprop_id);
-
               // Add the analysisfeatureprop record.
               $values = [
                 'analysisfeature_id' => $analysisfeature_id,
@@ -959,6 +961,7 @@ self::$debug = TRUE; //;;;
               $query = $this->connection->insert('1:analysisfeatureprop');
               $query->fields($values);
               $analysisfeatureprop_id = $query->execute();
+              self::debugMsg('Iteration_hits, added analysisfeatureprop record for analysisfeatureprop_id', $analysisfeatureprop_id);
               if (!$analysisfeatureprop_id) {
                 $this->logger->error("T_blastXML_load: Cannot add analysis feature property record.");
                 continue 2;
