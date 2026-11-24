@@ -98,22 +98,20 @@ class BlastXmlImporterRunTest extends ChadoTestKernelBase {
    *
    * @var array
    */
-  protected array $definitions = [
-    'test_blast_importer' => [
-      'id' => 'tripal-analysis-blast-xml-importer',
-      'label' => 'Chado BLAST XML results loader',
-      'description' => 'Import a BLAST XML file into Chado',
-      'file_types' => ['xml'],
-      'use_analysis' => TRUE,
-      'require_analysis' => TRUE,
-      'upload_title' => 'XML FILE',
-      'upload_description' => 'Please provide the XML file.',
-      'button_text' => 'Import Blast XML file',
-      'file_upload' => TRUE,
-      'file_local' => TRUE,
-      'file_remote' => TRUE,
-      'file_required' => TRUE,
-    ],
+  protected array $importer_definitions = [
+    'id' => 'tripal-analysis-blast-xml-importer',
+    'label' => 'Chado BLAST XML results loader',
+    'description' => 'Import a BLAST XML file into Chado',
+    'file_types' => ['xml'],
+    'use_analysis' => TRUE,
+    'require_analysis' => TRUE,
+    'upload_title' => 'XML FILE',
+    'upload_description' => 'Please provide the XML file.',
+    'button_text' => 'Import Blast XML file',
+    'file_upload' => TRUE,
+    'file_local' => TRUE,
+    'file_remote' => TRUE,
+    'file_required' => TRUE,
   ];
 
   /**
@@ -246,7 +244,7 @@ class BlastXmlImporterRunTest extends ChadoTestKernelBase {
     $this->importer = new BlastImporter(
       [],
       'blast_importer',
-      $this->definitions,
+      $this->importer_definitions,
       $this->container->get('tripal_chado.chado_buddy'),
       $this->chado_connection,
       $this->container->get('messenger'),
@@ -259,9 +257,11 @@ class BlastXmlImporterRunTest extends ChadoTestKernelBase {
   }
 
   /**
-   * Tests the run() function using an actual XML file.
+   * Tests the run() function using a single XML file.
+   *
+   * This file has five query sequences.
    */
-  public function testBlastImporterRunSimple() {
+  public function testBlastImporterRunSingleFile() {
 
     $file = $this->createTestFile([
       'filename' => 'dcarv3-vs-uniprot_2026_03.xml',
@@ -291,6 +291,82 @@ class BlastXmlImporterRunTest extends ChadoTestKernelBase {
     // Verify logger messages.
     $this->assertStringContainsString('Parsing file', $this->logger_output, 'Did not see expected logger message');
     $this->assertStringContainsString('Percent complete: 100.00', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Processed 1 XML file.', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('The file contained 5 query sequences.', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Stored 25 individual blast hits.', $this->logger_output, 'Did not see expected logger message');
+  }
+
+  /**
+   * Tests the run() function using a concatenated XML file.
+   *
+   * This file has five sections, each with one query sequence.
+   */
+  public function testBlastImporterRunConcatenatedFile() {
+
+    $file = $this->createTestFile([
+      'filename' => 'dcarv3-vs-uniprot_2026_03.concatenated.xml',
+      'content' => [
+        'file' => 'dcarv3-vs-uniprot_2026_03.concatenated.xml',
+        'fixturepath' => $this->module_path . '/tests/fixtures/',
+      ],
+    ]);
+
+    $run_args = [
+      'analysis_id' => $this->analysis_id,
+      'blastdb_id' => $this->db_id,
+      'files' => [0 => ['file_path' => '']],
+      'blastfile_ext' => '',
+      'no_parsed' => 5,
+      'query_re' => '',
+      'query_type' => '',
+      'query_uniquename' => 0,
+    ];
+    $file_details = ['fid' => $file->id()];
+
+    $this->importer->createImportJob($run_args, $file_details);
+    $this->importer->prepareFiles();
+    $this->importer->run();
+    $this->importer->postRun();
+
+    // Verify logger messages.
+    $this->assertStringContainsString('Parsing file', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Percent complete: 100.00', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Processed 1 XML file.', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('The file contained 5 query sequences.', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Stored 25 individual blast hits.', $this->logger_output, 'Did not see expected logger message');
+  }
+
+  /**
+   * Tests the run() function using a directory of XML files.
+   *
+   * Use the files from the previous two test, but just pass
+   * the directory name.
+   */
+  public function testBlastImporterRunDirectory() {
+
+    $run_args = [
+      'analysis_id' => $this->analysis_id,
+      'blastdb_id' => $this->db_id,
+      'files' => [0 => ['file_path' => $this->module_path . '/tests/fixtures']],
+      'blastfile_ext' => 'xml',
+      'no_parsed' => 2,
+      'query_re' => '',
+      'query_type' => '',
+      'query_uniquename' => 0,
+    ];
+    $file_details = ['file_local' => $this->module_path . '/tests/fixtures'];
+
+    $this->importer->createImportJob($run_args, $file_details);
+    $this->importer->prepareFiles();
+    $this->importer->run();
+    $this->importer->postRun();
+
+    // Verify logger messages.
+    $this->assertStringContainsString('Parsing file', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Percent complete: 100.00', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Processed 2 XML files.', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('The files contained 10 query sequences.', $this->logger_output, 'Did not see expected logger message');
+    $this->assertStringContainsString('Stored 20 individual blast hits.', $this->logger_output, 'Did not see expected logger message');
   }
 
   /**
