@@ -151,6 +151,35 @@ class ChadoBlastResultsTypeDefault extends ChadoFieldItemBase {
   }
 
   /**
+   * {@inheritDoc}
+   *
+   * @see \Drupal\tripal\TripalField\Interfaces\TripalFieldItemInterface::discover()
+   */
+  public static function discover(
+    TripalEntityType $bundle,
+    string $field_id,
+    array $field_types,
+    array $field_instances,
+    array $options = [],
+  ): array {
+
+    // Specific settings for this field.
+    $options += [
+      'id' => self::$id,
+      'table' => 'feature',
+      'label' => 'Blast Analyses',
+      'termIdSpace' => 'format',
+      'termAccession' => '1333',
+      'description' => 'Results of a sequence database search using BLAST.',
+    ];
+
+    // Call the parent discover() with this field's specific options.
+    $field_list = parent::discover($bundle, $field_id, $field_types, $field_instances, $options);
+
+    return $field_list;
+  }
+
+  /**
    * Retrieves blast hits and json encodes them.
    *
    * @param array $context
