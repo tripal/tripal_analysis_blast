@@ -6,23 +6,26 @@ use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Tests\UnitTestCase;
 use Drupal\tripal_analysis_blast\Hook\TripalAnalysisBlastHooks;
 use Drupal\tripal_analysis_blast\Services\TripalAnalysisBlastRebuildService;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
  * Tests TripalAnalysisBlastHooks::help().
  */
+#[Group('tripal-analysis-blast')]
+#[RunTestsInSeparateProcesses]
 class TripalAnalysisBlastHooksTest extends UnitTestCase {
 
   /**
    * Tests the help output for the module help page.
    */
   public function testHelpPage(): void {
-    $route_match = $this->createMock(RouteMatchInterface::class);
-
     // Create a mock dependency for the hooks class.
     $rebuild_service = $this->createMock(TripalAnalysisBlastRebuildService::class);
     $hooks = new TripalAnalysisBlastHooks($rebuild_service);
     $hooks->setStringTranslation($this->getStringTranslationStub());
 
+    $route_match = $this->createMock(RouteMatchInterface::class);
     $output = $hooks->help('help.page.tripal_analysis_blast', $route_match);
 
     $this->assertIsString($output, 'Expect that output from the help hook is a string');
@@ -34,14 +37,13 @@ class TripalAnalysisBlastHooksTest extends UnitTestCase {
   /**
    * Tests that there is no help output for an unsupported route.
    */
-  public function testHelpUnknownRoute(): void {
-    $route_match = $this->createMock(RouteMatchInterface::class);
-
+  public function testHelpForUnknownRoute(): void {
     // Create a mock dependency for the hooks class.
     $rebuild_service = $this->createMock(TripalAnalysisBlastRebuildService::class);
     $hooks = new TripalAnalysisBlastHooks($rebuild_service);
     $hooks->setStringTranslation($this->getStringTranslationStub());
 
+    $route_match = $this->createMock(RouteMatchInterface::class);
     $output = $hooks->help('help.page.tripal_chado', $route_match);
 
     $this->assertNull($output, 'Expect no output on a help route not from this module');
