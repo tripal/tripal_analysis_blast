@@ -190,6 +190,7 @@ class BlastXmlImporterRunTest extends ChadoTestKernelBase {
       ->getModule('tripal_analysis_blast')
       ->getPath();
 
+print "CPS1 module_path \"" . $this->module_path . "\"\n";//;;;
     // Create a test database.
     $this->db_id = $this->chado_connection->insert('1:db')
       ->fields([
