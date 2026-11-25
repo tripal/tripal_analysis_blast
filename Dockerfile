@@ -7,7 +7,7 @@ LABEL org.opencontainers.image.source="https://github.com/tripal/tripal_analysis
 LABEL org.opencontainers.image.description="Provides a demonstration of the Tripal Analysis Blast module installed in the most recent version of Tripal 4"
 LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
 
-COPY . /var/www/drupal/web/modules/contrib/tripal_blast
+COPY . /var/www/drupal/web/modules/contrib/tripal_analysis_blast
 
 ## Set correct config based on versions.
 RUN rm -f ./phpunit.xml
