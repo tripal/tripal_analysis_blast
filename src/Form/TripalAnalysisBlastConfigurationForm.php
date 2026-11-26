@@ -267,6 +267,11 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
+    if (!$values['database']) {
+      $form_state->setErrorByName('database', 'A database was not selected.');
+    }
+
+    // Cannot submit if no database was selected.
 
     // Validate the regular expressions.
     $fields = ['hit_id', 'hit_def', 'hit_accession', 'hit_organism_re'];
@@ -283,7 +288,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     }
 
     // Should not specify both organism regex and organism.
-    if ($values['hit_organism_re'] && $values['organism_id']) {
+    if (($values['hit_organism_re'] ?? '') && ($values['organism_id'] ?? '')) {
       $form_state->setErrorByName('organism_id', 'Do not set both "Regular expression for Organism" and "Organism" at the same time');
     }
   }
