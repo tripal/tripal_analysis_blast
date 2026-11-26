@@ -194,14 +194,14 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
           'event' => 'change',
         ],
       ];
-    }
 
-    $form['databases']['database_settings']['database_genbank_style'] = [
-      '#type' => 'container',
-      '#attributes' => [
-        'id' => 'tripal-analysis-blast-configuration-genbank-style',
-      ],
-    ];
+      $form['databases']['database_settings']['database_genbank_style'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'id' => 'tripal-analysis-blast-configuration-genbank-style',
+        ],
+      ];
+    }
 
     if (!empty($database) && empty($gb_style_parser)) {
       $form['databases']['database_settings']['database_genbank_style']['hit_id'] = [
