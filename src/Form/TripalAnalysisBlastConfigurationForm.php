@@ -2,6 +2,7 @@
 
 namespace Drupal\tripal_analysis_blast\Form;
 
+use Drupal\Core\Database\Connection;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
@@ -26,6 +27,13 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
   const SETTINGS = 'tripal_analysis_blast.settings';
 
   /**
+   * The drupal database connection.
+   *
+   * @var Drupal\Core\Database\Connection
+   */
+  protected Connection $drupal_connection;
+
+  /**
    * A Database query interface for querying Chado using Tripal DBX.
    *
    * @var Drupal\tripal_chado\Database\ChadoConnection
@@ -35,12 +43,16 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
   /**
    * Constructs a TripalAnalysisBlastConfigurationForm.
    *
+   * @param Drupal\Core\Database\Connection $drupal_connection
+   *   The database connection object.
    * @param Drupal\tripal_chado\Database\ChadoConnection $chado_connection
    *   The chado connection used to query chado.
    */
   public function __construct(
+    Connection $drupal_connection,
     ChadoConnection $chado_connection,
   ) {
+    $this->drupal_connection = $drupal_connection;
     $this->chado_connection = $chado_connection;
   }
 
@@ -49,6 +61,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
+      $container->get('database'),
       $container->get('tripal_chado.database'),
     );
   }
@@ -57,7 +70,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function getFormId() {
-    return 'analysis_blast_ui_configuration';
+    return 'tripal_analysis_blast_configuration';
   }
 
   /**
@@ -399,11 +412,19 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    *   The list of databases suitable to use as values for a form select.
    */
   protected function getDatabases(): array {
+    // A cross-connection join behaves badly in phpunit, so look up the
+    // tripal_analysis_blast table information separately.
+    $query = $this->drupal_connection->select('tripal_analysis_blast', 'B');
+    $query->addField('B', 'db_id', 'db_id');
+    $results = $query->execute();
+    $tripal_analysis_blast = [];
+    foreach ($results as $result) {
+      $tripal_analysis_blast[$result->db_id] = TRUE;
+    }
+
     $query = $this->chado_connection->select('1:db', 'D');
-    $query->leftJoin('0:tripal_analysis_blast', 'B', '[D].db_id=[B].db_id');
-    $query->addField('D', 'db_id', 'db_db_id');
+    $query->addField('D', 'db_id', 'db_id');
     $query->addField('D', 'name', 'name');
-    $query->addField('B', 'db_id', 'configured');
     $query->condition('[D].urlprefix', '', '!=');
     $query->isNotNull('[D].urlprefix');
     $query->orderBy('D.name');
@@ -412,12 +433,12 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
     $select_arr = [];
     foreach ($results as $result) {
       $name = $result->name;
-      if ($result->configured) {
+      if ($tripal_analysis_blast[$result->db_id] ?? FALSE) {
         $name .= ' ' . $this->t('[configured]');
-        $configured_arr[$result->db_db_id] = $name;
+        $configured_arr[$result->db_id] = $name;
       }
       else {
-        $select_arr[$result->db_db_id] = $name;
+        $select_arr[$result->db_id] = $name;
       }
     }
     return $configured_arr + $select_arr;
