@@ -267,11 +267,11 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
-    if (!$values['database']) {
-      $form_state->setErrorByName('database', 'A database was not selected.');
-    }
 
     // Cannot submit if no database was selected.
+    if (!($values['database'] ?? '')) {
+      $form_state->setErrorByName('database', 'A database was not selected.');
+    }
 
     // Validate the regular expressions.
     $fields = ['hit_id', 'hit_def', 'hit_accession', 'hit_organism_re'];
@@ -299,7 +299,8 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
 
-    if ($values['database']) {
+    // A missing database value is caught during validation.
+    if ($values['database'] ?? '') {
       // Assemble the database config into an array matching the db table
       // public.tripal_analysis_blast and save it there.
       $tripal_analysis_blast_values = [
@@ -352,7 +353,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
   protected function selectTripalAnalysisBlast(int|string $db_id): array {
     $result = [];
     if ($db_id) {
-      $query = $this->chado_connection->select('0:tripal_analysis_blast', 'B');
+      $query = $this->drupal_connection->select('tripal_analysis_blast', 'B');
       $query->condition('db_id', $db_id, '=');
       $query->fields('B', []);
       // Converts FALSE to empty array.
