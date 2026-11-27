@@ -181,6 +181,7 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
         '#type' => 'textfield',
         '#title' => $this->t('Title for the blast analysis'),
         '#default_value' => $displayname,
+        '#required' => TRUE,
       ];
 
       $form['databases']['database_settings']['gb_style_parser'] = [
@@ -388,21 +389,21 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
       if ($has_data) {
         // Update existing record.
         unset($values['db_id']);
-        $query = $this->chado_connection->update('0:tripal_analysis_blast');
+        $query = $this->drupal_connection->update('tripal_analysis_blast');
         $query->fields($values);
         $query->condition('db_id', $db_id, '=');
         $query->execute();
       }
       else {
         // Drop existing record.
-        $query = $this->chado_connection->delete('0:tripal_analysis_blast');
+        $query = $this->drupal_connection->delete('tripal_analysis_blast');
         $query->condition('db_id', $db_id, '=');
         $query->execute();
       }
     }
     else {
       // Insert new record.
-      $query = $this->chado_connection->insert('0:tripal_analysis_blast');
+      $query = $this->drupal_connection->insert('tripal_analysis_blast');
       $query->fields($values);
       $query->execute();
     }
