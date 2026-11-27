@@ -24,7 +24,7 @@ class TripalAnalysisBlastHooks {
   /**
    * Constructor.
    *
-   * @param \Drupal\tripal_analysis_blast\Service\RebuildService $rebuildService
+   * @param \Drupal\tripal_analysis_blast\Services\TripalAnalysisBlastRebuildService $rebuildService
    *   The rebuild service for this module.
    */
   public function __construct(TripalAnalysisBlastRebuildService $rebuildService) {

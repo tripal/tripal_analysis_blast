@@ -122,9 +122,9 @@ class BlastXmlImporterFormTest extends ChadoTestKernelBase {
     // Open connection to Chado.
     $this->chado_connection = $this->getTestSchema(ChadoTestKernelBase::PREPARE_TEST_CHADO);
 
-    // Ensure we can access file_managed related functionality from Drupal.
-    // ... users need access to system.action config?
+    // Install this module's public table.
     $this->installConfig(['system', 'tripal_analysis_blast']);
+    // Ensure we can access file_managed related functionality from Drupal.
     // ... managed files are associated with a user.
     $this->installEntitySchema('user');
     // ... Finally the file module + tables itself.

@@ -11,6 +11,34 @@ This module is designed for Tripal v4. It provides:
 2. Blast results appear on each feature page via an interactive viewer and a
    tabular list (see screenshot for example).
 
+## Automated Testing
+
+This package is dedicated to a high standard of automated testing. We use
+PHPUnit for testing and CodeClimate to ensure good test coverage and maintainability.
+There are more details on [our CodeClimate project page] describing our specific
+maintainability issues and test coverage.
+
+[![Maintainability](https://qlty.sh/gh/tripal/projects/tripal_analysis_blast/maintainability.svg)](https://qlty.sh/gh/tripal/projects/tripal_analysis_blast)
+[![Code Coverage](https://qlty.sh/gh/tripal/projects/tripal_analysis_blast/coverage.svg)](https://qlty.sh/gh/tripal/projects/tripal_analysis_blast)
+
+The following compatibility is proven via automated testing workflows.
+
+![Tripal Version for following tests](https://img.shields.io/badge/Tripal-4.x--dev-green)
+
+| PHP\Drupal | 10.6.x              | 11.3.x              | 11.4.x              |
+|------------|---------------------|---------------------|---------------------|
+| **PHP8.3** |                     | ![Grid83-113-Badge] | ![Grid83-114-Badge] |
+| **PHP8.4** |                     | ![Grid84-113-Badge] | ![Grid84-114-Badge] |
+| **PHP8.5** |                     | ![Grid85-113-Badge] | ![Grid85-114-Badge] |
+
+
+[Grid83-113-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.3_D11_3x.yml/badge.svg
+[Grid83-114-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.3_D11_4x.yml/badge.svg
+[Grid84-113-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.4_D11_3x.yml/badge.svg
+[Grid84-114-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.4_D11_4x.yml/badge.svg
+[Grid85-113-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.5_D11_3x.yml/badge.svg
+[Grid85-114-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.5_D11_4x.yml/badge.svg
+
 # Related Modules
 In addition to display of BLAST results there are a few other modules that support BLAST.
 These include:
