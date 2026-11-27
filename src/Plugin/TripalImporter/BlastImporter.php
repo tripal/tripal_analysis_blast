@@ -637,7 +637,6 @@ class BlastImporter extends ChadoImporterBase {
     // them so that we can process each one separately.
     $this->splitXml($blastfile);
     if (count($this->temporary_files) > 1) {
-      $progress = FALSE;
       $this->setTotalItems(count($this->temporary_files));
     }
     foreach ($this->temporary_files as $file) {

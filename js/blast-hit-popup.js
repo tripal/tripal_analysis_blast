@@ -18,9 +18,6 @@
           `;
 
           document.body.appendChild(dialog);
-console.log(dialog.outerHTML);
-console.log(dialog.querySelector('.blast-close'));
-console.log(dialog.querySelectorAll('.blast-close'));
 
           // Close in the [x] area is clicked.
           dialog.querySelector('.blast-close')

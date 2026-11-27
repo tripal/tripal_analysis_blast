@@ -6,9 +6,7 @@ use Drupal\Core\Form\FormState;
 use Drupal\Tests\tripal_chado\Kernel\ChadoTestKernelBase;
 use Drupal\Tests\tripal_analysis_blast\Traits\TripalCultivateImporterTestTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
-use Drupal\tripal\Services\TripalLogger;
 use Drupal\tripal_chado\Database\ChadoConnection;
-use Drupal\user\Entity\User;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
@@ -272,7 +270,7 @@ class BlastXmlImporterFormTest extends ChadoTestKernelBase {
     $plugin_id = 'blast_importer';
 
     // Create a file to upload.
-    $file = $this->createTestFile([
+    $this->createTestFile([
       'filename' => '.xml',
       'content' => [
         'file' => 'dcarv3-vs-uniprot_2026_03.xml',

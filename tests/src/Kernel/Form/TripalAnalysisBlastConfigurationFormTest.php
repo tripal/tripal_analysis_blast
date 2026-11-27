@@ -80,8 +80,6 @@ class TripalAnalysisBlastConfigurationFormTest extends ChadoTestKernelBase {
     'gb_style_parser' => 'genbank_style',
   ];
 
-
-
   /**
    * {@inheritdoc}
    */
@@ -192,12 +190,6 @@ class TripalAnalysisBlastConfigurationFormTest extends ChadoTestKernelBase {
       'database' => $this->db_id,
     ]);
     $form = $form_object->buildForm([], $form_state);
-#    $form_state->setTriggeringElement([
-#      '#ajax' => [
-#        'callback' => '::databaseChangedCallback',
-#      ],
-#      '#name' => 'database',
-#    ]);
 
     // No validation error expected when database is specified.
     $form_object->validateForm($form, $form_state);
@@ -492,4 +484,5 @@ class TripalAnalysisBlastConfigurationFormTest extends ChadoTestKernelBase {
       }
     }
   }
+
 }
