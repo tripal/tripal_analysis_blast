@@ -76,15 +76,6 @@ class TripalAnalysisBlastConfigurationForm extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  protected function getEditableConfigNames() {
-    return [
-      static::SETTINGS,
-    ];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function buildForm(array $form, FormStateInterface $form_state) {
 
     // Attach css for this form.
