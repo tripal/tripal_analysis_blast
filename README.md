@@ -39,6 +39,14 @@ The following compatibility is proven via automated testing workflows.
 [Grid85-113-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.5_D11_3x.yml/badge.svg
 [Grid85-114-Badge]: https://github.com/tripal/tripal_analysis_blast/actions/workflows/MAIN-phpunit-php8.5_D11_4x.yml/badge.svg
 
+# Documentation
+
+Installation and usage instructions for this module.
+
+1. [Documentation for Tripal v4](https://tripal.github.io/tripal_analysis_blast).
+2. [Legacy documentation for Tripal v3](https://tripal.readthedocs.io/en/latest/user_guide/example_genomics/func_annots.html).
+3. [Legacy documentation for Tripal v2](http://tripal.info/node/106).
+
 # Related Modules
 In addition to display of BLAST results there are a few other modules that support BLAST.
 These include:
@@ -51,16 +59,7 @@ These include:
 
 How is this module different?  This module does not provide an interface for end-users
 to execute BLAST jobs. Rather it is meant to import BLAST results to appear on gene,
-transcript or protein pages to provide functional annotations.
-
-# Documentation
-
-Installation and usage instructions for each version of this module.
-
-1. [Documentation for Tripal v4](https://tripal.github.io/tripal_analysis_blast).
-2. [Documentation for Tripal v3](https://tripal.readthedocs.io/en/latest/user_guide/example_genomics/func_annots.html).
-3. [Documentation for Tripal v2](http://tripal.info/node/106).
-
+transcript, or protein pages to provide functional annotations.
 
 # Screenshot
 
