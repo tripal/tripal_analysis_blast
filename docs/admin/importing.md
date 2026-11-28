@@ -39,13 +39,33 @@ blastn -query my.genes.fna -db /blastdbs/nt -outfmt 5 -out my.blast.xml
     If they were compressed, you will have to temporarily uncompress them first.
     However, you can compress the xml output file with gzip if desired.
 
+Importing the query FASTA file into your site
+---------------------------------------------
+
+If you have not already done so, you will want to import the query sequences, referencing an analysis describing them.
+We will assume you already have the organism entered on your site, but if not, navigate to
+**Tripal → Tripal Content → + Add Tripal Content**
+select "Organism", and enter the appropriate information and save.
+
+Now you can create an analysis describing how you generated the query sequences. Navigate to
+**Tripal → Tripal Content → + Add Tripal Content**
+and select "Analysis". Enter appropriate information and save.
+
+After that is created, you can import your FASTA file using the FASTA importer. Navigate to
+**Tripal → Data Loaders → Chado FASTA File Loader**
+and specify the Analysis and Organism.
+Sequence type depends on what you have in your FASTA file.
+If you have protein sequences, you might select "polypeptide (SO:0000104)".
+If you have mRNA sequences, you might select "mRNA (SO:0000234)".
+
 Adding a reference to a BLAST Database to your site
 ---------------------------------------------------
 
 A BLAST analysis involves running the NCBI blast program using a set of sequences,
 and looking for matches in some database. A database is simply a collection of
 multiple sequences. The collection can be relatively small, or it can be enormous
-such as the NCBI nr and ExPASy SwissProt databases.
+such as the NCBI nr and [ExPASy SwissProt](https://www.expasy.org/resources/uniprotkb-swiss-prot)
+databases.
 
 The first step is to create a record in chado referencing the BLAST database that you
 used for performing the BLAST search, even if it is a database that you created locally.
@@ -103,14 +123,16 @@ then select **Analysis**. An example:
   | Description | UniProtKB Release 2026_03 consists of 150,006,383 entries |  |
   | Software Name | blastp |  |
   | Software Version | 2.17.0+ |  |
-  | Data Source Name | | optional |
+  | Algorithm | BLAST | |
+  | Data Source Name | Tripalus gene prediction analysis | an example, you would likely want the name of your query sequences here |
   | Data Source Version | | optional |
-  | Data Source URI | optional, the next item will provide the link to Swiss-Prot |
+  | Data Source URI | | optional |
   | Database Reference Annotations | ExPASy Swiss-Prot:Release 2026_03 | First select database, then select the accession |
   | Relationship | Tripalus gene prediction analysis | An example. You should link to a separate analysis describing your genome assembly or gene prediction. A possible vocabulary term to use would be `BLAST results (format:1333)`, and check the "Reverse" checkbox. |
 
 Import the BLAST XML results
 ----------------------------
+
 First navigate to the importer form **Tripal → Data Loaders → Chado BLAST XML results loader** and the importer page will be presented.
 In the first section of this form you will provide the location of your xml file.
 There are multiple methods for providing the results file: via an upload interface,
